@@ -4,6 +4,7 @@ var express = require('express');
 var exphbs = require('express-handlebars');
 var nconf = require('nconf');
 var packageJson = require('./package.json');
+var safefs = require('./services/safefs');
 
 // Setup nconf to use (in-order):
 //   1. Overrides
@@ -22,6 +23,8 @@ nconf
     });
 
 console.log(nconf.get('APP_NAME') + ' ' + nconf.get('APP_VERSION'));
+
+safefs.nameStruct('data/data.json', 'data');
 
 var app = express();
 

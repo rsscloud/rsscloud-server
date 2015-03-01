@@ -30,55 +30,25 @@ function checkFeedUrlStatusCode(feedUrl, callback) {
 }
 
 function RssCloudSuite() {
-    this.data = {};
-    this.dataDirty = false;
-    this.dataFilename = 'data/data.json';
+    var self = this;
 
-    return this;
+    self.data = {};
+
+    return self;
 }
-
-RssCloudSuite.prototype.loadData = function (callback) {
-    var self = this;
-
-    safefs.loadStruct(self.dataFilename, {}, function (errorMessage, data) {
-        if (errorMessage) {
-            callback(errorMessage);
-        }
-        self.data = data;
-        callback(null, data);
-    });
-};
-
-RssCloudSuite.prototype.saveData = function (callback) {
-    var self = this;
-
-    if (true === self.dataDirty) {
-        self.dataDirty = false;
-        safefs.saveStruct(self.dataFilename, self.data, callback);
-    }
-
-    callback(null, false);
-};
-
-RssCloudSuite.prototype.everySecond = function () {
-    var self = this;
-
-    self.saveData(function (errorMessage) {
-        if (errorMessage) {
-            console.log(errorMessage);
-        }
-    });
-};
 
 RssCloudSuite.prototype.init = function (callback) {
     var self = this, dataDirty = false;
 
-    /*jslint unparam: true*/
     async.waterfall([
         function loadData(callback) {
-            self.loadData(callback);
+            safefs.watchStruct('data', callback);
         },
-        function checkDefaults(data, callback) {
+        function assignData(data, callback) {
+            self.data = data;
+            callback(null);
+        },
+        function checkDefaults() {
             if (undefined === self.data.feeds) {
                 self.data.feeds = {};
                 dataDirty = true;
@@ -92,20 +62,13 @@ RssCloudSuite.prototype.init = function (callback) {
                 dataDirty = true;
             }
             if (true === dataDirty) {
-                self.dataDirty = true;
+                self.data.dirty = true;
             }
-            callback(null, self.data);
-        },
-        function finishUp(data) {
-            setInterval(function () {
-                self.everySecond();
-            }, 1000);
-            callback(null, data);
+            callback(null);
         }
     ], function handleError(errorMessage) {
-        console.log(errorMessage);
+        callback(errorMessage);
     });
-    /*jslint unparam: false*/
 };
 
 RssCloudSuite.prototype.errorResult = function (errorMessage) {
@@ -148,7 +111,7 @@ RssCloudSuite.prototype.pleaseNotify = function (scheme, client, port, path, pro
         function initializeData(callback) {
             self.init(callback);
         },
-        function checkFeedUrlStatusCodes(data, callback) {
+        function checkFeedUrlStatusCodes(callback) {
             async.map(urlList, checkFeedUrlStatusCode, callback);
         },
         function (statusCodes, callback) {

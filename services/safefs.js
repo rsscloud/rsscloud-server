@@ -86,23 +86,17 @@ function saveStruct(name, data, callback) {
 }
 
 function watchStruct(name, callback) {
-    var filename;
-    if (undefined === filenames[name]) {
-        callback('Cannot find filename named ' + name);
-        return;
-    }
-    filename = filenames[name];
-    if (undefined === watching[filename]) {
-        loadStruct(filename, function (errorMessage, content) {
+    if (undefined === watching[name]) {
+        loadStruct(name, function (errorMessage, content) {
             if (errorMessage) {
                 callback(errorMessage);
             }
-            watching[filename] = content;
-            watching[filename].dirty = false;
-            callback(null, watching[filename]);
+            watching[name] = content;
+            watching[name].dirty = false;
+            callback(null, watching[name]);
         });
     } else {
-        callback(null, watching[filename]);
+        callback(null, watching[name]);
     }
 }
 
@@ -113,11 +107,11 @@ function logErrorCallback(errorMessage) {
 }
 
 setInterval(function () {
-    var filename;
-    for (filename in watching) {
-        if (watching.hasOwnProperty(filename) && watching[filename].dirty) {
-            watching[filename].dirty = false;
-            saveStruct(filename, watching[filename], logErrorCallback);
+    var name;
+    for (name in watching) {
+        if (watching.hasOwnProperty(name) && watching[name].dirty) {
+            watching[name].dirty = false;
+            saveStruct(name, watching[name], logErrorCallback);
         }
     }
 }, 1000);
