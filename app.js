@@ -28,9 +28,10 @@ var app = express();
 app.engine('handlebars', exphbs({defaultLayout: 'main'}));
 app.set('view engine', 'handlebars');
 
-/*jslint nomen: true*/
-app.use(express.static(__dirname + '/public'));
-/*jslint nomen: false*/
+app.use(express.static('public', {
+    dotfiles: 'ignore',
+    maxAge: '1d'
+}));
 app.use(require('./controllers'));
 
 var server = app.listen(nconf.get('PORT'), function () {
