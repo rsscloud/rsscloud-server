@@ -16,19 +16,6 @@ var MSG_NOTIFY_SUCCESS = "Thanks for the registration. It worked. When the feed 
     "updates we'll notify you. Don't forget to re-register after 24 hours, your " +
     "subscription will expire in 25. Keep on truckin!";
 
-function checkFeedUrlStatusCode(feedUrl, callback) {
-    request({
-        'url': feedUrl,
-        'method': 'HEAD'
-    }, function checkStatusCode(error, response) {
-        if (error || response.statusCode < 200 || response.statusCode > 299) {
-            callback(sprintf(MSG_ERR_FEED_READ, feedUrl));
-        } else {
-            callback(null, response.statusCode);
-        }
-    });
-}
-
 function RssCloudSuite() {
     var self = this;
 
@@ -82,7 +69,7 @@ RssCloudSuite.prototype.notifyOneChallenge = function (apiurl, callback) {
     callback(null, true);
 };
 
-RssCloudSuite.prototype.notifyOne = function (apiurl, something, callback) {
+RssCloudSuite.prototype.notifyOne = function (server, subscription, callback) {
     callback(null, true);
 };
 
@@ -106,15 +93,33 @@ RssCloudSuite.prototype.pleaseNotify = function (scheme, client, port, path, pro
 
     apiurl += path;
 
-    /*jslint unparam: true*/
     async.waterfall([
         function initializeData(callback) {
             self.init(callback);
         },
         function checkFeedUrlStatusCodes(callback) {
-            async.map(urlList, checkFeedUrlStatusCode, callback);
+            async.each(
+                urlList,
+                function (feedUrl, callback) {
+                    request({
+                        'url': feedUrl,
+                        'method': 'HEAD'
+                    }, function checkStatusCode(error, response) {
+                        if (error || response.statusCode < 200 || response.statusCode > 299) {
+                            callback(sprintf(MSG_ERR_FEED_READ, feedUrl));
+                        } else {
+                            if (undefined === self.data.subscriptions[feedUrl]) {
+                                self.data.subscriptions[feedUrl] = {};
+                                self.data.dirty = true;
+                            }
+                            callback(null);
+                        }
+                    });
+                },
+                callback
+            );
         },
-        function (statusCodes, callback) {
+        function (callback) {
             if (diffDomain) {
                 self.notifyOneChallenge(apiurl, callback);
             } else {
@@ -130,7 +135,6 @@ RssCloudSuite.prototype.pleaseNotify = function (scheme, client, port, path, pro
     ], function handleError(errorMessage) {
         callback(errorMessage);
     });
-    /*jslint unparam: false*/
 };
 
 RssCloudSuite.prototype.restReturnSuccess = function (success, message, element) {
