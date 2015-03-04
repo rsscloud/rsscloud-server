@@ -5,11 +5,16 @@ var fs = require('fs-ext');
 var filenames = {};
 var watching = {};
 
+function logErrorCallback(errorMessage) {
+    if (errorMessage) {
+        console.log(errorMessage);
+    }
+}
+
 function loadStruct(name, callback) {
     var content, fileDescriptor, filename;
     if (undefined === filenames[name]) {
-        callback('Cannot find filename named ' + name);
-        return;
+        return callback('Cannot find filename named ' + name);
     }
     filename = filenames[name];
     async.waterfall([
@@ -31,7 +36,7 @@ function loadStruct(name, callback) {
             try {
                 content = JSON.parse(data || '{}');
             } catch (e) {
-                console.log(e);
+                logErrorCallback(e);
                 content = {};
             }
             fs.flock(fileDescriptor, 'un', callback);
@@ -40,10 +45,10 @@ function loadStruct(name, callback) {
             fs.close(fileDescriptor, callback);
         },
         function returnContent() {
-            callback(null, content);
+            return callback(null, content);
         }
     ], function handleError(errorMessage) {
-        callback(errorMessage);
+        return callback(errorMessage);
     });
 }
 
@@ -54,8 +59,7 @@ function nameStruct(filename, name) {
 function saveStruct(name, data, callback) {
     var fileDescriptor, filename;
     if (undefined === filenames[name]) {
-        callback('Cannot find filename named ' + name);
-        return;
+        return callback('Cannot find filename named ' + name);
     }
     filename = filenames[name];
     async.waterfall([
@@ -81,7 +85,7 @@ function saveStruct(name, data, callback) {
             fs.close(fileDescriptor, callback);
         }
     ], function handleError(errorMessage) {
-        callback(errorMessage);
+        return callback(errorMessage);
     });
 }
 
@@ -89,20 +93,14 @@ function watchStruct(name, callback) {
     if (undefined === watching[name]) {
         loadStruct(name, function (errorMessage, content) {
             if (errorMessage) {
-                callback(errorMessage);
+                return callback(errorMessage);
             }
             watching[name] = content;
             watching[name].dirty = false;
-            callback(null, watching[name]);
+            return callback(null, watching[name]);
         });
     } else {
-        callback(null, watching[name]);
-    }
-}
-
-function logErrorCallback(errorMessage) {
-    if (errorMessage) {
-        console.log(errorMessage);
+        return callback(null, watching[name]);
     }
 }
 
