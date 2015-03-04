@@ -22,7 +22,8 @@ function checkParams(req, callback) {
     }
 
     if (undefined === req.body.domain) {
-        params.client = req.ip;
+        params.client = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        console.log(req.connection.remoteAddress);
         params.diffDomain = false;
     } else {
         params.client = req.body.domain;
