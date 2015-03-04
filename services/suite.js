@@ -97,13 +97,6 @@ RssCloudSuite.prototype.initSubscription = function (subscription) {
     }
 };
 
-RssCloudSuite.prototype.errorResult = function (errorMessage) {
-    return {
-        'success': false,
-        'msg': errorMessage
-    };
-};
-
 RssCloudSuite.prototype.notifyOne = function (feedUrl, server, subscription, callback) {
     var self = this;
 
@@ -231,6 +224,13 @@ RssCloudSuite.prototype.pleaseNotify = function (scheme, client, port, path, pro
     ], function handleError(errorMessage) {
         return callback(errorMessage);
     });
+};
+
+RssCloudSuite.prototype.errorResult = function (errorMessage) {
+    return {
+        'success': false,
+        'msg': errorMessage
+    };
 };
 
 RssCloudSuite.prototype.restReturnSuccess = function (success, message, element) {
