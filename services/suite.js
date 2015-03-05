@@ -10,36 +10,38 @@ var safefs = require('../services/safefs');
 var sprintf = require('sprintf-js').sprintf;
 var url = require('url');
 
-var MSG_ERR_INVALID_PROTOCOL = "Can't accept the notification request because " +
+var MSG_ERR_SUB_INVALID_PROTOCOL = "Can't accept the subscription because " +
     "the protocol, \"%s\", is unsupported.";
 
-var MSG_ERR_FEED_READ = "The subscription was cancelled because there was an " +
+var MSG_ERR_SUB_READ_RESOURCE = "The subscription was cancelled because there was an " +
     "error reading the resource at URL %s.";
 
-var MSG_NOTIFY_SUCCESS = "Thanks for the registration. It worked. When the feed " +
+var MSG_ERR_SUB_NO_RESOURCES = 'No resources specified';
+
+var MSG_ERR_SUB_FAILED_HANDLER = "The subscription was cancelled because the call " +
+    "failed when we tested the handler.";
+
+var MSG_SUCCESS_SUB = "Thanks for the registration. It worked. When the resource " +
     "updates we'll notify you. Don't forget to re-register after 24 hours, your " +
     "subscription will expire in 25. Keep on truckin!";
 
-var MSG_ERR_FAILED_SUBSCRIPTION = "The subscription was cancelled because the call " +
-    "failed when we tested the handler.";
-
-var MSG_ERR_FAILED_PING = "The ping was cancelled because there was an " +
-    "error reading the resource at URL %s.";
-
-var MSG_PING_SUCCESS = "Thanks for the ping.";
-
-var MSG_LOG_SUBSCRIBE = 'Subscriber <a href="%s">%s</a> requests notification ' +
-    'when the <a href="%s">feed</a> changes via <i>%s</i> protocol.';
-
-var MSG_LOG_NOTIFY = 'Subscriber <a href="%s">%s</a> was notified that ' +
-    '<a href="%s">feed</a> has changed via <i>%s</i> protocol.';
+var MSG_LOG_SUB = 'Subscriber <a href="%s">%s</a> requests notification ' +
+    'when the <a href="%s">resource</a> changes via <i>%s</i> protocol.';
 
 var MSG_ERR_PING_RECENT = "Can't accept the request because the minimum " +
     "seconds between pings is %s and you pinged us %s seconds ago.";
 
-var MSG_LOG_PING = '<a href="%s">Feed</a> was said to have changed. We checked and the claim appears to be %s.';
+var MSG_ERR_PING_READ_RESOURCE = "The ping was cancelled because there was an " +
+    "error reading the resource at URL %s.";
 
-var MSG_ERR_NO_SUBSCRIPTIONS = 'No subscriptions found for <a href="%s">feed</a>.';
+var MSG_ERR_PING_NO_SUBSCRIPTIONS = 'No subscriptions found for <a href="%s">resource</a>.';
+
+var MSG_SUCCESS_PING = "Thanks for the ping.";
+
+var MSG_LOG_PING = 'The <a href="%s">resource</a> was said to have changed. We checked and the claim appears to be %s.';
+
+var MSG_LOG_NOTIFY = 'Subscriber <a href="%s">%s</a> was notified that ' +
+    '<a href="%s">resource</a> has changed via <i>%s</i> protocol.';
 
 function randomValueBase64(len) {
     return crypto.randomBytes(Math.ceil(len * 3 / 4))
@@ -73,8 +75,8 @@ RssCloudSuite.prototype.init = function (callback) {
                 self.data.eventlog = [];
                 dataDirty = true;
             }
-            if (undefined === self.data.feeds) {
-                self.data.feeds = {};
+            if (undefined === self.data.resources) {
+                self.data.resources = {};
                 dataDirty = true;
             }
             if (undefined === self.data.prefs) {
@@ -85,12 +87,12 @@ RssCloudSuite.prototype.init = function (callback) {
                 self.data.prefs.maxConsecutiveErrors = 3;
                 dataDirty = true;
             }
-            if (undefined === self.data.prefs.maxFeedSize) {
-                self.data.prefs.maxFeedSize = 1024 * 250; // 250K
+            if (undefined === self.data.prefs.maxResourceSize) {
+                self.data.prefs.maxResourceSize = 1024 * 250; // 250K
                 dataDirty = true;
             }
-            if (undefined === self.data.prefs.ctSecsFeedExpire) {
-                self.data.prefs.ctSecsFeedExpire = 25 * 60 * 60; // 25 Hours
+            if (undefined === self.data.prefs.ctSecsResourceExpire) {
+                self.data.prefs.ctSecsResourceExpire = 25 * 60 * 60; // 25 Hours
                 dataDirty = true;
             }
             if (undefined === self.data.prefs.minSecsBetweenPings) {
@@ -115,35 +117,35 @@ RssCloudSuite.prototype.init = function (callback) {
     });
 };
 
-RssCloudSuite.prototype.initFeed = function (feedUrl) {
-    var self = this, feed;
-    if (undefined === self.data.feeds[feedUrl]) {
-        self.data.feeds[feedUrl] = {};
+RssCloudSuite.prototype.initResource = function (resourceUrl) {
+    var self = this, resource;
+    if (undefined === self.data.resources[resourceUrl]) {
+        self.data.resources[resourceUrl] = {};
     }
-    feed = self.data.feeds[feedUrl];
+    resource = self.data.resources[resourceUrl];
 
-    if (undefined === feed.flDirty) {
-        feed.flDirty = true;
+    if (undefined === resource.flDirty) {
+        resource.flDirty = true;
     }
-    if (undefined === feed.lastSize) {
-        feed.lastSize = 0;
+    if (undefined === resource.lastSize) {
+        resource.lastSize = 0;
     }
-    if (undefined === feed.lastHash) {
-        feed.lastHash = 0;
+    if (undefined === resource.lastHash) {
+        resource.lastHash = 0;
     }
-    if (undefined === feed.ctChecks) {
-        feed.ctChecks = 0;
+    if (undefined === resource.ctChecks) {
+        resource.ctChecks = 0;
     }
-    if (undefined === feed.whenLastCheck) {
-        feed.whenLastCheck = moment('0', 'x');
+    if (undefined === resource.whenLastCheck) {
+        resource.whenLastCheck = moment('0', 'x');
     }
-    if (undefined === feed.ctUpdates) {
-        feed.ctUpdates = 0;
+    if (undefined === resource.ctUpdates) {
+        resource.ctUpdates = 0;
     }
-    if (undefined === feed.whenLastUpdate) {
-        feed.whenLastUpdate = moment('0', 'x');
+    if (undefined === resource.whenLastUpdate) {
+        resource.whenLastUpdate = moment('0', 'x');
     }
-    return feed;
+    return resource;
 };
 
 RssCloudSuite.prototype.initSubscription = function (subscription) {
@@ -165,7 +167,7 @@ RssCloudSuite.prototype.initSubscription = function (subscription) {
         subscription.whenLastError = moment('0', 'x');
     }
     if (undefined === subscription.whenExpires) {
-        subscription.whenExpires = moment().add(self.data.prefs.ctSecsFeedExpire, 'seconds');
+        subscription.whenExpires = moment().add(self.data.prefs.ctSecsResourceExpire, 'seconds');
     }
 };
 
@@ -189,7 +191,7 @@ RssCloudSuite.prototype.logEvent = function (eventtype, htmltext, startticks) {
     self.data.dirty = true;
 };
 
-RssCloudSuite.prototype.notifyOne = function (feedUrl, server, subscription, flLog, callback) {
+RssCloudSuite.prototype.notifyOne = function (resourceUrl, server, subscription, flLog, callback) {
     var self = this, startticks = moment().format('x');
 
     if (undefined === flLog) {
@@ -206,7 +208,7 @@ RssCloudSuite.prototype.notifyOne = function (feedUrl, server, subscription, flL
 
     request.post({
         'url': server,
-        'form': {'url': feedUrl}
+        'form': {'url': resourceUrl}
     }, function (errorMessage, httpResponse) {
         var parts = url.parse(server);
         if (errorMessage || httpResponse.statusCode < 200 || httpResponse.statusCode > 299) {
@@ -214,7 +216,7 @@ RssCloudSuite.prototype.notifyOne = function (feedUrl, server, subscription, flL
             subscription.ctConsecutiveErrors += 1;
             subscription.whenLastError = moment();
             self.data.dirty = true;
-            return callback(MSG_ERR_FAILED_SUBSCRIPTION);
+            return callback(MSG_ERR_SUB_FAILED_HANDLER);
         }
         subscription.whenLastUpdate = moment();
         subscription.ctUpdates += 1;
@@ -222,7 +224,7 @@ RssCloudSuite.prototype.notifyOne = function (feedUrl, server, subscription, flL
         if (flLog) {
             self.logEvent(
                 'Notify',
-                sprintf(MSG_LOG_NOTIFY, server, parts.host, feedUrl, parts.protocol),
+                sprintf(MSG_LOG_NOTIFY, server, parts.host, resourceUrl, parts.protocol),
                 startticks
             );
         }
@@ -230,14 +232,14 @@ RssCloudSuite.prototype.notifyOne = function (feedUrl, server, subscription, flL
     });
 };
 
-RssCloudSuite.prototype.notifyOneChallenge = function (feedUrl, server, subscription, callback) {
+RssCloudSuite.prototype.notifyOneChallenge = function (resourceUrl, server, subscription, callback) {
     var self = this, challenge, testUrl;
 
     self.initSubscription(subscription);
 
     challenge = randomValueBase64(20);
     testUrl = server + '?' + querystring.stringify({
-        'url': feedUrl,
+        'url': resourceUrl,
         'challenge': challenge
     });
 
@@ -249,7 +251,7 @@ RssCloudSuite.prototype.notifyOneChallenge = function (feedUrl, server, subscrip
             subscription.ctConsecutiveErrors += 1;
             subscription.whenLastError = moment();
             self.data.dirty = true;
-            return callback(MSG_ERR_FAILED_SUBSCRIPTION);
+            return callback(MSG_ERR_SUB_FAILED_HANDLER);
         }
         subscription.whenLastUpdate = moment();
         subscription.ctUpdates += 1;
@@ -266,16 +268,16 @@ RssCloudSuite.prototype.pleaseNotify = function (apiurl, urlList, diffDomain, ca
         function initializeData(callback) {
             self.init(callback);
         },
-        function checkFeedUrlStatusCodes(callback) {
+        function checkresourceUrlStatusCodes(callback) {
             async.each(
                 urlList,
-                function (feedUrl, callback) {
+                function (resourceUrl, callback) {
                     request({
-                        'url': feedUrl,
+                        'url': resourceUrl,
                         'method': 'HEAD'
                     }, function checkStatusCode(errorMessage, httpResponse) {
                         if (errorMessage || httpResponse.statusCode < 200 || httpResponse.statusCode > 299) {
-                            return callback(sprintf(MSG_ERR_FEED_READ, feedUrl));
+                            return callback(sprintf(MSG_ERR_SUB_READ_RESOURCE, resourceUrl));
                         }
                         return callback(null);
                     });
@@ -284,22 +286,22 @@ RssCloudSuite.prototype.pleaseNotify = function (apiurl, urlList, diffDomain, ca
             );
         },
         function (callback) {
-            var subscription, feedUrl;
+            var subscription, resourceUrl;
             if (undefined === urlList[0]) {
-                return callback('No feeds specified');
+                return callback(MSG_ERR_SUB_NO_RESOURCES);
             }
-            feedUrl = urlList[0];
-            if (undefined === self.data.subscriptions[feedUrl]) {
-                self.data.subscriptions[feedUrl] = {};
+            resourceUrl = urlList[0];
+            if (undefined === self.data.subscriptions[resourceUrl]) {
+                self.data.subscriptions[resourceUrl] = {};
             }
-            if (undefined === self.data.subscriptions[feedUrl][apiurl]) {
-                self.data.subscriptions[feedUrl][apiurl] = {};
+            if (undefined === self.data.subscriptions[resourceUrl][apiurl]) {
+                self.data.subscriptions[resourceUrl][apiurl] = {};
             }
-            subscription = self.data.subscriptions[feedUrl][apiurl];
+            subscription = self.data.subscriptions[resourceUrl][apiurl];
             if (diffDomain) {
-                self.notifyOneChallenge(feedUrl, apiurl, subscription, callback);
+                self.notifyOneChallenge(resourceUrl, apiurl, subscription, callback);
             } else {
-                self.notifyOne(feedUrl, apiurl, subscription, false, callback);
+                self.notifyOne(resourceUrl, apiurl, subscription, false, callback);
             }
         },
         function (callback) {
@@ -307,21 +309,21 @@ RssCloudSuite.prototype.pleaseNotify = function (apiurl, urlList, diffDomain, ca
             parts = url.parse(apiurl);
             async.each(
                 urlList,
-                function (feedUrl, callback) {
+                function (resourceUrl, callback) {
                     var subscriptions, subscription;
-                    if (undefined === self.data.subscriptions[feedUrl]) {
-                        self.data.subscriptions[feedUrl] = {};
+                    if (undefined === self.data.subscriptions[resourceUrl]) {
+                        self.data.subscriptions[resourceUrl] = {};
                     }
-                    subscriptions = self.data.subscriptions[feedUrl];
+                    subscriptions = self.data.subscriptions[resourceUrl];
                     if (undefined === subscriptions[apiurl]) {
                         subscriptions[apiurl] = {};
                         self.initSubscription(subscriptions[apiurl]);
                     }
                     subscription = subscriptions[apiurl];
-                    subscription.whenExpires = moment().add(self.data.prefs.ctSecsFeedExpire, 'seconds');
+                    subscription.whenExpires = moment().add(self.data.prefs.ctSecsResourceExpire, 'seconds');
                     self.logEvent(
                         'Subscribe',
-                        sprintf(MSG_LOG_SUBSCRIBE, apiurl, parts.host, feedUrl, parts.protocol),
+                        sprintf(MSG_LOG_SUB, apiurl, parts.host, resourceUrl, parts.protocol),
                         startticks
                     );
                     return callback(null);
@@ -332,7 +334,7 @@ RssCloudSuite.prototype.pleaseNotify = function (apiurl, urlList, diffDomain, ca
         function () {
             return callback(null, {
                 'success': true,
-                'msg': MSG_NOTIFY_SUCCESS
+                'msg': MSG_SUCCESS_SUB
             });
         }
     ], function handleError(errorMessage) {
@@ -340,27 +342,27 @@ RssCloudSuite.prototype.pleaseNotify = function (apiurl, urlList, diffDomain, ca
     });
 };
 
-RssCloudSuite.prototype.notifySubscribers = function (feedUrl, callback) {
+RssCloudSuite.prototype.notifySubscribers = function (resourceUrl, callback) {
     var self = this, subscriptions, apiurl;
 
-    if (undefined === self.data.subscriptions[feedUrl]) {
-        return callback(sprintf(MSG_ERR_NO_SUBSCRIPTIONS, feedUrl));
+    if (undefined === self.data.subscriptions[resourceUrl]) {
+        return callback(sprintf(MSG_ERR_PING_NO_SUBSCRIPTIONS, resourceUrl));
     }
 
-    subscriptions = self.data.subscriptions[feedUrl];
+    subscriptions = self.data.subscriptions[resourceUrl];
 
     for (apiurl in subscriptions) {
         if (subscriptions.hasOwnProperty(apiurl)) {
-            self.notifyOne(feedUrl, apiurl, subscriptions[apiurl], true);
+            self.notifyOne(resourceUrl, apiurl, subscriptions[apiurl], true);
         }
     }
 
     callback(null);
 };
 
-RssCloudSuite.prototype.ping = function (feedUrl, callback) {
+RssCloudSuite.prototype.ping = function (resourceUrl, callback) {
     var self = this,
-        feed,
+        resource,
         minsecs,
         startticks = moment().format('x'),
         ctsecs;
@@ -369,39 +371,39 @@ RssCloudSuite.prototype.ping = function (feedUrl, callback) {
         function initializeData(callback) {
             self.init(callback);
         },
-        function initializeFeed(callback) {
+        function initializeResource(callback) {
             minsecs = self.data.prefs.minSecsBetweenPings;
             if (0 < minsecs) {
-                ctsecs = moment().diff(feed.whenLastCheck, 'seconds');
+                ctsecs = moment().diff(resource.whenLastCheck, 'seconds');
                 if (ctsecs < minsecs) {
                     return callback(sprintf(MSG_ERR_PING_RECENT, minsecs, ctsecs));
                 }
             }
-            feed = self.initFeed(feedUrl);
-            feed.ctChecks += 1;
-            feed.whenLastCheck = moment();
+            resource = self.initResource(resourceUrl);
+            resource.ctChecks += 1;
+            resource.whenLastCheck = moment();
             callback(null);
         },
-        function updateFeed(callback) {
+        function updateResource(callback) {
             request.get({
-                'url': feedUrl
+                'url': resourceUrl
             }, function (errorMessage, httpResponse, body) {
                 var md5, hash;
                 if (errorMessage || httpResponse.statusCode < 200 || httpResponse.statusCode > 299) {
-                    callback(sprintf(MSG_ERR_FAILED_PING, feedUrl));
+                    callback(sprintf(MSG_ERR_PING_READ_RESOURCE, resourceUrl));
                 }
                 md5 = crypto.createHash('md5');
                 md5.update(body);
                 hash = md5.digest('hex');
-                if (feed.lastHash !== hash) {
-                    feed.flDirty = true;
-                } else if (feed.lastSize !== body.length) {
-                    feed.flDirty = true;
+                if (resource.lastHash !== hash) {
+                    resource.flDirty = true;
+                } else if (resource.lastSize !== body.length) {
+                    resource.flDirty = true;
                 } else {
-                    feed.flDirty = false;
+                    resource.flDirty = false;
                 }
-                feed.lastHash = hash;
-                feed.lastSize = body.length;
+                resource.lastHash = hash;
+                resource.lastSize = body.length;
                 self.data.dirty = true;
                 callback(null);
             });
@@ -409,20 +411,20 @@ RssCloudSuite.prototype.ping = function (feedUrl, callback) {
         function notifySubscribers(callback) {
             self.logEvent(
                 'Ping',
-                sprintf(MSG_LOG_PING, feedUrl, feed.flDirty.toString()),
+                sprintf(MSG_LOG_PING, resourceUrl, resource.flDirty.toString()),
                 startticks
             );
-            if (feed.flDirty) {
-                feed.ctUpdates += 1;
-                feed.whenLastUpdate = moment();
-                return self.notifySubscribers(feedUrl, callback);
+            if (resource.flDirty) {
+                resource.ctUpdates += 1;
+                resource.whenLastUpdate = moment();
+                return self.notifySubscribers(resourceUrl, callback);
             }
             callback(null);
         },
         function finished() {
             return callback(null, {
                 'success': true,
-                'msg': MSG_PING_SUCCESS
+                'msg': MSG_SUCCESS_PING
             });
         }
     ], function handleError(errorMessage) {
@@ -438,7 +440,7 @@ RssCloudSuite.prototype.glueUrlParts = function (scheme, client, port, path, pro
         apiurl = scheme + '://';
         break;
     default:
-        return callback(sprintf(MSG_ERR_INVALID_PROTOCOL, protocol));
+        return callback(sprintf(MSG_ERR_SUB_INVALID_PROTOCOL, protocol));
     }
 
     apiurl += client + ':' + port;
