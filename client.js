@@ -1,8 +1,10 @@
 "use strict";
 
+var bodyParser = require('body-parser');
 var express = require('express');
 var nconf = require('nconf');
 var packageJson = require('./package.json');
+var urlencodedParser = bodyParser.urlencoded({ extended: false });
 
 // Setup nconf to use (in-order):
 //   1. Overrides
@@ -26,9 +28,24 @@ console.log(nconf.get('APP_NAME') + ' ' + nconf.get('APP_VERSION'));
 // Setup express app
 var app = express();
 
+app.use(urlencodedParser);
+
+app.use(express.static('public', {
+    dotfiles: 'ignore',
+    maxAge: '1d'
+}));
+
 app.get('/*', function (req, res) {
     var challenge = req.query.challenge || "";
+    console.log('get');
+    console.log(req.query);
     res.send(challenge);
+});
+
+app.post('/*', function (req, res) {
+    console.log('post');
+    console.log(req.body);
+    res.send('');
 });
 
 var server = app.listen(nconf.get('PORT'), function () {

@@ -11,9 +11,9 @@ function checkParams(req, callback) {
     var key,
         s = '',
         params = {
-            'scheme': 'http',
             'urlList': []
-        };
+        },
+        parts = {};
 
     for (key in req.body) {
         if (req.body.hasOwnProperty(key) && 0 === key.toLowerCase().indexOf('url')) {
@@ -22,11 +22,10 @@ function checkParams(req, callback) {
     }
 
     if (undefined === req.body.domain) {
-        params.client = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-        console.log(req.connection.remoteAddress);
+        parts.client = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
         params.diffDomain = false;
     } else {
-        params.client = req.body.domain;
+        parts.client = req.body.domain;
         params.diffDomain = true;
     }
     if (undefined === req.body.port) {
@@ -39,10 +38,24 @@ function checkParams(req, callback) {
         s += 'protocol, ';
     }
     if (0 === s.length) {
-        params.port = req.body.port;
-        params.path = req.body.path;
-        params.protocol = req.body.protocol;
-        callback(null, params);
+        parts.scheme = 'http';
+        parts.port = req.body.port;
+        parts.path = req.body.path;
+        parts.protocol = req.body.protocol;
+        rssCloudSuite.glueUrlParts(
+            parts.scheme,
+            parts.client,
+            parts.port,
+            parts.path,
+            parts.protocol,
+            function (errorMessage, apiurl) {
+                if (errorMessage) {
+                    callback(errorMessage);
+                }
+                params.apiurl = apiurl;
+                callback(null, params);
+            }
+        );
     } else {
         s = s.substr(0, s.length - 2);
         callback('The following parameters were missing from the request body: ' + s + '.');
@@ -51,11 +64,7 @@ function checkParams(req, callback) {
 
 function pleaseNotify(params, callback) {
     rssCloudSuite.pleaseNotify(
-        params.scheme,
-        params.client,
-        params.port,
-        params.path,
-        params.protocol,
+        params.apiurl,
         params.urlList,
         params.diffDomain,
         callback
