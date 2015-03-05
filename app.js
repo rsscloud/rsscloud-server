@@ -2,6 +2,7 @@
 
 var express = require('express');
 var exphbs = require('express-handlebars');
+var moment = require('moment');
 var nconf = require('nconf');
 var packageJson = require('./package.json');
 var safefs = require('./services/safefs');
@@ -28,7 +29,15 @@ safefs.nameStruct('data/data.json', 'data');
 
 var app = express();
 
-app.engine('handlebars', exphbs({defaultLayout: 'main'}));
+var hbs = exphbs.create({
+    helpers: {
+        formatDate: function (datetime, format) {
+            return moment(datetime).format(format);
+        }
+    }
+});
+
+app.engine('handlebars', hbs.engine);
 app.set('view engine', 'handlebars');
 
 app.use(express.static('public', {

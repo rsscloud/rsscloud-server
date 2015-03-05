@@ -100,7 +100,7 @@ RssCloudSuite.prototype.init = function (callback) {
                 dataDirty = true;
             }
             if (undefined === self.data.prefs.maxEvents) {
-                self.data.prefs.maxEvents = 250;
+                self.data.prefs.maxEvents = 100;
                 dataDirty = true;
             }
             if (undefined === self.data.subscriptions) {
