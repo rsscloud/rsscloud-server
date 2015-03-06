@@ -25,10 +25,12 @@ nconf
 
 console.log(nconf.get('APP_NAME') + ' ' + nconf.get('APP_VERSION'));
 
+// Assign where data struct is saved
 safefs.nameStruct('data/data.json', 'data');
 
 var app = express();
 
+// Configure handlebars template engine to work with moment
 var hbs = exphbs.create({
     helpers: {
         formatDate: function (datetime, format) {
@@ -37,15 +39,20 @@ var hbs = exphbs.create({
     }
 });
 
+// Configure express to use handlebars
 app.engine('handlebars', hbs.engine);
 app.set('view engine', 'handlebars');
 
+// Handle static files in public directory
 app.use(express.static('public', {
     dotfiles: 'ignore',
     maxAge: '1d'
 }));
+
+// Load controllers
 app.use(require('./controllers'));
 
+// Start server
 var server = app.listen(nconf.get('PORT'), function () {
     var host = server.address().address,
         port = server.address().port;
