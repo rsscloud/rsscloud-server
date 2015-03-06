@@ -31,7 +31,6 @@
                 safefs.watchStruct('data', callback);
             },
             function (data) {
-                console.log(data);
                 processResponse(req, res, data);
             }
         ], function (errorMessage) {
