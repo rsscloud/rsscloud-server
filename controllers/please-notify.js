@@ -9,7 +9,7 @@
         pleaseNotify = require('../services/please-notify'),
         restReturnSuccess = require('../services/rest-return-success'),
         router = express.Router(),
-        safefs = require('../services/safefs'),
+        syncStruct = require('../services/sync-struct'),
         urlencodedParser = bodyParser.urlencoded({ extended: false });
 
     function processResponse(req, res, result) {
@@ -48,7 +48,7 @@
                 callback(null);
             },
             function (callback) {
-                safefs.watchStruct('data', callback);
+                syncStruct.watchStruct('data', callback);
             },
             function (data, callback) {
                 pleaseNotify(

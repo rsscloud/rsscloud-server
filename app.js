@@ -9,7 +9,7 @@
         nconf = require('nconf'),
         packageJson = require('./package.json'),
         removeExpiredSubscriptions = require('./services/remove-expired-subscriptions'),
-        safefs = require('./services/safefs'),
+        syncStruct = require('./services/sync-struct'),
         server;
 
     // Setup nconf to use (in-order):
@@ -31,8 +31,8 @@
     console.log(nconf.get('APP_NAME') + ' ' + nconf.get('APP_VERSION'));
 
     // Assign where data struct is saved
-    safefs.nameStruct('data/data.json', 'data');
-    safefs.watchStruct('data', function (err, data) {
+    syncStruct.nameStruct('data/data.json', 'data');
+    syncStruct.watchStruct('data', function (err, data) {
         if (err) {
             console.error(err);
             return;

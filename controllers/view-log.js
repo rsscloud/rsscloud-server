@@ -5,7 +5,7 @@
         errorResult = require('../services/error-result'),
         express = require('express'),
         router = express.Router(),
-        safefs = require('../services/safefs');
+        syncStruct = require('../services/sync-struct');
 
     function processResponse(req, res, data) {
         switch (req.accepts('html', 'json')) {
@@ -28,7 +28,7 @@
     router.get('/', function (req, res) {
         async.waterfall([
             function (callback) {
-                safefs.watchStruct('data', callback);
+                syncStruct.watchStruct('data', callback);
             },
             function (data) {
                 processResponse(req, res, data);

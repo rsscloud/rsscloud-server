@@ -2,7 +2,7 @@
     "use strict";
 
     var async = require('async'),
-        fs = require('fs-ext'),
+        fs = require('fs'),
         filenames = {},
         watching = {};
 
@@ -13,20 +13,13 @@
     }
 
     function loadStruct(name, callback) {
-        var content, fileDescriptor, filename;
+        var content, filename;
         callback = callback || function () { return; };
         if (undefined === filenames[name]) {
             return callback('Cannot find filename named ' + name);
         }
         filename = filenames[name];
         async.waterfall([
-            function openFile(callback) {
-                fs.open(filename, 'a+', '0666', callback);
-            },
-            function lockFile(fd, callback) {
-                fileDescriptor = fd;
-                fs.flock(fileDescriptor, 'sh', callback);
-            },
             function readFile(callback) {
                 fs.readFile(
                     filename,
@@ -34,22 +27,22 @@
                     callback
                 );
             },
-            function releaseLock(data, callback) {
+            function parseData(data, callback) {
                 try {
                     content = JSON.parse(data || '{}');
                 } catch (e) {
                     logErrorCallback(e);
                     content = {};
                 }
-                fs.flock(fileDescriptor, 'un', callback);
-            },
-            function closeFile(callback) {
-                fs.close(fileDescriptor, callback);
+                callback(null);
             },
             function returnContent() {
                 return callback(null, content);
             }
         ], function handleError(err) {
+            if (err instanceof Error && err.code === 'ENOENT') {
+                return callback(null, {});
+            }
             return callback(err);
         });
     }
@@ -59,20 +52,13 @@
     }
 
     function saveStruct(name, data, callback) {
-        var fileDescriptor, filename;
+        var filename;
         callback = callback || function () { return; };
         if (undefined === filenames[name]) {
             return callback('Cannot find filename named ' + name);
         }
         filename = filenames[name];
         async.waterfall([
-            function openFile(callback) {
-                fs.open(filename, 'a', '0666', callback);
-            },
-            function lockFile(fd, callback) {
-                fileDescriptor = fd;
-                fs.flock(fileDescriptor, 'ex', callback);
-            },
             function writeFile(callback) {
                 fs.writeFile(
                     filename,
@@ -80,12 +66,6 @@
                     {'encoding': 'utf8'},
                     callback
                 );
-            },
-            function releaseLock(callback) {
-                fs.flock(fileDescriptor, 'un', callback);
-            },
-            function closeFile() {
-                fs.close(fileDescriptor, callback);
             }
         ], function handleError(err) {
             return callback(err);
