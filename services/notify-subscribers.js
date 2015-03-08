@@ -9,7 +9,7 @@
         var apiurl, subscriptions;
 
         if (undefined === data.subscriptions[resourceUrl]) {
-            return callback(sprintf(appMessage.error.ping.noSubscriptions, resourceUrl));
+            return callback(null);
         }
 
         subscriptions = data.subscriptions[resourceUrl];

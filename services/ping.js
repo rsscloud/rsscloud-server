@@ -4,6 +4,7 @@
     var appMessage = require('./app-messages'),
         async = require('async'),
         crypto = require('crypto'),
+        initData = require('./init-data'),
         initResource = require('./init-resource'),
         logEvent = require('./log-event'),
         moment = require('moment'),
@@ -74,6 +75,7 @@
 
         async.waterfall([
             function (callback) {
+                initData(data);
                 resource = initResource(data, resourceUrl);
                 callback(null);
             },

@@ -12,8 +12,7 @@
             },
             ping: {
                 tooRecent: 'Can\'t accept the request because the minimum seconds between pings is %s and you pinged us %s seconds ago.',
-                readResource: 'The ping was cancelled because there was an error reading the resource at URL %s.',
-                noSubscriptions: 'No subscriptions found for <a href="%s">resource</a>.'
+                readResource: 'The ping was cancelled because there was an error reading the resource at URL %s.'
             }
         },
         log: {

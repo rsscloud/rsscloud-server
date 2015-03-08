@@ -3,6 +3,7 @@
 
     var appMessage = require('./app-messages'),
         async = require('async'),
+        initData = require('./init-data'),
         initSubscription = require('./init-subscription'),
         logEvent = require('./log-event'),
         moment = require('moment'),
@@ -56,6 +57,10 @@
         parts = url.parse(apiurl);
 
         async.waterfall([
+            function (callback) {
+                initData(data);
+                callback(null);
+            },
             function (callback) {
                 checkresourceUrlStatusCodes(urlList, callback);
             },
