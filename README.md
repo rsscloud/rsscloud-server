@@ -50,7 +50,7 @@ Examples:
 {"success":false,"msg":"The subscription was cancelled because the call failed when we tested the handler."}
 ```
 
-### /ping
+### POST /ping
 
 Posting to /ping is your way of alerting the server that a resource has been updated. 
 
@@ -59,6 +59,19 @@ The POST parameters are:
 1. url
 
 When you POST the server first checks if the url has actually changed since the last time it checked.  If it has, it will go through it's list of subscribers and POST to the subscriber with the parameter `url`.
+
+The default response type is text/xml but if you POST with an [accept header](http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1) specifying `application/json` we will return a JSON formatted response.
+
+Examples:
+
+```xml
+<?xml version="1.0"?>
+<notifyResult success="true" msg="Thanks for the ping."/>
+```
+
+```json
+{"success":true,"msg":"Thanks for the ping."}
+```
 
 ### /pingForm
 
