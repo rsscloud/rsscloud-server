@@ -52,6 +52,14 @@ Examples:
 
 ### /ping
 
+Posting to /ping is your way of alerting the server that a resource has been updated. 
+
+The POST parameters are:
+
+1. url
+
+When you POST the server first checks if the url has actually changed since the last time it checked.  If it has, it will go through it's list of subscribers and POST to the subscriber with the parameter `url`.
+
 ### /pingForm
 
 ### /viewLog
