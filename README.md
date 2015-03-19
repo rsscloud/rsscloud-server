@@ -73,6 +73,10 @@ Examples:
 {"success":true,"msg":"Thanks for the ping."}
 ```
 
-### /pingForm
+### GET /pingForm
 
-### /viewLog
+The path /pingForm is an HTML form intented to allow you to ping via a web browser.
+
+### GET /viewLog
+
+The path /viewLog is a log of recent events that have occured on the server. It's very useful if you're trying to debug your tools.
