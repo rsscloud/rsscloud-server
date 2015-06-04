@@ -56,6 +56,7 @@
                     apiurl,
                     urlList,
                     diffDomain,
+                    req,
                     callback
                 );
             },

@@ -39,7 +39,7 @@
         }
     }
 
-    function addSubscriber(data, resourceUrl, apiurl, parts, startticks, callback) {
+    function addSubscriber(data, resourceUrl, apiurl, parts, startticks, req, callback) {
         var subscription;
         subscription = initSubscription(data, resourceUrl, apiurl);
         subscription.whenExpires = moment().add(data.prefs.ctSecsResourceExpire, 'seconds');
@@ -47,12 +47,13 @@
             data,
             'Subscribe',
             sprintf(appMessage.log.subscription, apiurl, parts.host, resourceUrl, parts.protocol),
-            startticks
+            startticks,
+            req
         );
         return callback(null);
     }
 
-    function pleaseNotify(data, apiurl, urlList, diffDomain, callback) {
+    function pleaseNotify(data, apiurl, urlList, diffDomain, req, callback) {
         var parts, startticks = moment().format('x');
         parts = url.parse(apiurl);
 
@@ -74,7 +75,7 @@
                 async.each(
                     urlList,
                     function (resourceUrl, callback) {
-                        addSubscriber(data, resourceUrl, apiurl, parts, startticks, callback);
+                        addSubscriber(data, resourceUrl, apiurl, parts, startticks, req, callback);
                     },
                     callback
                 );
