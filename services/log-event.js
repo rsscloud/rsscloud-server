@@ -10,7 +10,7 @@
         secs = (parseInt(time.format('x'), 10) - parseInt(startticks, 10)) / 1000;
 
         if (undefined === req) {
-            req = {headers:false};
+            req = {headers: false};
         }
 
         data.eventlog.unshift({

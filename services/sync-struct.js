@@ -14,7 +14,11 @@
 
     function loadStruct(name, callback) {
         var content, filename;
-        callback = callback || function () { return; };
+
+        callback = callback || function () {
+            return;
+        };
+
         if (undefined === filenames[name]) {
             return callback('Cannot find filename named ' + name);
         }
@@ -53,7 +57,11 @@
 
     function saveStruct(name, data, callback) {
         var filename;
-        callback = callback || function () { return; };
+
+        callback = callback || function () {
+            return;
+        };
+
         if (undefined === filenames[name]) {
             return callback('Cannot find filename named ' + name);
         }
@@ -73,7 +81,10 @@
     }
 
     function watchStruct(name, callback) {
-        callback = callback || function () { return; };
+        callback = callback || function () {
+            return;
+        };
+
         if (undefined === watching[name]) {
             loadStruct(name, function (err, content) {
                 if (err) {

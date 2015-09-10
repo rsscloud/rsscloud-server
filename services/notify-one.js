@@ -12,7 +12,9 @@
     function notifyOne(data, resourceUrl, apiurl, flLog, callback) {
         var startticks = moment().format('x'), subscription;
         flLog = flLog || false;
-        callback = callback || function () { return; };
+        callback = callback || function () {
+            return;
+        };
 
         subscription = initSubscription(data, resourceUrl, apiurl);
 

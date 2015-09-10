@@ -5,7 +5,11 @@
   "main": "index.js",
   "scripts": {
     "start": "node app.js --use_strict",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "jshint ./**/*.js",
+    "cs": "jscs -p crockford ./**/*.js",
+    "pretest": "npm run-script lint && npm run-script cs",
+    "test": "istanbul cover _mocha -- --recursive -R spec -r should",
+    "posttest": "istanbul check-coverage"
   },
   "author": "Andrew Shell <andrew@andrewshell.org>",
   "license": "MIT",
@@ -23,5 +27,15 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/andrewshell/rsscloud-server.git"
+  },
+  "devDependencies": {
+    "istanbul": "^0.3.19",
+    "jscs": "^2.1.1",
+    "jshint": "^2.8.0",
+    "mocha": "^2.3.2",
+    "nock": "^2.10.0",
+    "should": "^7.1.0",
+    "sinon": "^1.16.1",
+    "supertest": "^1.1.0"
   }
 }

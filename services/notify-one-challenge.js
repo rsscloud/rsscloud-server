@@ -10,7 +10,9 @@
 
     function notifyOneChallenge(data, resourceUrl, apiurl, callback) {
         var challenge, subscription, testUrl;
-        callback = callback || function () { return; };
+        callback = callback || function () {
+            return;
+        };
 
         subscription = initSubscription(data, resourceUrl, apiurl);
 
