@@ -5,10 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "node app.js --use_strict",
-    "lint": "jshint ./**/*.js",
-    "cs": "jscs -p crockford ./**/*.js",
-    "pretest": "npm run-script lint && npm run-script cs",
-    "test": "istanbul cover _mocha -- --recursive -R spec -r should",
+    "jshint": "echo '=> linting' && jshint ./**/*.js",
+    "jscs": "echo '=> sniffing' && jscs -p crockford ./**/*.js",
+    "pretest": "npm run jshint -s && npm run jscs -s",
+    "test": "echo '=> testing' && istanbul cover _mocha -- --recursive -R spec -r should",
     "posttest": "istanbul check-coverage"
   },
   "author": "Andrew Shell <andrew@andrewshell.org>",
