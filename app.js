@@ -2,6 +2,7 @@
     "use strict";
 
     var app,
+        cors = require('cors'),
         express = require('express'),
         exphbs = require('express-handlebars'),
         hbs,
@@ -46,6 +47,8 @@
     });
 
     app = express();
+
+    app.use(cors());
 
     // Configure handlebars template engine to work with moment
     hbs = exphbs.create({
