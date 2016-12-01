@@ -27,6 +27,10 @@
             return callback(sprintf(appMessages.error.subscription.invalidProtocol, protocol));
         }
 
+        if (client.indexOf(':') > -1) {
+            client = '[' + client + ']';
+        }
+
         apiurl += client + ':' + port;
 
         if (0 !== path.indexOf('/')) {
