@@ -31,7 +31,7 @@ nconf
 console.log(nconf.get('APP_NAME') + ' ' + nconf.get('APP_VERSION'));
 
 morgan.format('mydate', function() {
-    var df = require('console-stamp/node_modules/dateformat');
+    var df = require('dateformat');
     return df(new Date(), 'HH:MM:ss.l');
 });
 

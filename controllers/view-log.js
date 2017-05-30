@@ -2,10 +2,25 @@
     "use strict";
 
     var async = require('async'),
+        data = require('../services/data'),
         errorResult = require('../services/error-result'),
         express = require('express'),
-        router = express.Router(),
-        syncStruct = require('../services/sync-struct');
+        router = express.Router();
+
+    function fetchData(db, callback) {
+        var data = {
+            'eventlog': []
+        };
+
+        db.serialize(function() {
+            db.each("SELECT * FROM log_events ORDER BY time DESC LIMIT 100", function(err, row) {
+                row.headers = JSON.parse(row.headers);
+                data.eventlog.push(row);
+            }, function () {
+                callback(null, data);
+            });
+        });
+    }
 
     function processResponse(req, res, data) {
         switch (req.accepts('html', 'json')) {
@@ -28,7 +43,10 @@
     router.get('/', function (req, res) {
         async.waterfall([
             function (callback) {
-                syncStruct.watchStruct('data', callback);
+                data.getDb(callback);
+            },
+            function (db, callback) {
+                fetchData(db, callback);
             },
             function (data) {
                 processResponse(req, res, data);

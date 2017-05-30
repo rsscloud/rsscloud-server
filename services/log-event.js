@@ -1,9 +1,10 @@
 (function () {
     "use strict";
 
-    var moment = require('moment');
+    var data = require('./data'),
+        moment = require('moment');
 
-    function logEvent(data, eventtype, htmltext, startticks, req) {
+    function logEvent(deprecated, eventtype, htmltext, startticks, req) {
         var secs, time;
 
         time = moment();
@@ -13,19 +14,34 @@
             req = {headers: false};
         }
 
-        data.eventlog.unshift({
-            'eventtype': eventtype,
-            'htmltext': htmltext,
-            'secs': secs,
-            'time': time,
-            'headers': req.headers
+        data.getDb(function (err, db) {
+            if (err) {
+                console.error(err);
+                return;
+            }
+
+            db.serialize(function() {
+
+                var stmt = db.prepare(`
+                    INSERT INTO log_events (
+                        eventtype,
+                        htmltext,
+                        secs,
+                        time,
+                        headers
+                    ) VALUES (
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?
+                    )
+                `);
+
+                stmt.run(eventtype, htmltext, secs, time.toISOString(), JSON.stringify(req.headers));
+
+            });
         });
-
-        while (data.prefs.maxEvents < data.eventlog.length) {
-            data.eventlog.pop();
-        }
-
-        data.dirty = true;
     }
 
     module.exports = logEvent;
