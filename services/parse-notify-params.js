@@ -7,6 +7,10 @@
     function parseUrlList(argv) {
         var key, urlList = [];
 
+        if (undefined === argv.hasOwnProperty) {
+            Object.setPrototypeOf(argv, {});
+        }
+
         for (key in argv) {
             if (argv.hasOwnProperty(key) && 0 === key.toLowerCase().indexOf('url')) {
                 urlList.push(argv[key]);

@@ -1,6 +1,6 @@
 {
   "name": "rsscloud-server",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "An rssCloud Server",
   "main": "index.js",
   "scripts": {
@@ -12,21 +12,23 @@
     "posttest": "istanbul check-coverage"
   },
   "engines": {
-    "node": "^4.2.2"
+    "node": "^6.10.3"
   },
   "author": "Andrew Shell <andrew@andrewshell.org>",
   "license": "MIT",
   "dependencies": {
-    "async": "^1.5.0",
-    "body-parser": "^1.14.1",
-    "cors": "^2.8.1",
-    "express": "^4.13.3",
-    "express-handlebars": "^2.0.1",
-    "moment": "^2.10.6",
-    "nconf": "^0.8.2",
-    "request": "^2.65.0",
-    "sprintf-js": "^1.0.3",
-    "xmlbuilder": "^4.1.0"
+    "async": "^2.4.1",
+    "body-parser": "^1.17.2",
+    "console-stamp": "^0.2.5",
+    "cors": "^2.8.3",
+    "express": "^4.15.3",
+    "express-handlebars": "^3.0.0",
+    "moment": "^2.18.1",
+    "morgan": "^1.8.2",
+    "nconf": "^0.8.4",
+    "request": "^2.81.0",
+    "sprintf-js": "^1.1.1",
+    "xmlbuilder": "^9.0.0"
   },
   "repository": {
     "type": "git",

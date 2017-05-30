@@ -1,10 +1,15 @@
 "use strict";
 
-var bodyParser = require('body-parser');
-var express = require('express');
-var nconf = require('nconf');
-var packageJson = require('./package.json');
-var urlencodedParser = bodyParser.urlencoded({ extended: false });
+var app,
+    bodyParser = require('body-parser'),
+    express = require('express'),
+    morgan = require('morgan'),
+    nconf = require('nconf'),
+    packageJson = require('./package.json'),
+    server,
+    urlencodedParser = bodyParser.urlencoded({ extended: false });
+
+require('console-stamp')(console, 'HH:MM:ss.l');
 
 // Setup nconf to use (in-order):
 //   1. Overrides
@@ -25,8 +30,14 @@ nconf
 
 console.log(nconf.get('APP_NAME') + ' ' + nconf.get('APP_VERSION'));
 
-// Setup express app
-var app = express();
+morgan.format('mydate', function() {
+    var df = require('console-stamp/node_modules/dateformat');
+    return df(new Date(), 'HH:MM:ss.l');
+});
+
+app = express();
+
+app.use(morgan('[:mydate] :method :url :status :res[content-length] - :remote-addr - :response-time ms'));
 
 app.use(urlencodedParser);
 
@@ -48,7 +59,7 @@ app.post('/*', function (req, res) {
     res.send('');
 });
 
-var server = app.listen(nconf.get('PORT'), function () {
+server = app.listen(nconf.get('PORT'), function () {
     var host = server.address().address,
         port = server.address().port;
 

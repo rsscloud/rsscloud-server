@@ -35,7 +35,7 @@
             dirty = true;
         }
         if (undefined === data.prefs.maxEvents) {
-            data.prefs.maxEvents = 100;
+            data.prefs.maxEvents = 1000;
             dirty = true;
         }
 

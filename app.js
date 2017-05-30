@@ -7,11 +7,14 @@
         exphbs = require('express-handlebars'),
         hbs,
         moment = require('moment'),
+        morgan = require('morgan'),
         nconf = require('nconf'),
         packageJson = require('./package.json'),
         removeExpiredSubscriptions = require('./services/remove-expired-subscriptions'),
         syncStruct = require('./services/sync-struct'),
         server;
+
+    require('console-stamp')(console, 'HH:MM:ss.l');
 
     // Setup nconf to use (in-order):
     //   1. Overrides
@@ -46,7 +49,14 @@
         );
     });
 
+    morgan.format('mydate', function() {
+        var df = require('console-stamp/node_modules/dateformat');
+        return df(new Date(), 'HH:MM:ss.l');
+    });
+
     app = express();
+
+    app.use(morgan('[:mydate] :method :url :status :res[content-length] - :remote-addr - :response-time ms'));
 
     app.use(cors());
 
