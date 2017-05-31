@@ -30,6 +30,7 @@
         .argv()
         .env()
         .defaults({
+            "DOMAIN": "localhost",
             "PORT": 5337
         });
 
@@ -86,7 +87,7 @@
 
     // Start server
     server = app.listen(nconf.get('PORT'), function () {
-        app.locals.host = server.address().address;
+        app.locals.host = nconf.get('DOMAIN');
         app.locals.port = server.address().port;
 
         if (app.locals.host.indexOf(':') > -1) {
