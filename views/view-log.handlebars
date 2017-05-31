@@ -13,7 +13,6 @@
         <p>The latest events on this rssCloud server.</p>
     </div>
 
-    {{#if eventlog}}
     <table class="table table-striped">
     <thead>
     <tr>
@@ -24,6 +23,7 @@
     </tr>
     </thead>
     <tbody id="eventlog">
+    {{#if eventlog}}
     {{#each eventlog}}
     <tr>
         <td>{{eventtype}}</td>
@@ -32,9 +32,9 @@
         <td>{{secs}}</td>
     </tr>
     {{/each}}
+    {{/if}}
     </tbody>
     </table>
-    {{/if}}
 </div>
 <div id="headers">
 {{#if eventlog}}
