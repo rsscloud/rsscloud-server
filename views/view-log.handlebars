@@ -10,31 +10,36 @@
 <div class="container">
     <div class="page-header">
         <h1>rssCloud: Log</h1>
-        <p>The last {{prefs.maxEvents}} events today for the rssCloud server.</p>
+        <p>The latest events on this rssCloud server.</p>
     </div>
 
     {{#if eventlog}}
     <table class="table table-striped">
+    <thead>
     <tr>
         <th>Event</th>
         <th>What Happened</th>
         <th>When</th>
         <th>Seconds</th>
     </tr>
+    </thead>
+    <tbody id="eventlog">
     {{#each eventlog}}
     <tr>
         <td>{{eventtype}}</td>
-        <td>{{{htmltext}}}{{#if headers}} <i class="fa fa-info-circle btn btn-default btn-xs" data-toggle="modal" data-target="#headers{{@index}}"></i>{{/if}}</td>
-        <td>{{formatDate time "h:mmA"}}</td>
+        <td>{{{htmltext}}}{{#if headers}} <i class="fa fa-info-circle btn btn-default btn-xs" data-toggle="modal" data-target="#headers{{id}}"></i>{{/if}}</td>
+        <td class="date">{{time}}</td>
         <td>{{secs}}</td>
     </tr>
     {{/each}}
+    </tbody>
     </table>
     {{/if}}
 </div>
+<div id="headers">
 {{#if eventlog}}
 {{#each eventlog}}
-<div class="modal" id="headers{{@index}}">
+<div class="modal" id="headers{{id}}">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-body">
@@ -49,11 +54,52 @@
 </div>
 {{/each}}
 {{/if}}
+</div>
+
 <script src="/js/jquery-1.11.3.min.js"></script>
 <script src="/js/bootstrap.min.js"></script>
+<script src="/js/moment-with-locales.min.js"></script>
+<script src="/js/handlebars-v4.0.10.js"></script>
+<script src="/js/eventlog.tpl.js"></script>
+<script src="/js/modal.tpl.js"></script>
 <script type="text/javascript">
-    $(document).ready(function() {
+    function formatDate(index, dateElem) {
+        var $dateElem = jQuery(dateElem);
+        var formatted = moment($dateElem.text()).format('h:mmA');
+        $dateElem.text(formatted);
+    }
 
+    jQuery(document).ready(function() {
+        jQuery('.date').each(formatDate);
+
+        if ("WebSocket" in window) {
+            try {
+                var socket = new WebSocket("ws://{{wshost}}/viewLog");
+
+                socket.onopen = function () {
+                    console.log("Socket.onopen: " + socket.readyState);
+                };
+
+                socket.onmessage = function(msg) {
+                    var logEvent = jQuery.parseJSON(msg.data);
+
+                    console.log(logEvent);
+
+                    var modal = jQuery.parseHTML(Handlebars.templates.modal(logEvent));
+                    jQuery("#headers").prepend(modal);
+
+                    var row = jQuery.parseHTML(Handlebars.templates.eventlog(logEvent));
+                    jQuery('.date', row).each(formatDate);
+                    jQuery("#eventlog").prepend(row);
+                };
+
+                socket.onclose = function() {
+                    console.log("Socket.onclose: " + socket.readyState);
+                };
+            } catch (exception) {
+                console.log(exception);
+            }
+        }
     });
 </script>
 </body>

@@ -4,6 +4,7 @@
     var app,
         cors = require('cors'),
         express = require('express'),
+        expressWs,
         exphbs = require('express-handlebars'),
         hbs,
         moment = require('moment'),
@@ -55,6 +56,7 @@
     });
 
     app = express();
+    expressWs = require('express-ws')(app);
 
     app.use(morgan('[:mydate] :method :url :status :res[content-length] - :remote-addr - :response-time ms'));
 
@@ -84,10 +86,14 @@
 
     // Start server
     server = app.listen(nconf.get('PORT'), function () {
-        var host = server.address().address,
-            port = server.address().port;
+        app.locals.host = server.address().address;
+        app.locals.port = server.address().port;
 
-        console.log('Listening at http://%s:%s', host, port);
+        if (app.locals.host.indexOf(':') > -1) {
+            app.locals.host = '[' + app.locals.host + ']';
+        }
+
+        console.log('Listening at http://%s:%s', app.locals.host, app.locals.port);
     })
         .on('error', function (error) {
             switch (error.code) {

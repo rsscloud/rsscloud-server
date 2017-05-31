@@ -34,10 +34,6 @@
             data.prefs.minSecsBetweenPings = 0;
             dirty = true;
         }
-        if (undefined === data.prefs.maxEvents) {
-            data.prefs.maxEvents = 1000;
-            dirty = true;
-        }
 
         if (undefined === data.subscriptions) {
             data.subscriptions = {};

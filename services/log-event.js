@@ -2,6 +2,7 @@
     "use strict";
 
     var data = require('./data'),
+        logEmitter = require('./log-emitter'),
         moment = require('moment');
 
     function logEvent(deprecated, eventtype, htmltext, startticks, req) {
@@ -23,23 +24,40 @@
             db.serialize(function() {
 
                 var stmt = db.prepare(`
-                    INSERT INTO log_events (
-                        eventtype,
-                        htmltext,
-                        secs,
-                        time,
-                        headers
-                    ) VALUES (
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?
-                    )
-                `);
+                        INSERT INTO log_events (
+                            eventtype,
+                            htmltext,
+                            secs,
+                            time,
+                            headers
+                        ) VALUES (
+                            ?,
+                            ?,
+                            ?,
+                            ?,
+                            ?
+                        )
+                    `);
 
-                stmt.run(eventtype, htmltext, secs, time.toISOString(), JSON.stringify(req.headers));
-
+                stmt.run(
+                    eventtype,
+                    htmltext,
+                    secs,
+                    time.toISOString(),
+                    JSON.stringify(req.headers),
+                    function (err) {
+                        if (!err) {
+                            logEmitter.emit('logged-event', JSON.stringify({
+                                'id': this.lastID,
+                                'eventtype': eventtype,
+                                'htmltext': htmltext,
+                                'secs': secs,
+                                'time': time.toISOString(),
+                                'headers': req.headers
+                            }));
+                        }
+                    }
+                );
             });
         });
     }
