@@ -2,6 +2,6 @@
 .env
 .node-version
 coverage/
-data/
+/data/
 node_modules/
 Procfile
