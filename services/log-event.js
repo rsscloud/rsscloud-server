@@ -21,7 +21,7 @@
                 return;
             }
 
-            db.serialize(function() {
+            db.serialize(() => {
 
                 var stmt = db.prepare(`
                         INSERT INTO log_events (

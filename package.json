@@ -11,40 +11,37 @@
     "test": "echo '=> testing' && istanbul cover _mocha -- --recursive -R spec -r should",
     "posttest": "istanbul check-coverage"
   },
-  "engines": {
-    "node": "^6.10.3"
-  },
   "author": "Andrew Shell <andrew@andrewshell.org>",
   "license": "MIT",
   "dependencies": {
-    "async": "^2.4.1",
-    "body-parser": "^1.17.2",
-    "console-stamp": "^0.2.5",
-    "cors": "^2.8.3",
-    "db-migrate": "^0.10.0-beta.20",
-    "db-migrate-sqlite3": "^0.2.1",
-    "express": "^4.15.3",
+    "async": "^2.6.1",
+    "body-parser": "^1.18.3",
+    "console-stamp": "^0.2.7",
+    "cors": "^2.8.4",
+    "db-migrate": "^0.11.3",
+    "db-migrate-sqlite3": "^0.3.1",
+    "express": "^4.16.3",
     "express-handlebars": "^3.0.0",
-    "express-ws": "^3.0.0",
-    "moment": "^2.18.1",
-    "morgan": "^1.8.2",
-    "nconf": "^0.8.4",
-    "request": "^2.81.0",
+    "express-ws": "^4.0.0",
+    "moment": "^2.22.2",
+    "morgan": "^1.9.1",
+    "nconf": "^0.10.0",
+    "request": "^2.88.0",
     "sprintf-js": "^1.1.1",
-    "sqlite3": "^3.1.8",
-    "xmlbuilder": "^9.0.0"
+    "sqlite3": "^4.0.2",
+    "xmlbuilder": "^10.0.0"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/andrewshell/rsscloud-server.git"
   },
   "devDependencies": {
-    "istanbul": "^0.4.0",
-    "jscs": "^2.5.1",
-    "jshint": "^2.8.0",
-    "mocha": "^2.3.3",
-    "nock": "^2.17.0",
-    "should": "^7.1.1",
-    "sinon": "^1.17.2"
+    "istanbul": "^0.4.5",
+    "jscs": "^3.0.7",
+    "jshint": "^2.9.6",
+    "mocha": "^5.2.0",
+    "nock": "^9.6.1",
+    "should": "^13.2.3",
+    "sinon": "^6.3.4"
   }
 }

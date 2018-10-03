@@ -7,7 +7,7 @@
     router.get('/', function (req, res) {
         switch (req.accepts('html')) {
             case 'html':
-                res.render('ping-form');
+                res.render('home');
                 break;
             default:
                 res.status(406).send('Not Acceptable');

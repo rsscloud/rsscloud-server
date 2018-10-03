@@ -8,16 +8,16 @@
         logEmitter = require('../services/log-emitter'),
         router = express.Router();
 
-    function fetchVals(db, id, callback) {
+    function fetchVals(db, callback) {
         var vals = {
             'eventlog': []
         };
 
-        db.serialize(function() {
-            db.each("SELECT * FROM log_events ORDER BY time DESC LIMIT 1000", function(err, row) {
+        db.serialize(() => {
+            db.each("SELECT * FROM log_events ORDER BY time DESC LIMIT 1000", (err, row) => {
                 row.headers = JSON.parse(row.headers);
                 vals.eventlog.push(row);
-            }, function () {
+            }, () => {
                 callback(null, vals);
             });
         });
@@ -25,16 +25,16 @@
 
     function processResponse(req, res, vals) {
         switch (req.accepts('html', 'json')) {
-        case 'html':
-            vals.wshost = res.app.locals.host + ':' + res.app.locals.port;
-            res.render('view-log', vals);
-            break;
-        case 'json':
-            res.json(vals.eventlog);
-            break;
-        default:
-            res.status(406).send('Not Acceptable');
-            break;
+            case 'html':
+                vals.wshost = res.app.locals.host + ':' + res.app.locals.port;
+                res.render('view-log', vals);
+                break;
+            case 'json':
+                res.json(vals.eventlog);
+                break;
+            default:
+                res.status(406).send('Not Acceptable');
+                break;
         }
     }
 
@@ -44,26 +44,24 @@
 
     router.get('/', function (req, res) {
         async.waterfall([
-            function (callback) {
+            (callback) => {
                 data.getDb(callback);
             },
-            function (db, callback) {
-                fetchVals(db, 0, callback);
+            (db, callback) => {
+                fetchVals(db, callback);
             },
-            function (vals) {
+            (vals) => {
                 processResponse(req, res, vals);
             }
-        ], function (errorMessage) {
+        ], (errorMessage) => {
             handleError(req, res, errorMessage);
         });
     });
 
-    router.ws('/', function(ws, req) {
-        var id = 0;
-
+    router.ws('/', (ws, req) => {
         function sendLogEvent(logEvent) {
             ws.send(logEvent);
-        };
+        }
 
         logEmitter.on('logged-event', sendLogEvent);
 
