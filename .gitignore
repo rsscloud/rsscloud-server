@@ -1,7 +1,9 @@
 .DS_Store
 .env
 .node-version
+.nyc_output/
 coverage/
 /data/
 node_modules/
+package-lock.json
 Procfile

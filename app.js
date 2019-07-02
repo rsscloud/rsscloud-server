@@ -1,6 +1,8 @@
 (function () {
     "use strict";
 
+    require('dotenv').config();
+
     var app,
         cors = require('cors'),
         express = require('express'),

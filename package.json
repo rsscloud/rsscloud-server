@@ -6,42 +6,47 @@
   "scripts": {
     "start": "node app.js --use_strict",
     "jshint": "echo '=> linting' && jshint ./**/*.js",
-    "jscs": "echo '=> sniffing' && jscs -p crockford ./**/*.js",
-    "pretest": "npm run jshint -s && npm run jscs -s",
-    "test": "echo '=> testing' && istanbul cover _mocha -- --recursive -R spec -r should",
-    "posttest": "istanbul check-coverage"
+    "eslint": "echo '=> sniffing' && eslint controllers/ services/",
+    "pretest": "npm run jshint -s && npm run eslint -s",
+    "test": "echo '=> testing' && nyc mocha -- --recursive -R spec -r should",
+    "posttest": "nyc check-coverage"
+  },
+  "engines": {
+    "node": ">=10.6.0"
   },
   "author": "Andrew Shell <andrew@andrewshell.org>",
   "license": "MIT",
   "dependencies": {
-    "async": "^2.6.1",
-    "body-parser": "^1.18.3",
-    "console-stamp": "^0.2.7",
-    "cors": "^2.8.4",
-    "db-migrate": "^0.11.3",
-    "db-migrate-sqlite3": "^0.3.1",
-    "express": "^4.16.3",
-    "express-handlebars": "^3.0.0",
+    "async": "^3.1.0",
+    "body-parser": "^1.19.0",
+    "console-stamp": "^0.2.9",
+    "cors": "^2.8.5",
+    "db-migrate": "^0.11.6",
+    "db-migrate-sqlite3": "^0.4.0",
+    "dotenv": "^8.0.0",
+    "express": "^4.17.1",
+    "express-handlebars": "^3.1.0",
     "express-ws": "^4.0.0",
-    "moment": "^2.22.2",
+    "moment": "^2.24.0",
     "morgan": "^1.9.1",
     "nconf": "^0.10.0",
     "request": "^2.88.0",
-    "sprintf-js": "^1.1.1",
-    "sqlite3": "^4.0.2",
-    "xmlbuilder": "^10.0.0"
+    "sprintf-js": "^1.1.2",
+    "sqlite3": "^4.0.9",
+    "xmlbuilder": "^13.0.2"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/andrewshell/rsscloud-server.git"
   },
   "devDependencies": {
-    "istanbul": "^0.4.5",
-    "jscs": "^3.0.7",
-    "jshint": "^2.9.6",
-    "mocha": "^5.2.0",
-    "nock": "^9.6.1",
+    "eslint": "^6.0.1",
+    "eslint-config-crockford": "^2.0.0",
+    "jshint": "^2.10.2",
+    "mocha": "^6.1.4",
+    "nock": "^10.0.6",
+    "nyc": "^14.1.1",
     "should": "^13.2.3",
-    "sinon": "^6.3.4"
+    "sinon": "^7.3.2"
   }
 }

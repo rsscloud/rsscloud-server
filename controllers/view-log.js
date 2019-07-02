@@ -6,7 +6,7 @@
         errorResult = require('../services/error-result'),
         express = require('express'),
         logEmitter = require('../services/log-emitter'),
-        router = express.Router();
+        router = new express.Router();
 
     function fetchVals(db, callback) {
         var vals = {
@@ -25,16 +25,16 @@
 
     function processResponse(req, res, vals) {
         switch (req.accepts('html', 'json')) {
-            case 'html':
-                vals.wshost = res.app.locals.host + ':' + res.app.locals.port;
-                res.render('view-log', vals);
-                break;
-            case 'json':
-                res.json(vals.eventlog);
-                break;
-            default:
-                res.status(406).send('Not Acceptable');
-                break;
+        case 'html':
+            vals.wshost = res.app.locals.host + ':' + res.app.locals.port;
+            res.render('view-log', vals);
+            break;
+        case 'json':
+            res.json(vals.eventlog);
+            break;
+        default:
+            res.status(406).send('Not Acceptable');
+            break;
         }
     }
 
