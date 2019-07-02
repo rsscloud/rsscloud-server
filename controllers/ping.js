@@ -8,26 +8,26 @@
         parsePingParams = require('../services/parse-ping-params'),
         ping = require('../services/ping'),
         restReturnSuccess = require('../services/rest-return-success'),
-        router = express.Router(),
+        router = new express.Router(),
         syncStruct = require('../services/sync-struct'),
         urlencodedParser = bodyParser.urlencoded({ extended: false });
 
     function processResponse(req, res, result) {
         switch (req.accepts('xml', 'json')) {
-            case 'xml':
-                res.set('Content-Type', 'text/xml');
-                res.send(restReturnSuccess(
-                    result.success,
-                    result.msg,
-                    'result'
-                ));
-                break;
-            case 'json':
-                res.json(result);
-                break;
-            default:
-                res.status(406).send('Not Acceptable');
-                break;
+        case 'xml':
+            res.set('Content-Type', 'text/xml');
+            res.send(restReturnSuccess(
+                result.success,
+                result.msg,
+                'result'
+            ));
+            break;
+        case 'json':
+            res.json(result);
+            break;
+        default:
+            res.status(406).send('Not Acceptable');
+            break;
         }
     }
 

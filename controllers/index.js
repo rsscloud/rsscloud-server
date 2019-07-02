@@ -2,7 +2,7 @@
     "use strict";
 
     var express = require('express'),
-        router = express.Router();
+        router = new express.Router();
 
     router.use('/', require('./home'));
     router.use('/pleaseNotify', require('./please-notify'));

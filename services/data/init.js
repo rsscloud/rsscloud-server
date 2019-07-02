@@ -23,9 +23,8 @@
         var stmt = db.prepare(`
             DELETE FROM log_events
             WHERE time < ?
-        `);
-
-        var time = moment().subtract(1, 'day');
+        `),
+            time = moment().subtract(1, 'day');
 
         console.log('Flushing old logs: ' + time.toISOString());
 
