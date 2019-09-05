@@ -16,7 +16,7 @@ npm start
 
 ### POST /pleaseNotify
 
-Posting to /pleaseNotify is your way of alerting the server that you want to receive notificaions when one or more resources are updated. 
+Posting to /pleaseNotify is your way of alerting the server that you want to receive notifications when one or more resources are updated. 
 
 The POST parameters are:
 
