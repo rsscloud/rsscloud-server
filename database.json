@@ -1,7 +1,0 @@
-{
-    "defaultEnv": "dev",
-    "dev": {
-        "driver": "sqlite3",
-        "filename": "data/data.db"
-    }
-}

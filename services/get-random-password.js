@@ -1,7 +1,7 @@
 (function () {
     "use strict";
 
-    var crypto = require('crypto');
+    const crypto = require('crypto');
 
     function getRandomPassword(len) {
         return crypto.randomBytes(Math.ceil(len * 3 / 4))

@@ -1,43 +1,25 @@
 (function () {
     "use strict";
 
-    var appMessages = require('./app-messages'),
-        getRandomPassword = require('./get-random-password'),
-        initSubscription = require('./init-subscription'),
-        moment = require('moment'),
+    var getRandomPassword = require('./get-random-password'),
         querystring = require('querystring'),
-        request = require('request');
+        request = require('request-promise');
 
-    function notifyOneChallenge(data, resourceUrl, apiurl, callback) {
-        var challenge, subscription, testUrl;
-        callback = callback || function () {
-            return;
-        };
+    async function notifyOneChallenge(resourceUrl, apiurl) {
+        const challenge = getRandomPassword(20),
+            testUrl = apiurl + '?' + querystring.stringify({
+                'url': resourceUrl,
+                'challenge': challenge
+            });
 
-        subscription = initSubscription(data, resourceUrl, apiurl);
-
-        challenge = getRandomPassword(20);
-        testUrl = apiurl + '?' + querystring.stringify({
-            'url': resourceUrl,
-            'challenge': challenge
+        const res = await request({
+            uri: testUrl,
+            resolveWithFullResponse: true
         });
 
-        request.get({
-            'url': testUrl
-        }, function (err, res, body) {
-            if (err || res.statusCode < 200 || res.statusCode > 299 || body !== challenge) {
-                subscription.ctErrors += 1;
-                subscription.ctConsecutiveErrors += 1;
-                subscription.whenLastError = moment();
-                data.dirty = true;
-                return callback(appMessages.error.subscription.failedHandler);
-            }
-            subscription.whenLastUpdate = moment();
-            subscription.ctUpdates += 1;
-            subscription.ctConsecutiveErrors = 0;
-            data.dirty = true;
-            return callback(null);
-        });
+        if (res.statusCode < 200 || res.statusCode > 299 || res.body !== challenge) {
+            throw new Error('Notification Failed');
+        }
     }
 
     module.exports = notifyOneChallenge;

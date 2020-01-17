@@ -4,7 +4,8 @@
   "description": "An rssCloud Server",
   "main": "index.js",
   "scripts": {
-    "start": "node app.js --use_strict",
+    "start": "nodemon --use_strict ./app.js",
+    "client": "nodemon --use_strict ./client.js",
     "jshint": "echo '=> linting' && jshint ./**/*.js",
     "eslint": "echo '=> sniffing' && eslint controllers/ services/",
     "pretest": "npm run jshint -s && npm run eslint -s",
@@ -18,6 +19,8 @@
   "license": "MIT",
   "dependencies": {
     "async": "^3.1.0",
+    "async-request": "1.2.0",
+    "bluebird": "3.7.2",
     "body-parser": "^1.19.0",
     "console-stamp": "^0.2.9",
     "cors": "^2.8.5",
@@ -28,9 +31,11 @@
     "express-handlebars": "^3.1.0",
     "express-ws": "^4.0.0",
     "moment": "^2.24.0",
+    "mongodb": "3.5.0",
     "morgan": "^1.9.1",
     "nconf": "^0.10.0",
     "request": "^2.88.0",
+    "request-promise": "4.2.5",
     "sprintf-js": "^1.1.2",
     "sqlite3": "^4.1.0",
     "xmlbuilder": "^13.0.2"
@@ -45,6 +50,7 @@
     "jshint": "^2.10.3",
     "mocha": "^6.2.2",
     "nock": "^11.7.0",
+    "nodemon": "2.0.2",
     "nyc": "^14.1.1",
     "should": "^13.2.3",
     "sinon": "^7.5.0"

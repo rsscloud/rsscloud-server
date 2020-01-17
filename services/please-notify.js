@@ -1,94 +1,113 @@
 (function () {
     "use strict";
 
-    var appMessage = require('./app-messages'),
-        async = require('async'),
-        initData = require('./init-data'),
+    const appMessages = require('./app-messages'),
+        config = require('../config'),
         initSubscription = require('./init-subscription'),
         logEvent = require('./log-event'),
         moment = require('moment'),
+        mongodb = require('./mongodb'),
         notifyOne = require('./notify-one'),
         notifyOneChallenge = require('./notify-one-challenge'),
-        request = require('request'),
+        Promise = require('bluebird'),
+        request = require('request-promise'),
         sprintf = require('sprintf-js').sprintf,
         url = require('url');
 
-    function checkresourceUrlStatusCodes(urlList, callback) {
-        async.each(
-            urlList,
-            function (resourceUrl, callback) {
-                request({
-                    'url': resourceUrl,
-                    'method': 'HEAD'
-                }, function checkStatusCode(err, res) {
-                    if (err || res.statusCode < 200 || res.statusCode > 299) {
-                        return callback(sprintf(appMessage.error.subscription.readResource, resourceUrl));
-                    }
-                    return callback(null);
-                });
-            },
-            callback
-        );
+    async function checkresourceUrlStatusCode(resourceUrl) {
+        console.log(resourceUrl);
+        return request({
+            method: 'HEAD',
+            uri: resourceUrl,
+            followRedirect: false,
+            resolveWithFullResponse: true
+        })
+            .then(res => {
+                if (res.statusCode < 200 || res.statusCode > 299) {
+                    throw new Error(sprintf(appMessages.error.subscription.readResource, resourceUrl));
+                }
+            })
+            .catch(() => {
+                throw new Error(sprintf(appMessages.error.subscription.readResource, resourceUrl));
+            });
     }
 
-    function notifyApiUrl(data, resourceUrl, apiurl, diffDomain, callback) {
-        if (diffDomain) {
-            notifyOneChallenge(data, resourceUrl, apiurl, callback);
-        } else {
-            notifyOne(data, resourceUrl, apiurl, false, callback);
+    async function fetchSubscriptions(resourceUrl) {
+        const subscriptions = await mongodb.get()
+            .collection('subscriptions')
+            .findOne({
+                _id: resourceUrl
+            });
+
+        return subscriptions || { _id: resourceUrl };
+    }
+
+    async function upsertSubscriptions(subscriptions) {
+        await mongodb.get()
+            .collection('subscriptions')
+            .replaceOne(
+                { _id: subscriptions._id },
+                subscriptions,
+                { upsert: true }
+            );
+    }
+
+    async function notifyApiUrl(resourceUrl, apiurl, diffDomain) {
+        const subscriptions = await fetchSubscriptions(resourceUrl),
+            startticks = moment().format('x'),
+            parts = url.parse(apiurl);
+
+        initSubscription(subscriptions, apiurl);
+
+        try {
+            if (diffDomain) {
+                await notifyOneChallenge(resourceUrl, apiurl);
+            } else {
+                await notifyOne(resourceUrl, apiurl);
+            }
+
+            subscriptions[apiurl].ctUpdates += 1;
+            subscriptions[apiurl].ctConsecutiveErrors = 0;
+            subscriptions[apiurl].whenLastUpdate = moment().utc().format();
+            subscriptions[apiurl].whenExpires = moment().utc().add(config.ctSecsResourceExpire, 'seconds').format();
+
+            await upsertSubscriptions(subscriptions);
+
+            await logEvent(
+                'Subscribe',
+                sprintf(appMessages.log.subscription, apiurl, parts.host, resourceUrl, parts.protocol),
+                startticks
+            );
+        } catch (err) {
+            console.dir(err);
+            throw new Error(appMessages.error.subscription.failedHandler);
         }
     }
 
-    function addSubscriber(data, resourceUrl, apiurl, parts, startticks, req, callback) {
-        var subscription;
-        subscription = initSubscription(data, resourceUrl, apiurl);
-        subscription.whenExpires = moment().add(data.prefs.ctSecsResourceExpire, 'seconds');
-        logEvent(
-            data,
-            'Subscribe',
-            sprintf(appMessage.log.subscription, apiurl, parts.host, resourceUrl, parts.protocol),
-            startticks,
-            req
-        );
-        return callback(null);
-    }
+    async function pleaseNotify(apiurl, urlList, diffDomain) {
+        if (0 === urlList.length) {
+            throw new Error(appMessages.error.subscription.noResources);
+        }
 
-    function pleaseNotify(data, apiurl, urlList, diffDomain, req, callback) {
-        var parts, startticks = moment().format('x');
-        parts = url.parse(apiurl);
+        let lastErr, resourceUrl;
 
-        async.waterfall([
-            function (callback) {
-                initData(data);
-                callback(null);
-            },
-            function (callback) {
-                checkresourceUrlStatusCodes(urlList, callback);
-            },
-            function (callback) {
-                if (undefined === urlList[0]) {
-                    return callback(appMessage.error.subscription.noResources);
-                }
-                notifyApiUrl(data, urlList[0], apiurl, diffDomain, callback);
-            },
-            function (callback) {
-                async.each(
-                    urlList,
-                    function (resourceUrl, callback) {
-                        addSubscriber(data, resourceUrl, apiurl, parts, startticks, req, callback);
-                    },
-                    callback
-                );
-            },
-            function () {
-                return callback(null, {
-                    'success': true,
-                    'msg': appMessage.success.subscription
-                });
+        for (resourceUrl of urlList) {
+            try {
+                await checkresourceUrlStatusCode(resourceUrl);
+                await notifyApiUrl(resourceUrl, apiurl, diffDomain);
+            } catch (err) {
+                lastErr = err;
             }
-        ], function handleError(err) {
-            return callback(err);
-        });
+        }
+
+        if (lastErr) {
+            throw lastErr;
+        }
+
+        return {
+            'success': true,
+            'msg': appMessages.success.subscription
+        };
     }
 
     module.exports = pleaseNotify;

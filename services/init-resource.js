@@ -1,50 +1,28 @@
 (function () {
     "use strict";
 
-    var moment = require('moment');
+    const mongodb = require('./mongodb'),
+        moment = require('moment');
 
-    function initResource(data, resourceUrl) {
-        var dirty = false, resource;
+    async function initResource(resourceUrl) {
+        const resource = await mongodb.get()
+            .collection('resources')
+            .findOne({
+                _id: resourceUrl
+            });
 
-        if (undefined === data.resources[resourceUrl]) {
-            data.resources[resourceUrl] = {};
-        }
-        resource = data.resources[resourceUrl];
+        const defaultResource = {
+            _id: resourceUrl,
+            flDirty: true,
+            lastSize: 0,
+            lastHash: '',
+            ctChecks: 0,
+            whenLastCheck: moment.utc('0', 'x').format(),
+            ctUpdates: 0,
+            whenLastUpdate: moment.utc('0', 'x').format()
+        };
 
-        if (undefined === resource.flDirty) {
-            resource.flDirty = true;
-            dirty = true;
-        }
-        if (undefined === resource.lastSize) {
-            resource.lastSize = 0;
-            dirty = true;
-        }
-        if (undefined === resource.lastHash) {
-            resource.lastHash = 0;
-            dirty = true;
-        }
-        if (undefined === resource.ctChecks) {
-            resource.ctChecks = 0;
-            dirty = true;
-        }
-        if (undefined === resource.whenLastCheck) {
-            resource.whenLastCheck = moment('0', 'x');
-            dirty = true;
-        }
-        if (undefined === resource.ctUpdates) {
-            resource.ctUpdates = 0;
-            dirty = true;
-        }
-        if (undefined === resource.whenLastUpdate) {
-            resource.whenLastUpdate = moment('0', 'x');
-            dirty = true;
-        }
-
-        if (true === dirty) {
-            data.dirty = true;
-        }
-
-        return resource;
+        return Object.assign({}, defaultResource, resourceUrl || {});
     }
 
     module.exports = initResource;

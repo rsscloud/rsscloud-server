@@ -1,7 +1,13 @@
 {
+    "parserOptions": {
+        "ecmaVersion": 2017
+    },
     "extends": "crockford",
     "env": {
     	"node": true,
     	"es6": true
+    },
+    "rules": {
+        "no-underscore-dangle": "off"
     }
 }

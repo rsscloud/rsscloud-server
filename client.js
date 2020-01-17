@@ -25,6 +25,7 @@ nconf
     .argv()
     .env()
     .defaults({
+        "DOMAIN": "localhost",
         "PORT": 9000
     });
 
@@ -49,18 +50,18 @@ app.use(express.static('public', {
 app.get('/*', function (req, res) {
     var challenge = req.query.challenge || "";
     console.log('get');
-    console.log(req.query);
+    console.dir(req.query);
     res.send(challenge);
 });
 
 app.post('/*', function (req, res) {
     console.log('post');
-    console.log(req.body);
+    console.dir(req.body);
     res.send('');
 });
 
 server = app.listen(nconf.get('PORT'), function () {
-    var host = server.address().address,
+    var host = nconf.get('DOMAIN'),
         port = server.address().port;
 
     console.log('Listening at http://%s:%s', host, port);

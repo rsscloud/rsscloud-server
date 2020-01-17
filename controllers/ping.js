@@ -9,7 +9,6 @@
         ping = require('../services/ping'),
         restReturnSuccess = require('../services/rest-return-success'),
         router = new express.Router(),
-        syncStruct = require('../services/sync-struct'),
         urlencodedParser = bodyParser.urlencoded({ extended: false });
 
     function processResponse(req, res, result) {
@@ -31,36 +30,16 @@
         }
     }
 
-    function handleError(req, res, errorMessage) {
-        processResponse(req, res, errorResult(errorMessage));
+    function handleError(req, res, err) {
+        console.error(err);
+        processResponse(req, res, errorResult(err.message));
     }
 
     router.post('/', urlencodedParser, function (req, res) {
-        var url;
-        async.waterfall([
-            function (callback) {
-                parsePingParams(req, callback);
-            },
-            function (params, callback) {
-                url = params.url;
-                callback(null);
-            },
-            function (callback) {
-                syncStruct.watchStruct('data', callback);
-            },
-            function (data, callback) {
-                ping(
-                    data,
-                    url,
-                    callback
-                );
-            },
-            function (result) {
-                processResponse(req, res, result);
-            }
-        ], function (errorMessage) {
-            handleError(req, res, errorMessage);
-        });
+        const params = parsePingParams(req);
+        const result = ping(params.url)
+            .then(result => processResponse(req, res, result))
+            .catch(err => handleError(req, res, err));
     });
 
     module.exports = router;

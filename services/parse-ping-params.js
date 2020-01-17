@@ -4,7 +4,7 @@
     var appMessages = require('./app-messages'),
         sprintf = require('sprintf-js').sprintf;
 
-    function parsePingParams(req, callback) {
+    function parsePingParams(req) {
         var s = '',
             params = {};
 
@@ -13,10 +13,10 @@
         }
         if (0 === s.length) {
             params.url = req.body.url;
-            callback(null, params);
+            return params;
         } else {
             s = s.substr(0, s.length - 2);
-            callback(sprintf(appMessages.error.subscription.missingParams, s));
+            throw new Error(sprintf(appMessages.error.subscription.missingParams, s));
         }
     }
 

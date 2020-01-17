@@ -1,11 +1,11 @@
 (function () {
     "use strict";
 
-    var appMessages = require('./app-messages'),
+    const appMessages = require('./app-messages'),
         sprintf = require('sprintf-js').sprintf;
 
     function parseUrlList(argv) {
-        var key, urlList = [];
+        let key, urlList = [];
 
         if (undefined === argv.hasOwnProperty) {
             Object.setPrototypeOf(argv, {});
@@ -20,7 +20,7 @@
         return urlList;
     }
 
-    function glueUrlParts(scheme, client, port, path, protocol, callback) {
+    function glueUrlParts(scheme, client, port, path, protocol) {
         var apiurl;
 
         switch (protocol) {
@@ -28,7 +28,7 @@
             apiurl = scheme + '://';
             break;
         default:
-            return callback(sprintf(appMessages.error.subscription.invalidProtocol, protocol));
+            throw new Error(sprintf(appMessages.error.subscription.invalidProtocol, protocol));
         }
 
         if (client.indexOf(':') > -1) {
@@ -43,11 +43,11 @@
 
         apiurl += path;
 
-        return callback(null, apiurl);
+        return apiurl;
     }
 
-    function parseNotifyParams(req, callback) {
-        var s = '',
+    function parseNotifyParams(req) {
+        let s = '',
             params = {},
             parts = {};
 
@@ -74,23 +74,19 @@
             parts.port = req.body.port;
             parts.path = req.body.path;
             parts.protocol = req.body.protocol;
-            glueUrlParts(
+
+            params.apiurl = glueUrlParts(
                 parts.scheme,
                 parts.client,
                 parts.port,
                 parts.path,
-                parts.protocol,
-                function (err, apiurl) {
-                    if (err) {
-                        return callback(err);
-                    }
-                    params.apiurl = apiurl;
-                    return callback(null, params);
-                }
+                parts.protocol
             );
+
+            return params;
         } else {
             s = s.substr(0, s.length - 2);
-            return callback(sprintf(appMessages.error.subscription.missingParams, s));
+            throw new Error(sprintf(appMessages.error.subscription.missingParams, s));
         }
     }
 

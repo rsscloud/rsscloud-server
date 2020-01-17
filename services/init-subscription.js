@@ -1,53 +1,23 @@
 (function () {
     "use strict";
 
-    var moment = require('moment');
+    const config = require('../config'),
+        mongodb = require('./mongodb'),
+        moment = require('moment');
 
-    function initSubscription(data, resourceUrl, apiurl) {
-        var dirty = false, subscriptions, subscription;
+    function initSubscription(subscriptions, apiurl) {
+        const defaultSubscription = {
+            ctUpdates: 0,
+            whenLastUpdate: moment.utc('0', 'x').format(),
+            ctErrors: 0,
+            ctConsecutiveErrors: 0,
+            whenLastError: moment.utc('0', 'x').format(),
+            whenExpires: moment().utc().add(config.ctSecsResourceExpire, 'seconds').format()
+        };
 
-        if (undefined === data.subscriptions[resourceUrl]) {
-            data.subscriptions[resourceUrl] = {};
-            dirty = true;
-        }
-        subscriptions = data.subscriptions[resourceUrl];
+        subscriptions[apiurl] = Object.assign({}, defaultSubscription, subscriptions[apiurl]);
 
-        if (undefined === subscriptions[apiurl]) {
-            subscriptions[apiurl] = {};
-            dirty = true;
-        }
-        subscription = subscriptions[apiurl];
-
-        if (undefined === subscription.ctUpdates) {
-            subscription.ctUpdates = 0;
-            dirty = true;
-        }
-        if (undefined === subscription.whenLastUpdate) {
-            subscription.whenLastUpdate = moment('0', 'x');
-            dirty = true;
-        }
-        if (undefined === subscription.ctErrors) {
-            subscription.ctErrors = 0;
-            dirty = true;
-        }
-        if (undefined === subscription.ctConsecutiveErrors) {
-            subscription.ctConsecutiveErrors = 0;
-            dirty = true;
-        }
-        if (undefined === subscription.whenLastError) {
-            subscription.whenLastError = moment('0', 'x');
-            dirty = true;
-        }
-        if (undefined === subscription.whenExpires) {
-            subscription.whenExpires = moment().add(data.prefs.ctSecsResourceExpire, 'seconds');
-            dirty = true;
-        }
-
-        if (true === dirty) {
-            data.dirty = true;
-        }
-
-        return subscription;
+        return subscriptions;
     }
 
     module.exports = initSubscription;

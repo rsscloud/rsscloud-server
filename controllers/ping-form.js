@@ -1,7 +1,7 @@
 (function () {
     "use strict";
 
-    var express = require('express'),
+    const express = require('express'),
         router = new express.Router();
 
     router.get('/', function (req, res) {
