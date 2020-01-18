@@ -8,7 +8,7 @@
         };
 
     module.exports = {
-        connect: async function(uri) {
+        connect: async function (uri) {
             if (state.db) {
                 return;
             }
@@ -53,10 +53,10 @@
                     return client.db();
                 });
         },
-        get: function() {
+        get: function () {
             return state.db;
         },
-        close: async function() {
+        close: async function () {
             if (state.db) {
                 return state.db.close()
                     .then(() => {

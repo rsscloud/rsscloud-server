@@ -1,7 +1,7 @@
 (function () {
     "use strict";
 
-    var bodyParser = require('body-parser'),
+    const bodyParser = require('body-parser'),
         errorResult = require('../services/error-result'),
         express = require('express'),
         parseNotifyParams = require('../services/parse-notify-params'),
@@ -34,14 +34,14 @@
     }
 
     router.post('/', urlencodedParser, function (req, res) {
-        const params = parseNotifyParams(req);
-        const result = pleaseNotify(
-            params.apiurl,
-            params.urlList,
-            params.diffDomain
-        )
-            .then(result => processResponse(req, res, result))
-            .catch(err => handleError(req, res, err));
+        const params = parseNotifyParams(req),
+            result = pleaseNotify(
+                params.apiurl,
+                params.urlList,
+                params.diffDomain
+            )
+                .then(result => processResponse(req, res, result))
+                .catch(err => handleError(req, res, err));
     });
 
     module.exports = router;
