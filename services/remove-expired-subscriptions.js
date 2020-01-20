@@ -1,6 +1,8 @@
 (function () {
     "use strict";
 
+    // TODO: Rewrite for mongodb
+
     var moment = require('moment');
 
     function checkSubscription(data, resourceUrl, apiurl) {

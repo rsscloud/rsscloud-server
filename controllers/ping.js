@@ -1,8 +1,7 @@
 (function () {
     "use strict";
 
-    var async = require('async'),
-        bodyParser = require('body-parser'),
+    const bodyParser = require('body-parser'),
         errorResult = require('../services/error-result'),
         express = require('express'),
         parsePingParams = require('../services/parse-ping-params'),

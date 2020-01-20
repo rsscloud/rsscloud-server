@@ -1,7 +1,7 @@
 (function () {
     "use strict";
 
-    var builder = require('xmlbuilder');
+    const builder = require('xmlbuilder');
 
     function restReturnSuccess(success, message, element) {
         element = element || 'result';

@@ -1,9 +1,9 @@
 (function () {
     "use strict";
 
-    var getRandomPassword = require('./get-random-password'),
+    const getRandomPassword = require('./get-random-password'),
         querystring = require('querystring'),
-        request = require('request-promise');
+        request = require('request-promise-native');
 
     async function notifyOneChallenge(resourceUrl, apiurl) {
         const challenge = getRandomPassword(20),

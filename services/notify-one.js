@@ -1,7 +1,7 @@
 (function () {
     "use strict";
 
-    var request = require('request-promise');
+    const request = require('request-promise-native');
 
     async function notifyOne(resourceUrl, apiurl) {
         const res = await request({

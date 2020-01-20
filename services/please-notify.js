@@ -9,13 +9,11 @@
         mongodb = require('./mongodb'),
         notifyOne = require('./notify-one'),
         notifyOneChallenge = require('./notify-one-challenge'),
-        Promise = require('bluebird'),
-        request = require('request-promise'),
+        request = require('request-promise-native'),
         sprintf = require('sprintf-js').sprintf,
         url = require('url');
 
     async function checkresourceUrlStatusCode(resourceUrl) {
-        console.log(resourceUrl);
         return request({
             method: 'HEAD',
             uri: resourceUrl,

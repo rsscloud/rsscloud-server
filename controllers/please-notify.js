@@ -30,6 +30,7 @@
     }
 
     function handleError(req, res, err) {
+        console.error(err);
         processResponse(req, res, errorResult(err.message));
     }
 

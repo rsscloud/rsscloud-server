@@ -70,7 +70,7 @@
             s += 'protocol, ';
         }
         if (0 === s.length) {
-            parts.scheme = 'http';
+            parts.scheme = 'https-post' === parts.protocol ? 'https' : 'http';
             parts.port = req.body.port;
             parts.path = req.body.path;
             parts.protocol = req.body.protocol;

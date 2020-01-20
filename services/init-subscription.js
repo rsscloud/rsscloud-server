@@ -2,7 +2,6 @@
     "use strict";
 
     const config = require('../config'),
-        mongodb = require('./mongodb'),
         moment = require('moment');
 
     function initSubscription(subscriptions, apiurl) {

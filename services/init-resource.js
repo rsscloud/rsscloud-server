@@ -1,17 +1,10 @@
 (function () {
     "use strict";
 
-    const mongodb = require('./mongodb'),
-        moment = require('moment');
+    const moment = require('moment');
 
-    async function initResource(resourceUrl) {
-        const resource = await mongodb.get()
-                .collection('resources')
-                .findOne({
-                    _id: resourceUrl
-                }),
-            defaultResource = {
-                _id: resourceUrl,
+    function initResource(resource) {
+        const defaultResource = {
                 flDirty: true,
                 lastSize: 0,
                 lastHash: '',
@@ -21,7 +14,7 @@
                 whenLastUpdate: moment.utc('0', 'x').format()
             };
 
-        return Object.assign({}, defaultResource, resourceUrl || {});
+        return Object.assign({}, defaultResource, resource);
     }
 
     module.exports = initResource;

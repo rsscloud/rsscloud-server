@@ -2,14 +2,13 @@
     "use strict";
 
     const appMessage = require('./app-messages'),
-        async = require('async'),
         config = require('../config'),
         crypto = require('crypto'),
         initResource = require('./init-resource'),
         logEvent = require('./log-event'),
         moment = require('moment'),
         notifySubscribers = require('./notify-subscribers'),
-        request = require('request-promise'),
+        request = require('request-promise-native'),
         sprintf = require('sprintf-js').sprintf;
 
     function checkPingFrequency(resource) {
@@ -56,6 +55,16 @@
         );
     }
 
+    async function fetchResource(resourceUrl) {
+        const resource = await mongodb.get()
+            .collection('resources')
+            .findOne({
+                _id: resourceUrl
+            });
+
+        return resource || { _id: resourceUrl };
+    }
+
     async function notifySubscribersIfDirty(resource, resourceUrl) {
         if (resource.flDirty) {
             resource.ctUpdates += 1;
@@ -66,10 +75,14 @@
 
     async function ping(resourceUrl) {
         const startticks = moment().format('x'),
-            resource = await initResource(resourceUrl);
+            resource = initResource(
+                await fetchResource(resourceUrl)
+            );
+
         checkPingFrequency(resource);
         await checkForResourceChange(resource, resourceUrl, startticks);
         await notifySubscribersIfDirty(resource, resourceUrl);
+
         return {
             'success': true,
             'msg': appMessage.success.ping

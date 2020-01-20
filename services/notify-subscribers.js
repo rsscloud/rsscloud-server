@@ -1,7 +1,7 @@
 (function () {
     "use strict";
 
-    var appMessages = require('./app-messages'),
+    const appMessages = require('./app-messages'),
         logEvent = require('./log-event'),
         moment = require('moment'),
         mongodb = require('./mongodb'),
