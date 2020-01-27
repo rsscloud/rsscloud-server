@@ -1,26 +1,34 @@
 (function () {
     "use strict";
 
-    var async = require('async'),
-        data = require('../services/data'),
-        errorResult = require('../services/error-result'),
+    const errorResult = require('../services/error-result'),
         express = require('express'),
         logEmitter = require('../services/log-emitter'),
+        mongodb = require('../services/mongodb'),
         router = new express.Router();
 
-    function fetchVals(db, callback) {
-        var vals = {
+    async function fetchVals(db, callback) {
+        const vals = {
             'eventlog': []
         };
 
-        db.serialize(() => {
-            db.each("SELECT * FROM log_events ORDER BY time DESC LIMIT 1000", (err, row) => {
-                row.headers = JSON.parse(row.headers);
-                vals.eventlog.push(row);
-            }, () => {
-                callback(null, vals);
-            });
+        const res = await mongodb.get('rsscloud')
+            .collection('events')
+            .find()
+            .sort({ time: -1 })
+            .limit(1000)
+            .toArray();
+
+        vals.eventlog = res.map(item => {
+            item.id = item._id.toHexString();
+            delete item._id;
+
+            item.headers = JSON.parse(item.headers);
+
+            return item;
         });
+
+        return vals;
     }
 
     function processResponse(req, res, vals) {
@@ -39,23 +47,14 @@
     }
 
     function handleError(req, res, errorMessage) {
-        processResponse(req, res, errorResult(errorMessage));
+        console.error(err);
+        processResponse(req, res, errorResult(err.message));
     }
 
     router.get('/', function (req, res) {
-        async.waterfall([
-            (callback) => {
-                data.getDb(callback);
-            },
-            (db, callback) => {
-                fetchVals(db, callback);
-            },
-            (vals) => {
-                processResponse(req, res, vals);
-            }
-        ], (errorMessage) => {
-            handleError(req, res, errorMessage);
-        });
+        fetchVals()
+            .then(vals => processResponse(req, res, vals))
+            .catch(err => handleError(req, res, err));
     });
 
     router.ws('/', (ws, req) => {

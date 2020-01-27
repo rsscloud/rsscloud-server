@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>rssCloud: Log</title>
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/font-awesome.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+    <div class="page-header">
+        <h1>rssCloud: Please Notify</h1>
+        <p>Posting to /pleaseNotify is your way of alerting the server that you want to receive notifications when one or more resources are updated.</p>
+    </div>
+
+    <form method="POST" action="pleaseNotify">
+        <div class="form-group">
+            <label for="url">Domain</label>
+            <input type="text" class="form-control" id="domain" name="domain">
+        </div>
+        <div class="form-group">
+            <label for="url">Port</label>
+            <input type="text" class="form-control" id="port" name="port">
+        </div>
+        <div class="form-group">
+            <label for="url">Path</label>
+            <input type="text" class="form-control" id="path" name="path">
+        </div>
+        <div class="form-group">
+            <label for="url">Register Procedure</label>
+            <input type="text" class="form-control" id="registerProcedure" name="registerProcedure">
+        </div>
+        <div class="form-group">
+            <label for="url">Protocol</label>
+            <input type="text" class="form-control" id="protocol" name="protocol">
+        </div>
+        <div class="form-group">
+            <label for="url">Resource URL</label>
+            <input type="text" class="form-control" id="url1" name="url1">
+        </div>
+        <button type="submit" class="btn btn-default">Please Notify</button>
+    </form>
+</div>
+</body>
+</html>

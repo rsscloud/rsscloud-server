@@ -11,7 +11,6 @@
         moment = require('moment'),
         mongodb = require('./services/mongodb'),
         morgan = require('morgan'),
-        Promise = require('bluebird'),
         removeExpiredSubscriptions = require('./services/remove-expired-subscriptions');
 
     let app,
@@ -60,7 +59,7 @@
     app.use(require('./controllers'));
 
     // Start server
-    mongodb.connect(config.mongodbUri)
+    mongodb.connect('rsscloud', config.mongodbUri)
         .then(() => {
             server = app.listen(config.port, function () {
                 app.locals.host = config.domain;

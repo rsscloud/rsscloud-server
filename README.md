@@ -16,15 +16,15 @@ npm start
 
 ### POST /pleaseNotify
 
-Posting to /pleaseNotify is your way of alerting the server that you want to receive notifications when one or more resources are updated. 
+Posting to /pleaseNotify is your way of alerting the server that you want to receive notifications when one or more resources are updated.
 
 The POST parameters are:
 
 1. domain -- optional, if omitted the requesting IP address is used
 2. port
 3. path
-4. registerProcedure -- required, but isn't used in this server as it only applies to xml-rpc or soap
-5. protocol -- the spec allows for http-post, xml-rpc or soap but this server only supports http-post
+4. registerProcedure -- required, but isn't used in this server as it only applies to xml-rpc or soap.
+5. protocol -- the spec allows for http-post, xml-rpc or soap but this server only supports http-post. This server also supports https-post which is identical to http-post except it notifies using https as the scheme instead of http.
 6. url1, url2, ..., urlN this is the resource you're requesting to be notified about.  In the case of an RSS feed you would specify the URL of the RSS feed.
 
 When you POST the server first checks if the urls you specifed are returning an [HTTP 2xx status code](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2) then it attempts to notify the subscriber of an update to make sure it works.  This is done in one of two ways.
@@ -52,7 +52,7 @@ Examples:
 
 ### POST /ping
 
-Posting to /ping is your way of alerting the server that a resource has been updated. 
+Posting to /ping is your way of alerting the server that a resource has been updated.
 
 The POST parameters are:
 

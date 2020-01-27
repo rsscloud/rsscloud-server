@@ -3,7 +3,7 @@ const config = require('../config'),
     mongodb = require('../services/mongodb');
 
 async function doImport() {
-    const db = await mongodb.connect(config.mongodbUri);
+    const db = await mongodb.connect('rsscloud', config.mongodbUri);
 
     if (fs.existsSync('./data/data.json')) {
         const data = JSON.parse(fs.readFileSync('./data/data.json', 'utf8'));
@@ -22,19 +22,27 @@ async function doImport() {
 
         await db.collection('subscriptions').bulkWrite(
             Object.keys(data.subscriptions).map(id => {
+                const subscriptions = {
+                    _id: id,
+                    pleaseNotify: Object.keys(data.subscriptions[id]).map(sid => {
+                        const subscription = data.subscriptions[id][sid];
+                        subscription.url = sid;
+                        return subscription;
+                    })
+                }
                 return {
                     replaceOne: {
                         filter: { _id: id },
-                        replacement: data.subscriptions[id],
+                        replacement: subscriptions,
                         upsert: true
                     }
                 };
             })
         );
 
-        await mongodb.close();
+        await mongodb.close('rsscloud');
     } else {
-        await mongodb.close();
+        await mongodb.close('rsscloud');
 
         throw new Error('Cannot find ./data/data.json');
     }

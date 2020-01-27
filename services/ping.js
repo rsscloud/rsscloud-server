@@ -7,6 +7,7 @@
         initResource = require('./init-resource'),
         logEvent = require('./log-event'),
         moment = require('moment'),
+        mongodb = require('./mongodb'),
         notifySubscribers = require('./notify-subscribers'),
         request = require('request-promise-native'),
         sprintf = require('sprintf-js').sprintf;
@@ -56,7 +57,7 @@
     }
 
     async function fetchResource(resourceUrl) {
-        const resource = await mongodb.get()
+        const resource = await mongodb.get('rsscloud')
             .collection('resources')
             .findOne({
                 _id: resourceUrl

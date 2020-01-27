@@ -31,17 +31,17 @@
     }
 
     async function fetchSubscriptions(resourceUrl) {
-        const subscriptions = await mongodb.get()
+        const subscriptions = await mongodb.get('rsscloud')
             .collection('subscriptions')
             .findOne({
                 _id: resourceUrl
             });
 
-        return subscriptions || { _id: resourceUrl };
+        return subscriptions || { _id: resourceUrl, pleaseNotify: [] };
     }
 
     async function upsertSubscriptions(subscriptions) {
-        await mongodb.get()
+        await mongodb.get('rsscloud')
             .collection('subscriptions')
             .replaceOne(
                 { _id: subscriptions._id },
@@ -64,10 +64,14 @@
                 await notifyOne(resourceUrl, apiurl);
             }
 
-            subscriptions[apiurl].ctUpdates += 1;
-            subscriptions[apiurl].ctConsecutiveErrors = 0;
-            subscriptions[apiurl].whenLastUpdate = moment().utc().format();
-            subscriptions[apiurl].whenExpires = moment().utc().add(config.ctSecsResourceExpire, 'seconds').format();
+            const index = subscriptions.pleaseNotify.findIndex(subscription => {
+                return subscription.url === apiurl;
+            });
+
+            subscriptions.pleaseNotify[index].ctUpdates += 1;
+            subscriptions.pleaseNotify[index].ctConsecutiveErrors = 0;
+            subscriptions.pleaseNotify[index].whenLastUpdate = moment().utc().format();
+            subscriptions.pleaseNotify[index].whenExpires = moment().utc().add(config.ctSecsResourceExpire, 'seconds').format();
 
             await upsertSubscriptions(subscriptions);
 

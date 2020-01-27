@@ -3,7 +3,8 @@
 
     // TODO: Rewrite for mongodb
 
-    var moment = require('moment');
+    var moment = require('moment'),
+        mongodb = require('./mongodb');
 
     function checkSubscription(data, resourceUrl, apiurl) {
         var subscription;

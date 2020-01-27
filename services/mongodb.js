@@ -2,30 +2,30 @@
     "use strict";
 
     const mongodb = require('mongodb'),
-        state = {
-            client: null
-        };
+        state = {};
 
     module.exports = {
-        connect: async function (uri) {
-            if (state.client) {
+        connect: async function (name, uri) {
+            if (state[name]) {
                 return;
             }
 
             const client = await mongodb(uri, { useUnifiedTopology: true });
 
-            state.client = client;
+            state[name] = client;
 
-            return state.client.db();
+            console.log(`${name} Database Connected`);
+
+            return state[name].db();
         },
-        get: function () {
-            return state.client.db();
+        get: function (name) {
+            return state[name].db();
         },
-        close: async function () {
-            if (state.client) {
-                return state.client.close()
+        close: async function (name) {
+            if (state[name]) {
+                return state[name].close()
                     .then(() => {
-                        state.client = null;
+                        delete state[name];
                     });
             }
         }

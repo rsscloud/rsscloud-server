@@ -10,17 +10,17 @@
         url = require('url');
 
     async function fetchSubscriptions(resourceUrl) {
-        const subscriptions = await mongodb.get()
+        const subscriptions = await mongodb.get('rsscloud')
             .collection('subscriptions')
             .findOne({
                 _id: resourceUrl
             });
 
-        return subscriptions || { _id: resourceUrl };
+        return subscriptions || { _id: resourceUrl, pleaseNotify: [] };
     }
 
     async function upsertSubscriptions(subscriptions) {
-        await mongodb.get()
+        await mongodb.get('rsscloud')
             .collection('subscriptions')
             .replaceOne(
                 { _id: subscriptions._id },
@@ -33,13 +33,10 @@
         const subscriptions = await fetchSubscriptions(resourceUrl);
         let apiurl;
 
-        for (apiurl of Object.keys(subscriptions)) {
-            const startticks = moment().format('x'),
+        for (subscription of subscriptions.pleaseNotify) {
+            const apiurl = subscription.url,
+                startticks = moment().format('x'),
                 parts = url.parse(apiurl);
-
-            if ('_id' === apiurl) {
-                continue;
-            }
 
             try {
                 await notifyOne(resourceUrl, apiurl);
