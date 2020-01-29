@@ -86,7 +86,7 @@
         }
     }
 
-    async function pleaseNotify(apiurl, urlList, diffDomain) {
+    async function pleaseNotify(notifyProcedure, apiurl, protocol, urlList, diffDomain) {
         if (0 === urlList.length) {
             throw new Error(appMessages.error.subscription.noResources);
         }

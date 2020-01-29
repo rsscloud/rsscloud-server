@@ -16,6 +16,8 @@
         if (res.statusCode < 200 || res.statusCode > 299) {
             throw new Error('Notification Failed');
         }
+
+        return true;
     }
 
     module.exports = notifyOne;

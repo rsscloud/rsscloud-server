@@ -35,14 +35,16 @@
     }
 
     router.post('/', urlencodedParser, function (req, res) {
-        const params = parseNotifyParams(req),
-            result = pleaseNotify(
-                params.apiurl,
-                params.urlList,
-                params.diffDomain
-            )
-                .then(result => processResponse(req, res, result))
-                .catch(err => handleError(req, res, err));
+        const params = parseNotifyParams.rest(req);
+        pleaseNotify(
+            params.notifyProcedure,
+            params.apiurl,
+            params.protocol,
+            params.urlList,
+            params.diffDomain
+        )
+            .then(result => processResponse(req, res, result))
+            .catch(err => handleError(req, res, err));
     });
 
     module.exports = router;

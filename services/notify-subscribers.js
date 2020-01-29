@@ -31,19 +31,20 @@
 
     async function notifySubscribers(resourceUrl) {
         const subscriptions = await fetchSubscriptions(resourceUrl);
-        let apiurl;
 
-        for (subscription of subscriptions.pleaseNotify) {
+        for (let subscription of subscriptions.pleaseNotify) {
             const apiurl = subscription.url,
                 startticks = moment().format('x'),
                 parts = url.parse(apiurl);
 
+            console.log(apiurl);
+
             try {
                 await notifyOne(resourceUrl, apiurl);
 
-                subscriptions[apiurl].ctUpdates += 1;
-                subscriptions[apiurl].ctConsecutiveErrors = 0;
-                subscriptions[apiurl].whenLastUpdate = moment().utc().format();
+                subscription.ctUpdates += 1;
+                subscription.ctConsecutiveErrors = 0;
+                subscription.whenLastUpdate = moment().utc().format();
 
                 await logEvent(
                     'Notify',
@@ -51,9 +52,11 @@
                     startticks
                 );
             } catch (err) {
-                subscriptions[apiurl].ctErrors += 1;
-                subscriptions[apiurl].ctConsecutiveErrors += 1;
-                subscriptions[apiurl].whenLastError = moment().utc().format();
+                console.error(err.message);
+
+                subscription.ctErrors += 1;
+                subscription.ctConsecutiveErrors += 1;
+                subscription.whenLastError = moment().utc().format();
 
                 await logEvent(
                     'NotifyFailed',
@@ -63,7 +66,11 @@
             }
         }
 
-        upsertSubscriptions(subscriptions);
+        console.log('upserting subscriptions');
+
+        await upsertSubscriptions(subscriptions);
+
+        console.log('upserted subscriptions');
     }
 
     module.exports = notifySubscribers;

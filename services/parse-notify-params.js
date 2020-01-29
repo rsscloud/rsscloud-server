@@ -4,6 +4,17 @@
     const appMessages = require('./app-messages'),
         sprintf = require('sprintf-js').sprintf;
 
+    function validateProtocol(protocol) {
+        switch (protocol) {
+        case 'http-post':
+        case 'https-post':
+        case 'xml-rpc':
+            return true;
+        default:
+            throw new Error(sprintf(appMessages.error.subscription.invalidProtocol, protocol));
+        }
+    }
+
     function parseUrlList(argv) {
         let key, urlList = [];
 
@@ -20,16 +31,8 @@
         return urlList;
     }
 
-    function glueUrlParts(scheme, client, port, path, protocol) {
-        var apiurl;
-
-        switch (protocol) {
-        case 'http-post':
-            apiurl = scheme + '://';
-            break;
-        default:
-            throw new Error(sprintf(appMessages.error.subscription.invalidProtocol, protocol));
-        }
+    function glueUrlParts(scheme, client, port, path) {
+        let apiurl = scheme + '://';
 
         if (client.indexOf(':') > -1) {
             client = '[' + client + ']';
@@ -46,10 +49,14 @@
         return apiurl;
     }
 
-    function parseNotifyParams(req) {
+    function rest(req) {
         let s = '',
             params = {},
             parts = {};
+
+        if (validProtocol(req.body.protocol)) {
+            params.protocol = req.body.protocol;
+        }
 
         params.urlList = parseUrlList(req.body);
 
@@ -69,18 +76,23 @@
         if (undefined === req.body.protocol) {
             s += 'protocol, ';
         }
+
+        if (req.body.notifyProcedure && 'xml-rpc' === req.body.protocol) {
+            params.notifyProcedure = req.body.notifyProcedure;
+        } else {
+            params.notifyProcedure = false;
+        }
+
         if (0 === s.length) {
             parts.scheme = 'https-post' === parts.protocol ? 'https' : 'http';
             parts.port = req.body.port;
             parts.path = req.body.path;
-            parts.protocol = req.body.protocol;
 
             params.apiurl = glueUrlParts(
                 parts.scheme,
                 parts.client,
                 parts.port,
-                parts.path,
-                parts.protocol
+                parts.path
             );
 
             return params;
@@ -90,5 +102,43 @@
         }
     }
 
-    module.exports = parseNotifyParams;
+    function rpc(req, rpcParams) {
+        let params = {},
+            parts = {};
+
+        if (validProtocol(rpcParams[3])) {
+            params.protocol = rpcParams[3];
+        }
+
+        params.urlList = rpcParams[4];
+
+        if (undefined === rpcParams[5]) {
+            parts.client = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+            params.diffDomain = false;
+        } else {
+            parts.client = rpcParams[5];
+            params.diffDomain = true;
+        }
+
+        if (rpcParams[0] && 'xml-rpc' === params.protocol) {
+            params.notifyProcedure = rpcParams[0];
+        } else {
+            params.notifyProcedure = false;
+        }
+
+        parts.scheme = 'https-post' === parts.protocol ? 'https' : 'http';
+        parts.port = req.body.port;
+        parts.path = req.body.path;
+
+        params.apiurl = glueUrlParts(
+            parts.scheme,
+            parts.client,
+            parts.port,
+            parts.path
+        );
+
+        return params;
+    }
+
+    module.exports = { rest, rpc };
 }());

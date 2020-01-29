@@ -1,16 +1,22 @@
 (function () {
     "use strict";
 
-    const express = require('express'),
-        parseRpcParams = require('../services/parse-rpc-params'),
+    const bodyParser = require('body-parser'),
+        express = require('express'),
+        parseRpcRequest = require('../services/parse-rpc-request'),
+        parseNotifyParams = require('../services/parse-notify-params'),
+        pleaseNotify = require('../services/please-notify'),
+        ping = require('../services/ping'),
         router = new express.Router(),
-        rpcReturnSuccess = require('../services/rpc-return-success');
+        rpcReturnSuccess = require('../services/rpc-return-success'),
+        rpcReturnFault = require('../services/rpc-return-fault'),
+        textParser = bodyParser.text({ type: '*/xml'});
 
-    function processResponse(req, res, result) {
+    function processResponse(req, res, xmlString) {
         switch (req.accepts('xml')) {
         case 'xml':
             res.set('Content-Type', 'text/xml');
-            res.send(rpcReturnSuccess());
+            res.send(xmlString);
             break;
         default:
             res.status(406).send('Not Acceptable');
@@ -18,10 +24,41 @@
         }
     }
 
-    router.post('/', function (req, res) {
-        const params = parseRpcParams(req);
-        console.dir(params);
-        processResponse(req, res, params);
+    function handleError(req, res, err) {
+        console.error(err);
+        processResponse(req, res, rpcReturnFault(1, err.message));
+    }
+
+    router.post('/', textParser, function (req, res) {
+        parseRpcRequest(req)
+            .then(request => {
+                switch (request.methodName) {
+                    case 'rssCloud.pleaseNotify':
+                        const params = parseNotifyParams.rpc(req, request.params);
+                        pleaseNotify(
+                            params.notifyProcedure,
+                            params.apiurl,
+                            params.protocol,
+                            params.urlList,
+                            params.diffDomain
+                        )
+                            .then(result => processResponse(req, res, rpcReturnSuccess(result.success, result.msg)))
+                            .catch(err => handleError(req, res, err));
+                        break;
+                    case 'rssCloud.ping':
+                        ping(request.params[0])
+                            .then(result => processResponse(req, res, rpcReturnSuccess(result.success, result.msg)))
+                            .catch(err => handleError(req, res, err));
+                        break;
+                    default:
+                        handleError(
+                            req,
+                            res,
+                            new Error(`Can't make the call because "${request.methodName}" is not defined.`)
+                        )
+                }
+            })
+            .catch(err => handleError(req, res, err));
     });
 
     module.exports = router;

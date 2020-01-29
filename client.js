@@ -7,6 +7,7 @@ var app,
     nconf = require('nconf'),
     packageJson = require('./package.json'),
     server,
+    textParser = bodyParser.text({ type: '*/xml'}),
     urlencodedParser = bodyParser.urlencoded({ extended: false });
 
 require('console-stamp')(console, 'HH:MM:ss.l');
@@ -46,6 +47,12 @@ app.use(express.static('public', {
     dotfiles: 'ignore',
     maxAge: '1d'
 }));
+
+app.post('/RPC2', textParser, function (req, res) {
+    console.log('post');
+    console.dir(req.body);
+    res.send('');
+})
 
 app.get('/*', function (req, res) {
     var challenge = req.query.challenge || "";

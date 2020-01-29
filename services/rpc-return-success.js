@@ -3,10 +3,25 @@
 
     const builder = require('xmlbuilder');
 
-    function rpcReturnSuccess() {
-        return builder.create('response')
-            .att('success', 'true')
-            .end({'pretty': true});
+    function rpcReturnSuccess(success, message) {
+        return builder.create({
+        	methodResponse: {
+        		params: {
+	        		param: [
+	        			{
+	        				value: {
+		        				boolean: success ? 1 : 0
+		        			}
+		        		},
+	        			{
+	        				value: {
+		        				string: message
+		        			}
+		        		},
+	        		]
+	        	}
+        	}
+        }).end({'pretty': true});
     }
 
     module.exports = rpcReturnSuccess;
