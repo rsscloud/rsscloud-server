@@ -8,6 +8,9 @@ async function doImport() {
     if (fs.existsSync('./data/data.json')) {
         const data = JSON.parse(fs.readFileSync('./data/data.json', 'utf8'));
 
+        await db.createCollection('events');
+        await db.createCollection('resources');
+
         await db.collection('resources').bulkWrite(
             Object.keys(data.resources).map(id => {
                 return {
@@ -19,6 +22,8 @@ async function doImport() {
                 };
             })
         );
+
+        await db.createCollection('subscriptions');
 
         await db.collection('subscriptions').bulkWrite(
             Object.keys(data.subscriptions).map(id => {

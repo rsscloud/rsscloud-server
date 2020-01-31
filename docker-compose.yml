@@ -1,0 +1,35 @@
+version: '3.1'
+
+services:
+
+  mongodb:
+    image: mongo
+    expose:
+      - 27017
+
+  rsscloud:
+    build: .
+    image: rsscloud
+    command: node --use_strict app.js
+    environment:
+      DOMAIN: rsscloud
+      PORT: 5337
+      MONGODB_URI: mongodb://mongodb:27017/rsscloud
+    expose:
+      - 5337
+    depends_on:
+      - mongodb
+
+  rsscloud-tests:
+    image: rsscloud
+    command: dockerize -wait tcp://mongodb:27017 -wait http://rsscloud:5337 -timeout 10s bash -c "node bin/import-data.js && npm test"
+    environment:
+      APP_URL: http://rsscloud:5337
+      DOMAIN: localhost
+      PORT: 5337
+      MONGODB_URI: mongodb://mongodb:27017/rsscloud
+    expose:
+      - 8002
+    depends_on:
+      - mongodb
+      - rsscloud
