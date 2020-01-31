@@ -4,7 +4,7 @@
     const appMessages = require('./app-messages'),
         sprintf = require('sprintf-js').sprintf;
 
-    function validateProtocol(protocol) {
+    function validProtocol(protocol) {
         switch (protocol) {
         case 'http-post':
         case 'https-post':
@@ -126,9 +126,9 @@
             params.notifyProcedure = false;
         }
 
-        parts.scheme = 'https-post' === parts.protocol ? 'https' : 'http';
-        parts.port = req.body.port;
-        parts.path = req.body.path;
+        parts.scheme = 'http';
+        parts.port = rpcParams[1];
+        parts.path = rpcParams[2];
 
         params.apiurl = glueUrlParts(
             parts.scheme,

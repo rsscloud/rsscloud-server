@@ -50,18 +50,18 @@
             );
     }
 
-    async function notifyApiUrl(resourceUrl, apiurl, diffDomain) {
+    async function notifyApiUrl(notifyProcedure, apiurl, protocol, resourceUrl, diffDomain) {
         const subscriptions = await fetchSubscriptions(resourceUrl),
             startticks = moment().format('x'),
             parts = url.parse(apiurl);
 
-        initSubscription(subscriptions, apiurl);
+        initSubscription(subscriptions, notifyProcedure, apiurl, protocol);
 
         try {
             if (diffDomain) {
                 await notifyOneChallenge(resourceUrl, apiurl);
             } else {
-                await notifyOne(resourceUrl, apiurl);
+                await notifyOne(notifyProcedure, apiurl, protocol, resourceUrl);
             }
 
             const index = subscriptions.pleaseNotify.findIndex(subscription => {
@@ -96,7 +96,7 @@
         for (resourceUrl of urlList) {
             try {
                 await checkresourceUrlStatusCode(resourceUrl);
-                await notifyApiUrl(resourceUrl, apiurl, diffDomain);
+                await notifyApiUrl(notifyProcedure, apiurl, protocol, resourceUrl, diffDomain);
             } catch (err) {
                 lastErr = err;
             }

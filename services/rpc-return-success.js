@@ -3,7 +3,7 @@
 
     const builder = require('xmlbuilder');
 
-    function rpcReturnSuccess(success, message) {
+    function rpcReturnSuccess(success) {
         return builder.create({
         	methodResponse: {
         		params: {
@@ -12,12 +12,7 @@
 	        				value: {
 		        				boolean: success ? 1 : 0
 		        			}
-		        		},
-	        			{
-	        				value: {
-		        				string: message
-		        			}
-		        		},
+		        		}
 	        		]
 	        	}
         	}

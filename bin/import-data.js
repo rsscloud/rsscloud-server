@@ -27,6 +27,8 @@ async function doImport() {
                     pleaseNotify: Object.keys(data.subscriptions[id]).map(sid => {
                         const subscription = data.subscriptions[id][sid];
                         subscription.url = sid;
+                        subscription.notifyProcedure = false;
+                        subscription.protocol = 'http-post';
                         return subscription;
                     })
                 }

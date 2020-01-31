@@ -39,7 +39,11 @@
 					}, {});
 					break;
 				case 'array':
-					returnedValue = ((value[tag].data || {}).value || []).map(parseRpcParam);
+                    let values = (value[tag].data || {}).value || [];
+                    if (!Array.isArray(values)) {
+                        values = [values];
+                    }
+					returnedValue = values.map(parseRpcParam);
 					break;
     		}
     	}

@@ -41,15 +41,13 @@ app = express();
 
 app.use(morgan('[:mydate] :method :url :status :res[content-length] - :remote-addr - :response-time ms'));
 
-app.use(urlencodedParser);
-
 app.use(express.static('public', {
     dotfiles: 'ignore',
     maxAge: '1d'
 }));
 
 app.post('/RPC2', textParser, function (req, res) {
-    console.log('post');
+    console.log('rpc');
     console.dir(req.body);
     res.send('');
 })
@@ -61,7 +59,7 @@ app.get('/*', function (req, res) {
     res.send(challenge);
 });
 
-app.post('/*', function (req, res) {
+app.post('/*', urlencodedParser, function (req, res) {
     console.log('post');
     console.dir(req.body);
     res.send('');
