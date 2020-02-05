@@ -22,12 +22,12 @@ services:
 
   rsscloud-tests:
     image: rsscloud
-    command: dockerize -wait tcp://mongodb:27017 -wait http://rsscloud:5337 -timeout 10s bash -c "node bin/import-data.js && npm test"
+    command: dockerize -wait tcp://mongodb:27017 -wait http://rsscloud:5337 -timeout 10s bash -c "npm test"
     environment:
       APP_URL: http://rsscloud:5337
-      DOMAIN: localhost
-      PORT: 5337
       MONGODB_URI: mongodb://mongodb:27017/rsscloud
+      MOCK_SERVER_URL: http://rsscloud-tests:8002
+      MOCK_SERVER_PORT: 8002
     expose:
       - 8002
     depends_on:

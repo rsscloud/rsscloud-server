@@ -9,7 +9,8 @@
     "import-data": "node ./bin/import-data.js",
     "jshint": "echo '=> linting' && jshint ./**/*.js",
     "eslint": "echo '=> sniffing' && eslint controllers/ services/",
-    "test": "mocha --timeout 10000 --bail"
+    "test": "mocha --timeout 10000 --bail",
+    "test-api": "docker-compose up --build --abort-on-container-exit"
   },
   "engines": {
     "node": ">=10.6.0"
@@ -42,6 +43,8 @@
   "devDependencies": {
     "chai": "^4.2.0",
     "chai-http": "^4.3.0",
+    "chai-json": "^1.0.0",
+    "chai-xml": "^0.3.2",
     "eslint": "^6.6.0",
     "eslint-config-crockford": "^2.0.0",
     "jshint": "^2.10.3",

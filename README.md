@@ -66,7 +66,7 @@ Examples:
 
 ```xml
 <?xml version="1.0"?>
-<notifyResult success="true" msg="Thanks for the ping."/>
+<result success="true" msg="Thanks for the ping."/>
 ```
 
 ```json
