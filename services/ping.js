@@ -27,11 +27,16 @@
     }
 
     async function checkForResourceChange(resource, resourceUrl, startticks) {
-        const res = await request({
-            uri: resourceUrl,
-            resolveWithFullResponse: true
-        });
-        let hash;
+        let res;
+
+        try {
+            res = await request({
+                uri: resourceUrl,
+                resolveWithFullResponse: true
+            });
+        } catch (err) {
+            res = { statusCode: 404 };
+        }
 
         resource.ctChecks += 1;
         resource.whenLastCheck = moment().utc().format();
@@ -39,7 +44,9 @@
         if (res.statusCode < 200 || res.statusCode > 299) {
             throw new Error(sprintf(appMessage.error.ping.readResource, resourceUrl));
         }
-        hash = md5Hash(res.body);
+
+        const hash = md5Hash(res.body);
+
         if (resource.lastHash !== hash) {
             resource.flDirty = true;
         } else if (resource.lastSize !== res.body.length) {
@@ -47,8 +54,10 @@
         } else {
             resource.flDirty = false;
         }
+
         resource.lastHash = hash;
         resource.lastSize = res.body.length;
+
         await logEvent(
             'Ping',
             sprintf(appMessage.log.ping, resourceUrl, resource.flDirty.toString()),
@@ -64,6 +73,16 @@
             });
 
         return resource || { _id: resourceUrl };
+    }
+
+    async function upsertResource(resource) {
+        await mongodb.get('rsscloud')
+            .collection('resources')
+            .replaceOne(
+                { _id: resource._id },
+                resource,
+                { upsert: true }
+            );
     }
 
     async function notifySubscribersIfDirty(resource, resourceUrl) {
@@ -83,6 +102,7 @@
         checkPingFrequency(resource);
         await checkForResourceChange(resource, resourceUrl, startticks);
         await notifySubscribersIfDirty(resource, resourceUrl);
+        await upsertResource(resource);
 
         return {
             'success': true,

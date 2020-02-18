@@ -6,6 +6,8 @@ services:
     image: mongo
     expose:
       - 27017
+    logging:
+      driver: "none"
 
   rsscloud:
     build: .
@@ -19,6 +21,8 @@ services:
       - 5337
     depends_on:
       - mongodb
+    logging:
+      driver: "none"
 
   rsscloud-tests:
     image: rsscloud

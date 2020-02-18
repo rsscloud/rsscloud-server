@@ -35,12 +35,14 @@
         for (let subscription of subscriptions.pleaseNotify) {
             const apiurl = subscription.url,
                 startticks = moment().format('x'),
-                parts = url.parse(apiurl);
+                parts = url.parse(apiurl),
+                notifyProcedure = false,
+                protocol = 'http-post';
 
             console.log(apiurl);
 
             try {
-                await notifyOne(resourceUrl, apiurl);
+                await notifyOne(notifyProcedure, apiurl, protocol, resourceUrl);
 
                 subscription.ctUpdates += 1;
                 subscription.ctConsecutiveErrors = 0;

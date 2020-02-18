@@ -21,6 +21,7 @@
     "body-parser": "^1.19.0",
     "console-stamp": "^0.2.9",
     "cors": "^2.8.5",
+    "davexmlrpc": "^0.4.24",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "express-handlebars": "^3.1.0",
