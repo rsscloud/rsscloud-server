@@ -12,6 +12,22 @@ npm install
 npm start
 ```
 
+## How to test
+
+The API is tested using docker containers. I've only tested on MacOS so if you have experience testing on other platforms I'd love having these notes updated for those platforms.
+
+### MacOS
+
+First install [Docker Desktop for Mac](https://hub.docker.com/editions/community/docker-ce-desktop-mac)
+
+```bash
+npm run test-api
+```
+
+This should build the appropriate containers and show the test output.
+
+Our tests create mock API endpoints so we can verify rssCloud server works correctly when reading resources and notifying subscribers.
+
 ## How to use
 
 ### POST /pleaseNotify
