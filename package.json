@@ -1,15 +1,12 @@
 {
   "name": "rsscloud-server",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "An rssCloud Server",
   "main": "index.js",
   "scripts": {
     "start": "node app.js --use_strict",
     "jshint": "echo '=> linting' && jshint ./**/*.js",
-    "eslint": "echo '=> sniffing' && eslint controllers/ services/",
-    "pretest": "npm run jshint -s && npm run eslint -s",
-    "test": "echo '=> testing' && nyc mocha -- --recursive -R spec -r should",
-    "posttest": "nyc check-coverage"
+    "eslint": "echo '=> sniffing' && eslint controllers/ services/"
   },
   "engines": {
     "node": ">=10.6.0"
@@ -17,36 +14,31 @@
   "author": "Andrew Shell <andrew@andrewshell.org>",
   "license": "MIT",
   "dependencies": {
-    "async": "^3.1.0",
+    "async": "^3.2.0",
     "body-parser": "^1.19.0",
     "console-stamp": "^0.2.9",
     "cors": "^2.8.5",
-    "db-migrate": "^0.11.6",
+    "db-migrate": "^0.11.11",
     "db-migrate-sqlite3": "^0.4.0",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
-    "express-handlebars": "^3.1.0",
+    "express-handlebars": "^5.1.0",
     "express-ws": "^4.0.0",
-    "moment": "^2.24.0",
-    "morgan": "^1.9.1",
+    "moment": "^2.27.0",
+    "morgan": "^1.10.0",
     "nconf": "^0.10.0",
-    "request": "^2.88.0",
+    "request": "^2.88.2",
     "sprintf-js": "^1.1.2",
-    "sqlite3": "^4.1.0",
-    "xmlbuilder": "^13.0.2"
+    "sqlite3": "^5.0.0",
+    "xmlbuilder": "^15.1.1"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/andrewshell/rsscloud-server.git"
   },
   "devDependencies": {
-    "eslint": "^6.6.0",
+    "eslint": "^7.9.0",
     "eslint-config-crockford": "^2.0.0",
-    "jshint": "^2.10.3",
-    "mocha": "^6.2.2",
-    "nock": "^11.7.0",
-    "nyc": "^14.1.1",
-    "should": "^13.2.3",
-    "sinon": "^7.5.0"
+    "jshint": "^2.12.0"
   }
 }
