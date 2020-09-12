@@ -30,7 +30,11 @@ module.exports = {
 		await upsertSubscriptions(subscriptions);
 	},
 	before: async function () {
-		return mongodb.connect('rsscloud', config.mongodbUri);
+		const db = await mongodb.connect('rsscloud', config.mongodbUri)
+
+		console.log(`    → MongoDB 'rsscloud' Database Connected`);
+
+		return db;
 	},
 	after: async function () {
 		return mongodb.close('rsscloud');

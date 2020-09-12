@@ -42,7 +42,7 @@ module.exports = {
 		this.app.post("*", urlencodedParser, controller.bind(this));
 
 		this.server = await this.app.listen(MOCK_SERVER_PORT);
-		console.log(`Mock server started on port: ${MOCK_SERVER_PORT}`);
+		console.log(`    → Mock server started on port: ${MOCK_SERVER_PORT}`);
 	},
 	after: async function () {
 		if (this.server) {

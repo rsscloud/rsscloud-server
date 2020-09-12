@@ -14,7 +14,7 @@
 
             state[name] = client;
 
-            console.log(`${name} Database Connected`);
+            // console.log(`${name} Database Connected`);
 
             return state[name].db();
         },

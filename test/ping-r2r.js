@@ -10,7 +10,7 @@ const xmlrpc = require("davexmlrpc");
 chai.use(chaiHttp);
 chai.use(chaiXml);
 
-describe("Ping", () => {
+describe("Ping REST to REST", () => {
 	before(async () => {
 		await mongodb.before();
 		await mock.before();
@@ -31,7 +31,7 @@ describe("Ping", () => {
 		await mock.afterEach();
 	});
 
-	it('should accept a REST ping for new resource and return xml', () => {
+	it('should accept a ping for new resource and return XML', () => {
 		const feedPath = '/rss.xml',
 			pingPath = '/feedupdated',
 			resourceUrl = mock.serverUrl + feedPath,
@@ -59,7 +59,7 @@ describe("Ping", () => {
 			});
 	});
 
-	it('should accept a REST ping for new resource and return json', () => {
+	it('should accept a ping for new resource and return JSON', () => {
 		const feedPath = '/rss.xml',
 			pingPath = '/feedupdated',
 			resourceUrl = mock.serverUrl + feedPath,
@@ -88,7 +88,7 @@ describe("Ping", () => {
 			});
 	});
 
-	it('should reject a REST ping for bad resource and return xml', () => {
+	it('should reject a ping for bad resource and return XML', () => {
 		const feedPath = '/rss.xml',
 			pingPath = '/feedupdated',
 			resourceUrl = mock.serverUrl + feedPath,
@@ -113,7 +113,7 @@ describe("Ping", () => {
 			});
 	});
 
-	it('should reject a REST ping for bad resource and return json', () => {
+	it('should reject a ping for bad resource and return JSON', () => {
 		const feedPath = '/rss.xml',
 			pingPath = '/feedupdated',
 			resourceUrl = mock.serverUrl + feedPath,
@@ -139,7 +139,42 @@ describe("Ping", () => {
 			});
 	});
 
-	it('should accept a REST ping for unchanged resource', async () => {
+	it('should accept a ping for unchanged resource and return XML', async () => {
+		const feedPath = '/rss.xml',
+			pingPath = '/feedupdated',
+			resourceUrl = mock.serverUrl + feedPath,
+			notifyProcedure = false,
+			apiurl = mock.serverUrl + pingPath,
+			protocol = 'http-post';
+
+		mock.route('GET', feedPath, 200, '<RSS Feed />');
+		mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
+		mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
+
+	    const requester = chai.request(SERVER_URL).keepOpen();
+
+		let res;
+
+		res = await requester.post("/ping")
+			.set('content-type', 'application/x-www-form-urlencoded')
+			.send({ url: resourceUrl });
+
+		expect(res).status(200);
+		expect(res.text).xml.equal('<result success="true" msg="Thanks for the ping."/>');
+
+		res = await requester.post("/ping")
+			.set('content-type', 'application/x-www-form-urlencoded')
+			.send({ url: resourceUrl });
+
+		expect(res).status(200);
+		expect(res.text).xml.equal('<result success="true" msg="Thanks for the ping."/>');
+		expect(mock.requests.GET).property(feedPath).lengthOf(2, `Missing GET ${feedPath}`);
+		expect(mock.requests.POST).property(pingPath).lengthOf(1, `Should only POST ${pingPath} once`);
+
+		requester.close()
+	});
+
+	it('should accept a ping for unchanged resource and return JSON', async () => {
 		const feedPath = '/rss.xml',
 			pingPath = '/feedupdated',
 			resourceUrl = mock.serverUrl + feedPath,
@@ -174,43 +209,5 @@ describe("Ping", () => {
 		expect(mock.requests.POST).property(pingPath).lengthOf(1, `Should only POST ${pingPath} once`);
 
 		requester.close()
-
-	});
-
-	it('should accept a XML-RPC ping for new resource and return xml', done => {
-		const feedPath = '/rss.xml',
-			pingPath = '/feedupdated',
-			resourceUrl = mock.serverUrl + feedPath,
-			notifyProcedure = false,
-			apiurl = mock.serverUrl + pingPath,
-			protocol = 'http-post';
-
-		mock.route('GET', feedPath, 200, '<RSS Feed />');
-		mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
-		mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
-
-		const verb = 'rssCloud.ping',
-			params = [resourceUrl],
-			rpctext = xmlrpc.buildCall(verb, params, 'xml');
-
-	    chai
-			.request(SERVER_URL)
-			.post("/RPC2")
-			.set('content-type', 'text/xml')
-			.send(rpctext)
-			.end((err, res) => {
-				if (err) {
-					return done(err);
-				}
-
-				expect(res).status(200);
-				expect(res.text).xml.equal('<methodResponse><params><param><value><boolean>1</boolean></value></param></params></methodResponse>');
-				expect(mock.requests.GET).property(feedPath).lengthOf(1, `Missing GET ${feedPath}`);
-				expect(mock.requests.POST).property(pingPath).lengthOf(1, `Missing POST ${pingPath}`);
-				expect(mock.requests.POST[pingPath][0]).property('body');
-				expect(mock.requests.POST[pingPath][0].body).property('url');
-				expect(mock.requests.POST[pingPath][0].body.url).equal(resourceUrl);
-				done();
-			});
 	});
 });

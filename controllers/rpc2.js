@@ -26,7 +26,10 @@
 
     function handleError(req, res, err) {
         console.error(err);
-        processResponse(req, res, rpcReturnFault(1, err.message));
+        // processResponse(req, res, rpcReturnFault(1, err.message));
+
+        // Dave's rssCloud server always returns true whether it succeeded or not
+        processResponse(req, res, rpcReturnSuccess(true));
     }
 
     router.post('/', textParser, function (req, res) {
