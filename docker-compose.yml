@@ -17,6 +17,7 @@ services:
       DOMAIN: rsscloud
       PORT: 5337
       MONGODB_URI: mongodb://mongodb:27017/rsscloud
+      NODE_TLS_REJECT_UNAUTHORIZED: 0
     expose:
       - 5337
     depends_on:
@@ -32,8 +33,11 @@ services:
       MONGODB_URI: mongodb://mongodb:27017/rsscloud
       MOCK_SERVER_URL: http://rsscloud-tests:8002
       MOCK_SERVER_PORT: 8002
+      SECURE_MOCK_SERVER_URL: https://rsscloud-tests:8003
+      SECURE_MOCK_SERVER_PORT: 8003
     expose:
       - 8002
+      - 8003
     depends_on:
       - mongodb
       - rsscloud

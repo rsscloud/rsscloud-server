@@ -23,25 +23,25 @@
 
     async function notifyOneRpc(notifyProcedure, apiurl, resourceUrl) {
         const xmldoc = builder.create({
-            methodCall: {
-                methodName: notifyProcedure,
-                params: {
-                    param: [
-                        { value: resourceUrl }
-                    ]
+                methodCall: {
+                    methodName: notifyProcedure,
+                    params: {
+                        param: [
+                            { value: resourceUrl }
+                        ]
+                    }
                 }
-            }
-        });
+            }).end({ pretty: true }),
 
-        const res = await request({
-            method: 'POST',
-            uri: apiurl,
-            body: xmldoc,
-            resolveWithFullResponse: true,
-            headers: {
-                'content-type': 'text/xml'
-            }
-        });
+            res = await request({
+                method: 'POST',
+                uri: apiurl,
+                body: xmldoc,
+                resolveWithFullResponse: true,
+                headers: {
+                    'content-type': 'text/xml'
+                }
+            });
 
         if (res.statusCode < 200 || res.statusCode > 299) {
             throw new Error('Notification Failed');

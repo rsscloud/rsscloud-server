@@ -36,8 +36,8 @@
             const apiurl = subscription.url,
                 startticks = moment().format('x'),
                 parts = url.parse(apiurl),
-                notifyProcedure = false,
-                protocol = 'http-post';
+                notifyProcedure = subscription.notifyProcedure,
+                protocol = subscription.protocol;
 
             console.log(apiurl);
 

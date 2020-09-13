@@ -36,7 +36,7 @@ async function doImport() {
                         subscription.protocol = 'http-post';
                         return subscription;
                     })
-                }
+                };
                 return {
                     replaceOne: {
                         filter: { _id: id },

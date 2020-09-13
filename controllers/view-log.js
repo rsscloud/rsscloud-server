@@ -9,15 +9,15 @@
 
     async function fetchVals(db, callback) {
         const vals = {
-            'eventlog': []
-        };
+                'eventlog': []
+            },
 
-        const res = await mongodb.get('rsscloud')
-            .collection('events')
-            .find()
-            .sort({ time: -1 })
-            .limit(1000)
-            .toArray();
+            res = await mongodb.get('rsscloud')
+                .collection('events')
+                .find()
+                .sort({ time: -1 })
+                .limit(1000)
+                .toArray();
 
         vals.eventlog = res.map(item => {
             item.id = item._id.toHexString();
@@ -46,7 +46,7 @@
         }
     }
 
-    function handleError(req, res, errorMessage) {
+    function handleError(req, res, err) {
         console.error(err);
         processResponse(req, res, errorResult(err.message));
     }

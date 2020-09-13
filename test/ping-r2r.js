@@ -1,213 +1,205 @@
-const chai = require("chai");
-const chaiHttp = require("chai-http");
-const chaiXml = require("chai-xml");
-const expect = chai.expect;
-const SERVER_URL = process.env.APP_URL || "http://localhost:5337";
-const mock = require("./mock");
-const mongodb = require("./mongodb");
-const xmlrpc = require("davexmlrpc");
+const chai = require("chai"),
+    chaiHttp = require("chai-http"),
+    chaiXml = require("chai-xml"),
+    expect = chai.expect,
+    SERVER_URL = process.env.APP_URL || "http://localhost:5337",
+    mock = require("./mock"),
+    mongodb = require("./mongodb"),
+    xmlrpc = require("davexmlrpc");
 
 chai.use(chaiHttp);
 chai.use(chaiXml);
 
-describe("Ping REST to REST", () => {
-	before(async () => {
-		await mongodb.before();
-		await mock.before();
-	});
+for (const protocol of ['http-post', 'https-post']) {
 
-	after(async () => {
-		await mongodb.after();
-		await mock.after();
-	});
+    describe(`Ping REST to REST ${protocol}`, () => {
+        before(async () => {
+            await mongodb.before();
+            await mock.before();
+        });
 
-	beforeEach(async () => {
-		await mongodb.beforeEach();
-		await mock.beforeEach();
-	});
+        after(async () => {
+            await mongodb.after();
+            await mock.after();
+        });
 
-	afterEach(async () => {
-		await mongodb.afterEach();
-		await mock.afterEach();
-	});
+        beforeEach(async () => {
+            await mongodb.beforeEach();
+            await mock.beforeEach();
+        });
 
-	it('should accept a ping for new resource and return XML', () => {
-		const feedPath = '/rss.xml',
-			pingPath = '/feedupdated',
-			resourceUrl = mock.serverUrl + feedPath,
-			notifyProcedure = false,
-			apiurl = mock.serverUrl + pingPath,
-			protocol = 'http-post';
+        afterEach(async () => {
+            await mongodb.afterEach();
+            await mock.afterEach();
+        });
 
-		mock.route('GET', feedPath, 200, '<RSS Feed />');
-		mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
-		mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
+        it('should accept a ping for new resource and return XML', async () => {
+            const feedPath = '/rss.xml',
+                pingPath = '/feedupdated',
+                resourceUrl = mock.serverUrl + feedPath,
+                notifyProcedure = false,
+                apiurl = ('http-post' === protocol ? mock.serverUrl : mock.secureServerUrl) + pingPath;
 
-	    return chai
-			.request(SERVER_URL)
-			.post("/ping")
-			.set('content-type', 'application/x-www-form-urlencoded')
-			.send({ url: resourceUrl })
-			.then(res => {
-				expect(res).status(200);
-				expect(res.text).xml.equal('<result success="true" msg="Thanks for the ping."/>');
-				expect(mock.requests.GET).property(feedPath).lengthOf(1, `Missing GET ${feedPath}`);
-				expect(mock.requests.POST).property(pingPath).lengthOf(1, `Missing POST ${pingPath}`);
-				expect(mock.requests.POST[pingPath][0]).property('body');
-				expect(mock.requests.POST[pingPath][0].body).property('url');
-				expect(mock.requests.POST[pingPath][0].body.url).equal(resourceUrl);
-			});
-	});
+            mock.route('GET', feedPath, 200, '<RSS Feed />');
+            mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
+            mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
 
-	it('should accept a ping for new resource and return JSON', () => {
-		const feedPath = '/rss.xml',
-			pingPath = '/feedupdated',
-			resourceUrl = mock.serverUrl + feedPath,
-			notifyProcedure = false,
-			apiurl = mock.serverUrl + '/feedupdated',
-			protocol = 'http-post';
+            let res = await chai
+                .request(SERVER_URL)
+                .post("/ping")
+                .set('content-type', 'application/x-www-form-urlencoded')
+                .send({ url: resourceUrl });
 
-		mock.route('GET', feedPath, 200, '<RSS Feed />');
-		mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
-		mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
+            expect(res).status(200);
+            expect(res.text).xml.equal('<result success="true" msg="Thanks for the ping."/>');
+            expect(mock.requests.GET).property(feedPath).lengthOf(1, `Missing GET ${feedPath}`);
+            expect(mock.requests.POST).property(pingPath).lengthOf(1, `Missing POST ${pingPath}`);
+            expect(mock.requests.POST[pingPath][0]).property('body');
+            expect(mock.requests.POST[pingPath][0].body).property('url');
+            expect(mock.requests.POST[pingPath][0].body.url).equal(resourceUrl);
+        });
 
-	    return chai
-			.request(SERVER_URL)
-			.post("/ping")
-			.set('accept', 'application/json')
-			.set('content-type', 'application/x-www-form-urlencoded')
-			.send({ url: resourceUrl })
-			.then(res => {
-				expect(res).status(200);
-				expect(res.body).deep.equal({ success: true, msg: 'Thanks for the ping.' });
-				expect(mock.requests.GET).property(feedPath).lengthOf(1, `Missing GET ${feedPath}`);
-				expect(mock.requests.POST).property(pingPath).lengthOf(1, `Missing POST ${pingPath}`);
-				expect(mock.requests.POST[pingPath][0]).property('body');
-				expect(mock.requests.POST[pingPath][0].body).property('url');
-				expect(mock.requests.POST[pingPath][0].body.url).equal(resourceUrl);
-			});
-	});
+        it('should accept a ping for new resource and return JSON', async () => {
+            const feedPath = '/rss.xml',
+                pingPath = '/feedupdated',
+                resourceUrl = mock.serverUrl + feedPath,
+                notifyProcedure = false,
+                apiurl = ('http-post' === protocol ? mock.serverUrl : mock.secureServerUrl) + '/feedupdated';
 
-	it('should reject a ping for bad resource and return XML', () => {
-		const feedPath = '/rss.xml',
-			pingPath = '/feedupdated',
-			resourceUrl = mock.serverUrl + feedPath,
-			notifyProcedure = false,
-			apiurl = mock.serverUrl + pingPath,
-			protocol = 'http-post';
+            mock.route('GET', feedPath, 200, '<RSS Feed />');
+            mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
+            mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
 
-		mock.route('GET', feedPath, 404, 'Not Found');
-		mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
-		mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
+            let res = await chai
+                .request(SERVER_URL)
+                .post("/ping")
+                .set('accept', 'application/json')
+                .set('content-type', 'application/x-www-form-urlencoded')
+                .send({ url: resourceUrl });
 
-	    return chai
-			.request(SERVER_URL)
-			.post("/ping")
-			.set('content-type', 'application/x-www-form-urlencoded')
-			.send({ url: resourceUrl })
-			.then(res => {
-				expect(res).status(200);
-				expect(res.text).xml.equal(`<result success="false" msg="The ping was cancelled because there was an error reading the resource at URL ${resourceUrl}."/>`);
-				expect(mock.requests.GET).property(feedPath).lengthOf(1, `Missing GET ${feedPath}`);
-				expect(mock.requests.POST).property(pingPath).lengthOf(0, `Should not POST ${pingPath}`);
-			});
-	});
+            expect(res).status(200);
+            expect(res.body).deep.equal({ success: true, msg: 'Thanks for the ping.' });
+            expect(mock.requests.GET).property(feedPath).lengthOf(1, `Missing GET ${feedPath}`);
+            expect(mock.requests.POST).property(pingPath).lengthOf(1, `Missing POST ${pingPath}`);
+            expect(mock.requests.POST[pingPath][0]).property('body');
+            expect(mock.requests.POST[pingPath][0].body).property('url');
+            expect(mock.requests.POST[pingPath][0].body.url).equal(resourceUrl);
+        });
 
-	it('should reject a ping for bad resource and return JSON', () => {
-		const feedPath = '/rss.xml',
-			pingPath = '/feedupdated',
-			resourceUrl = mock.serverUrl + feedPath,
-			notifyProcedure = false,
-			apiurl = mock.serverUrl + pingPath,
-			protocol = 'http-post';
+        it('should reject a ping for bad resource and return XML', async () => {
+            const feedPath = '/rss.xml',
+                pingPath = '/feedupdated',
+                resourceUrl = mock.serverUrl + feedPath,
+                notifyProcedure = false,
+                apiurl = ('http-post' === protocol ? mock.serverUrl : mock.secureServerUrl) + pingPath;
 
-		mock.route('GET', feedPath, 404, 'Not Found');
-		mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
-		mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
+            mock.route('GET', feedPath, 404, 'Not Found');
+            mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
+            mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
 
-	    return chai
-			.request(SERVER_URL)
-			.post("/ping")
-			.set('accept', 'application/json')
-			.set('content-type', 'application/x-www-form-urlencoded')
-			.send({ url: resourceUrl })
-			.then(res => {
-				expect(res).status(200);
-				expect(res.body).deep.equal({ success: false, msg: `The ping was cancelled because there was an error reading the resource at URL ${resourceUrl}.` });
-				expect(mock.requests.GET).property(feedPath).lengthOf(1, `Missing GET ${feedPath}`);
-				expect(mock.requests.POST).property(pingPath).lengthOf(0, `Should not POST ${pingPath}`);
-			});
-	});
+            let res = await chai
+                .request(SERVER_URL)
+                .post("/ping")
+                .set('content-type', 'application/x-www-form-urlencoded')
+                .send({ url: resourceUrl });
 
-	it('should accept a ping for unchanged resource and return XML', async () => {
-		const feedPath = '/rss.xml',
-			pingPath = '/feedupdated',
-			resourceUrl = mock.serverUrl + feedPath,
-			notifyProcedure = false,
-			apiurl = mock.serverUrl + pingPath,
-			protocol = 'http-post';
+            expect(res).status(200);
+            expect(res.text).xml.equal(`<result success="false" msg="The ping was cancelled because there was an error reading the resource at URL ${resourceUrl}."/>`);
+            expect(mock.requests.GET).property(feedPath).lengthOf(1, `Missing GET ${feedPath}`);
+            expect(mock.requests.POST).property(pingPath).lengthOf(0, `Should not POST ${pingPath}`);
+        });
 
-		mock.route('GET', feedPath, 200, '<RSS Feed />');
-		mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
-		mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
+        it('should reject a ping for bad resource and return JSON', async () => {
+            const feedPath = '/rss.xml',
+                pingPath = '/feedupdated',
+                resourceUrl = mock.serverUrl + feedPath,
+                notifyProcedure = false,
+                apiurl = ('http-post' === protocol ? mock.serverUrl : mock.secureServerUrl) + pingPath;
 
-	    const requester = chai.request(SERVER_URL).keepOpen();
+            mock.route('GET', feedPath, 404, 'Not Found');
+            mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
+            mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
 
-		let res;
+            let res = await chai
+                .request(SERVER_URL)
+                .post("/ping")
+                .set('accept', 'application/json')
+                .set('content-type', 'application/x-www-form-urlencoded')
+                .send({ url: resourceUrl });
 
-		res = await requester.post("/ping")
-			.set('content-type', 'application/x-www-form-urlencoded')
-			.send({ url: resourceUrl });
+            expect(res).status(200);
+            expect(res.body).deep.equal({ success: false, msg: `The ping was cancelled because there was an error reading the resource at URL ${resourceUrl}.` });
+            expect(mock.requests.GET).property(feedPath).lengthOf(1, `Missing GET ${feedPath}`);
+            expect(mock.requests.POST).property(pingPath).lengthOf(0, `Should not POST ${pingPath}`);
+        });
 
-		expect(res).status(200);
-		expect(res.text).xml.equal('<result success="true" msg="Thanks for the ping."/>');
+        it('should accept a ping for unchanged resource and return XML', async () => {
+            const feedPath = '/rss.xml',
+                pingPath = '/feedupdated',
+                resourceUrl = mock.serverUrl + feedPath,
+                notifyProcedure = false,
+                apiurl = ('http-post' === protocol ? mock.serverUrl : mock.secureServerUrl) + pingPath,
+                requester = chai.request(SERVER_URL).keepOpen();
 
-		res = await requester.post("/ping")
-			.set('content-type', 'application/x-www-form-urlencoded')
-			.send({ url: resourceUrl });
+            mock.route('GET', feedPath, 200, '<RSS Feed />');
+            mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
+            mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
 
-		expect(res).status(200);
-		expect(res.text).xml.equal('<result success="true" msg="Thanks for the ping."/>');
-		expect(mock.requests.GET).property(feedPath).lengthOf(2, `Missing GET ${feedPath}`);
-		expect(mock.requests.POST).property(pingPath).lengthOf(1, `Should only POST ${pingPath} once`);
+            let res;
 
-		requester.close()
-	});
+            res = await requester.post("/ping")
+                .set('content-type', 'application/x-www-form-urlencoded')
+                .send({ url: resourceUrl });
 
-	it('should accept a ping for unchanged resource and return JSON', async () => {
-		const feedPath = '/rss.xml',
-			pingPath = '/feedupdated',
-			resourceUrl = mock.serverUrl + feedPath,
-			notifyProcedure = false,
-			apiurl = mock.serverUrl + pingPath,
-			protocol = 'http-post';
+            expect(res).status(200);
+            expect(res.text).xml.equal('<result success="true" msg="Thanks for the ping."/>');
 
-		mock.route('GET', feedPath, 200, '<RSS Feed />');
-		mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
-		mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
+            res = await requester.post("/ping")
+                .set('content-type', 'application/x-www-form-urlencoded')
+                .send({ url: resourceUrl });
 
-	    const requester = chai.request(SERVER_URL).keepOpen();
+            expect(res).status(200);
+            expect(res.text).xml.equal('<result success="true" msg="Thanks for the ping."/>');
+            expect(mock.requests.GET).property(feedPath).lengthOf(2, `Missing GET ${feedPath}`);
+            expect(mock.requests.POST).property(pingPath).lengthOf(1, `Should only POST ${pingPath} once`);
 
-		let res;
+            requester.close();
+        });
 
-		res = await requester.post("/ping")
-			.set('accept', 'application/json')
-			.set('content-type', 'application/x-www-form-urlencoded')
-			.send({ url: resourceUrl });
+        it('should accept a ping for unchanged resource and return JSON', async () => {
+            const feedPath = '/rss.xml',
+                pingPath = '/feedupdated',
+                resourceUrl = mock.serverUrl + feedPath,
+                notifyProcedure = false,
+                apiurl = ('http-post' === protocol ? mock.serverUrl : mock.secureServerUrl) + pingPath,
+                requester = chai.request(SERVER_URL).keepOpen();
 
-		expect(res).status(200);
-		expect(res.body).deep.equal({ success: true, msg: 'Thanks for the ping.' });
+            mock.route('GET', feedPath, 200, '<RSS Feed />');
+            mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
+            mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
 
-		res = await requester.post("/ping")
-			.set('accept', 'application/json')
-			.set('content-type', 'application/x-www-form-urlencoded')
-			.send({ url: resourceUrl });
+            let res;
 
-		expect(res).status(200);
-		expect(res.body).deep.equal({ success: true, msg: 'Thanks for the ping.' });
-		expect(mock.requests.GET).property(feedPath).lengthOf(2, `Missing GET ${feedPath}`);
-		expect(mock.requests.POST).property(pingPath).lengthOf(1, `Should only POST ${pingPath} once`);
+            res = await requester.post("/ping")
+                .set('accept', 'application/json')
+                .set('content-type', 'application/x-www-form-urlencoded')
+                .send({ url: resourceUrl });
 
-		requester.close()
-	});
-});
+            expect(res).status(200);
+            expect(res.body).deep.equal({ success: true, msg: 'Thanks for the ping.' });
+
+            res = await requester.post("/ping")
+                .set('accept', 'application/json')
+                .set('content-type', 'application/x-www-form-urlencoded')
+                .send({ url: resourceUrl });
+
+            expect(res).status(200);
+            expect(res.body).deep.equal({ success: true, msg: 'Thanks for the ping.' });
+            expect(mock.requests.GET).property(feedPath).lengthOf(2, `Missing GET ${feedPath}`);
+            expect(mock.requests.POST).property(pingPath).lengthOf(1, `Should only POST ${pingPath} once`);
+
+            requester.close();
+        });
+    });
+
+} // end for protocol

@@ -5,17 +5,17 @@
 
     function rpcReturnSuccess(success) {
         return builder.create({
-        	methodResponse: {
-        		params: {
-	        		param: [
-	        			{
-	        				value: {
-		        				boolean: success ? 1 : 0
-		        			}
-		        		}
-	        		]
-	        	}
-        	}
+            methodResponse: {
+                params: {
+                    param: [
+                        {
+                            value: {
+                                boolean: success ? 1 : 0
+                            }
+                        }
+                    ]
+                }
+            }
         }).end({'pretty': true});
     }
 
