@@ -1,8 +1,7 @@
 .DS_Store
 .env
 .nyc_output/
-coverage/
 /data/
-node_modules/
+/node_modules/
+/xunit/
 Procfile
-yarn.lock

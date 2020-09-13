@@ -3,6 +3,8 @@ rssCloud Server
 
 rssCloud Server implementation in Node.js
 
+[![rssCloud Server 2.x](https://circleci.com/gh/andrewshell/rsscloud-server/tree/2.x.svg?style=shield)](https://circleci.com/gh/andrewshell/rsscloud-server/tree/2.x)
+
 ## How to install
 
 ```bash

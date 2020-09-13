@@ -6,9 +6,9 @@ RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSI
     && tar -C /usr/local/bin -xzvf dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
     && rm dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz
 
-RUN mkdir -p ~/app
+RUN mkdir -p /app
 
-WORKDIR ~/app
+WORKDIR /app
 
 COPY package.json .
 COPY package-lock.json .
