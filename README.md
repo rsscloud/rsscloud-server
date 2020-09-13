@@ -1,9 +1,10 @@
-rssCloud Server
----------------
+# rssCloud Server
+
+[![MIT License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](https://github.com/facebook/react/blob/master/LICENSE)
+[![rssCloud Server 2.x](https://circleci.com/gh/andrewshell/rsscloud-server/tree/2.x.svg?style=shield)](https://circleci.com/gh/andrewshell/rsscloud-server/tree/2.x)
+[![Andrew Shell's Weblog](https://img.shields.io/badge/weblog-rssCloud-brightgreen)](https://blog.andrewshell.org/search/?keywords=rsscloud)
 
 rssCloud Server implementation in Node.js
-
-[![rssCloud Server 2.x](https://circleci.com/gh/andrewshell/rsscloud-server/tree/2.x.svg?style=shield)](https://circleci.com/gh/andrewshell/rsscloud-server/tree/2.x)
 
 ## How to install
 
