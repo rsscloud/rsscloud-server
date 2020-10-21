@@ -31,7 +31,10 @@
 
         try {
             res = await request({
+                method: 'GET',
                 uri: resourceUrl,
+                followRedirect: true,
+                maxRedirects: 3,
                 resolveWithFullResponse: true
             });
         } catch (err) {

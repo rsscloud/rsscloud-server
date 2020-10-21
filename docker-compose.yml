@@ -31,9 +31,8 @@ services:
     environment:
       APP_URL: http://rsscloud:5337
       MONGODB_URI: mongodb://mongodb:27017/rsscloud
-      MOCK_SERVER_URL: http://rsscloud-tests:8002
+      MOCK_SERVER_DOMAIN: rsscloud-tests
       MOCK_SERVER_PORT: 8002
-      SECURE_MOCK_SERVER_URL: https://rsscloud-tests:8003
       SECURE_MOCK_SERVER_PORT: 8003
     volumes:
       - ./xunit:/app/xunit

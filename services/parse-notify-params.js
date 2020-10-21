@@ -84,7 +84,7 @@
         }
 
         if (0 === s.length) {
-            parts.scheme = 'https-post' === parts.protocol ? 'https' : 'http';
+            parts.scheme = 'https-post' === params.protocol ? 'https' : 'http';
             parts.port = req.body.port;
             parts.path = req.body.path;
 

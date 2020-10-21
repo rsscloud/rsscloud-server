@@ -1,25 +1,27 @@
-const https = require('https');
-const fs = require('fs');
-const express = require("express");
-const bodyParser = require("body-parser"),
+const https = require('https'),
+    fs = require('fs'),
+    express = require('express'),
+    bodyParser = require('body-parser'),
     textParser = bodyParser.text({ type: '*/xml'}),
-    urlencodedParser = bodyParser.urlencoded({ extended: false });
-const parseRpcRequest = require('../services/parse-rpc-request'),
+    urlencodedParser = bodyParser.urlencoded({ extended: false }),
+    parseRpcRequest = require('../services/parse-rpc-request'),
+    MOCK_SERVER_DOMAIN = process.env.MOCK_SERVER_DOMAIN,
     MOCK_SERVER_PORT = process.env.MOCK_SERVER_PORT || 8002,
-    MOCK_SERVER_URL = process.env.MOCK_SERVER_URL || `http://localhost:${MOCK_SERVER_PORT}`,
+    MOCK_SERVER_URL = process.env.MOCK_SERVER_URL || `http://${MOCK_SERVER_DOMAIN}:${MOCK_SERVER_PORT}`,
     SECURE_MOCK_SERVER_PORT = process.env.SECURE_MOCK_SERVER_PORT || 8003,
-    SECURE_MOCK_SERVER_URL = process.env.SECURE_MOCK_SERVER_URL || `http://localhost:${SECURE_MOCK_SERVER_PORT}`;
-const rpcReturnFault = require('../services/rpc-return-fault');
+    SECURE_MOCK_SERVER_URL = process.env.SECURE_MOCK_SERVER_URL || `https://${MOCK_SERVER_DOMAIN}:${SECURE_MOCK_SERVER_PORT}`,
+    rpcReturnFault = require('../services/rpc-return-fault');
 
 function restController(req, res) {
     const method = req.method,
         path = req.path;
 
-    if (this.routes[method][path]) {
+    if (this.routes[method] && this.routes[method][path]) {
         this.requests[method][path].push(req);
+        let responseBody = this.routes[method][path].responseBody;
         res
             .status(this.routes[method][path].status)
-            .send(this.routes[method][path].responseBody);
+            .send(typeof responseBody === 'function' ? responseBody(req) : responseBody);
     } else {
         res
             .status(501)
@@ -52,8 +54,11 @@ function rpcController(req, res) {
 module.exports = {
     app: express(),
     server: null,
+    serverDomain: MOCK_SERVER_DOMAIN,
+    serverPort: MOCK_SERVER_PORT,
     serverUrl: MOCK_SERVER_URL,
     secureServer: null,
+    secureServerPort: SECURE_MOCK_SERVER_PORT,
     secureServerUrl: SECURE_MOCK_SERVER_URL,
     requests: {
         'GET': {},
