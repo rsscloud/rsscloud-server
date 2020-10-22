@@ -5,7 +5,8 @@ const chai = require("chai"),
     SERVER_URL = process.env.APP_URL || "http://localhost:5337",
     mock = require("./mock"),
     mongodb = require("./mongodb"),
-    xmlrpc = require("davexmlrpc");
+    xmlrpc = require("davexmlrpc"),
+    rpcReturnSuccess = require('../services/rpc-return-success');
 
 chai.use(chaiHttp);
 chai.use(chaiXml);
@@ -33,7 +34,7 @@ function pleaseNotify(pingProtocol, body, returnFormat) {
     }
 }
 
-for (const protocol of ['http-post', 'https-post']) {
+for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
 for (const returnFormat of ['XML', 'JSON']) {
 for (const pingProtocol of ['REST']) {
 
@@ -66,24 +67,28 @@ for (const pingProtocol of ['REST']) {
 
         it('should accept a pleaseNotify for new resource', async () => {
             const feedPath = '/rss.xml',
-                pingPath = '/feedupdated',
                 resourceUrl = mock.serverUrl + feedPath;
 
-            let body = {
+            let pingPath = '/feedupdated',
+                notifyProcedure = false;
+
+            if ('xml-rpc' === protocol) {
+                pingPath = '/RPC2';
+                notifyProcedure = 'river.feedUpdated';
+            }
+
+            const body = {
                 domain: mock.serverDomain,
-                port: 'http-post' === protocol ? mock.serverPort : mock.secureServerPort,
+                port: 'https-post' === protocol ? mock.secureServerPort : mock.serverPort,
                 path: pingPath,
-                notifyProcedure: false,
+                notifyProcedure: notifyProcedure,
                 protocol,
                 url1: resourceUrl
             };
 
-            if ('xml-rpc' === protocol) {
-                // body = {}
-            }
-
             mock.route('GET', feedPath, 200, '<RSS Feed />');
             mock.route('GET', pingPath, 200, (req) => { return req.query.challenge; });
+            mock.rpc(notifyProcedure, rpcReturnSuccess(true));
 
             let res = await pleaseNotify(pingProtocol, body, returnFormat);
 
@@ -96,28 +101,39 @@ for (const pingProtocol of ['REST']) {
             }
 
             expect(mock.requests.GET).property(feedPath).lengthOf(1, `Missing GET ${feedPath}`);
-            expect(mock.requests.GET).property(pingPath).lengthOf(1, `Missing GET ${pingPath}`);
+
+            if ('xml-rpc' === protocol) {
+                expect(mock.requests.RPC2).property(notifyProcedure).lengthOf(1, `Missing XML-RPC call ${notifyProcedure}`);
+                expect(mock.requests.RPC2[notifyProcedure][0]).property('rpcBody');
+                expect(mock.requests.RPC2[notifyProcedure][0].rpcBody.params[0]).equal(resourceUrl);
+            } else {
+                expect(mock.requests.GET).property(pingPath).lengthOf(1, `Missing GET ${pingPath}`);
+            }
         });
 
         it('should accept a pleaseNotify without domain for new resource', async () => {
             const feedPath = '/rss.xml',
-                pingPath = '/feedupdated',
                 resourceUrl = mock.serverUrl + feedPath;
 
-            let body = {
-                port: 'http-post' === protocol ? mock.serverPort : mock.secureServerPort,
+            let pingPath = '/feedupdated',
+                notifyProcedure = false;
+
+            if ('xml-rpc' === protocol) {
+                pingPath = '/RPC2';
+                notifyProcedure = 'river.feedUpdated';
+            }
+
+            const body = {
+                port: 'https-post' === protocol ? mock.secureServerPort : mock.serverPort,
                 path: pingPath,
-                notifyProcedure: false,
+                notifyProcedure: notifyProcedure,
                 protocol,
                 url1: resourceUrl
             };
 
-            if ('xml-rpc' === protocol) {
-                // body = {}
-            }
-
             mock.route('GET', feedPath, 200, '<RSS Feed />');
             mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
+            mock.rpc(notifyProcedure, rpcReturnSuccess(true));
 
             let res = await pleaseNotify(pingProtocol, body, returnFormat);
 
@@ -130,87 +146,39 @@ for (const pingProtocol of ['REST']) {
             }
 
             expect(mock.requests.GET).property(feedPath).lengthOf(1, `Missing GET ${feedPath}`);
-            expect(mock.requests.POST).property(pingPath).lengthOf(1, `Missing POST ${pingPath}`);
+
+            if ('xml-rpc' === protocol) {
+                expect(mock.requests.RPC2).property(notifyProcedure).lengthOf(1, `Missing XML-RPC call ${notifyProcedure}`);
+                expect(mock.requests.RPC2[notifyProcedure][0]).property('rpcBody');
+                expect(mock.requests.RPC2[notifyProcedure][0].rpcBody.params[0]).equal(resourceUrl);
+            } else {
+                expect(mock.requests.POST).property(pingPath).lengthOf(1, `Missing POST ${pingPath}`);
+            }
         });
-
-        // it('should accept a pleaseNotify for new resource and return JSON', async () => {
-        //     const feedPath = '/rss.xml',
-        //         pingPath = '/feedupdated',
-        //         resourceUrl = mock.serverUrl + feedPath,
-        //         notifyProcedure = false,
-        //         apiurl = ('http-post' === protocol ? mock.serverUrl : mock.secureServerUrl) + pingPath;
-
-        //     mock.route('GET', feedPath, 200, '<RSS Feed />');
-        //     mock.route('GET', pingPath, 200, (req) => { return req.query.challenge; });
-
-        //     let res = await chai
-        //         .request(SERVER_URL)
-        //         .post("/pleaseNotify")
-        //         .set('accept', 'application/json')
-        //         .set('content-type', 'application/x-www-form-urlencoded')
-        //         .send({
-        //             domain: 'rsscloud-tests',
-        //             port: 8002,
-        //             path: pingPath,
-        //             notifyProcedure: false,
-        //             protocol,
-        //             url1: resourceUrl
-        //         });
-
-        //     expect(res).status(200);
-        //     expect(res.body).deep.equal({ success: true, msg: `Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!` });
-        //     expect(mock.requests.GET).property(feedPath).lengthOf(1, `Missing GET ${feedPath}`);
-        //     expect(mock.requests.GET).property(pingPath).lengthOf(1, `Missing GET ${pingPath}`);
-        // });
-
-        // it('should accept a pleaseNotify without domain for new resource and return JSON', async () => {
-        //     const feedPath = '/rss.xml',
-        //         pingPath = '/feedupdated',
-        //         resourceUrl = mock.serverUrl + feedPath,
-        //         notifyProcedure = false,
-        //         apiurl = ('http-post' === protocol ? mock.serverUrl : mock.secureServerUrl) + pingPath;
-
-        //     mock.route('GET', feedPath, 200, '<RSS Feed />');
-        //     mock.route('POST', pingPath, 200, '');
-
-        //     let res = await chai
-        //         .request(SERVER_URL)
-        //         .post("/pleaseNotify")
-        //         .set('accept', 'application/json')
-        //         .set('content-type', 'application/x-www-form-urlencoded')
-        //         .send({
-        //             port: 8002,
-        //             path: pingPath,
-        //             notifyProcedure: false,
-        //             protocol,
-        //             url1: resourceUrl
-        //         });
-
-        //     expect(res).status(200);
-        //     expect(res.body).deep.equal({ success: true, msg: `Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!` });
-        //     expect(mock.requests.GET).property(feedPath).lengthOf(1, `Missing GET ${feedPath}`);
-        //     expect(mock.requests.POST).property(pingPath).lengthOf(1, `Missing POST ${pingPath}`);
-        // });
 
         it('should reject a pleaseNotify for bad resource', async () => {
             const feedPath = '/rss.xml',
-                pingPath = '/feedupdated',
                 resourceUrl = mock.serverUrl + feedPath;
 
-            let body = {
-                port: 'http-post' === protocol ? mock.serverPort : mock.secureServerPort,
+            let pingPath = '/feedupdated',
+                notifyProcedure = false;
+
+            if ('xml-rpc' === protocol) {
+                pingPath = '/RPC2';
+                notifyProcedure = 'river.feedUpdated';
+            }
+
+            const body = {
+                port: 'https-post' === protocol ? mock.secureServerPort : mock.serverPort,
                 path: pingPath,
-                notifyProcedure: false,
+                notifyProcedure: notifyProcedure,
                 protocol,
                 url1: resourceUrl
             };
 
-            if ('xml-rpc' === protocol) {
-                // body = {}
-            }
-
             mock.route('GET', feedPath, 404, 'Not Found');
             mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
+            mock.rpc(notifyProcedure, rpcReturnSuccess(true));
 
             let res = await pleaseNotify(pingProtocol, body, returnFormat);
 
@@ -223,7 +191,12 @@ for (const pingProtocol of ['REST']) {
             }
 
             expect(mock.requests.GET).property(feedPath).lengthOf(1, `Missing GET ${feedPath}`);
-            expect(mock.requests.POST).property(pingPath).lengthOf(0, `Should not POST ${pingPath}`);
+
+            if ('xml-rpc' === protocol) {
+                expect(mock.requests.RPC2).property(notifyProcedure).lengthOf(0, `Should not XML-RPC call ${notifyProcedure}`);
+            } else {
+                expect(mock.requests.POST).property(pingPath).lengthOf(0, `Should not POST ${pingPath}`);
+            }
         });
     });
 

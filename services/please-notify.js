@@ -60,7 +60,7 @@
 
         try {
             if (diffDomain) {
-                await notifyOneChallenge(resourceUrl, apiurl);
+                await notifyOneChallenge(notifyProcedure, apiurl, protocol, resourceUrl);
             } else {
                 await notifyOne(notifyProcedure, apiurl, protocol, resourceUrl);
             }

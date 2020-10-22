@@ -126,7 +126,7 @@
             params.notifyProcedure = false;
         }
 
-        parts.scheme = 'http';
+        parts.scheme = 'https-post' === params.protocol ? 'https' : 'http';
         parts.port = rpcParams[1];
         parts.path = rpcParams[2];
 
