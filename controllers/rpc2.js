@@ -25,11 +25,8 @@
     }
 
     function handleError(req, res, err) {
-        console.error(err);
-        // processResponse(req, res, rpcReturnFault(1, err.message));
-
-        // Dave's rssCloud server always returns true whether it succeeded or not
-        processResponse(req, res, rpcReturnSuccess(true));
+        // console.error(err);
+        processResponse(req, res, rpcReturnFault(4, err.message));
     }
 
     router.post('/', textParser, function (req, res) {
@@ -53,9 +50,10 @@
                         .catch(err => handleError(req, res, err));
                     break;
                 case 'rssCloud.ping':
+                    // Dave's rssCloud server always returns true whether it succeeded or not
                     ping(request.params[0])
                         .then(result => processResponse(req, res, rpcReturnSuccess(result.success)))
-                        .catch(err => handleError(req, res, err));
+                        .catch(err => processResponse(req, res, rpcReturnSuccess(true)));
                     break;
                 default:
                     handleError(
