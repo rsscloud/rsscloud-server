@@ -13,6 +13,10 @@
             ping: {
                 tooRecent: 'Can\'t accept the request because the minimum seconds between pings is %s and you pinged us %s seconds ago.',
                 readResource: 'The ping was cancelled because there was an error reading the resource at URL %s.'
+            },
+            rpc: {
+                notEnoughParams: 'Can\'t call "%s" because there aren\'t enough parameters.',
+                tooManyParams: 'Can\'t call "%s" because there are too many parameters.'
             }
         },
         log: {

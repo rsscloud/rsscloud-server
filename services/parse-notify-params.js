@@ -106,6 +106,12 @@
         let params = {},
             parts = {};
 
+        if (5 > rpcParams.length) {
+            throw new Error(sprintf(appMessages.error.rpc.notEnoughParams, 'pleaseNotify'));
+        } else if (6 < rpcParams.length) {
+            throw new Error(sprintf(appMessages.error.rpc.tooManyParams, 'pleaseNotify'));
+        }
+
         if (validProtocol(rpcParams[3])) {
             params.protocol = rpcParams[3];
         }

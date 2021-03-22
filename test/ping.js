@@ -6,14 +6,21 @@ const chai = require("chai"),
     mock = require("./mock"),
     mongodb = require("./mongodb"),
     xmlrpc = require("davexmlrpc"),
-    rpcReturnSuccess = require('../services/rpc-return-success');
+    rpcReturnSuccess = require('../services/rpc-return-success'),
+    rpcReturnFault = require('../services/rpc-return-fault');
 
 chai.use(chaiHttp);
 chai.use(chaiXml);
 
 function ping(pingProtocol, resourceUrl, returnFormat) {
     if ('XML-RPC' === pingProtocol) {
-        const rpctext = xmlrpc.buildCall('rssCloud.ping', [resourceUrl], 'xml');
+        let rpctext;
+        if (null == resourceUrl) {
+            rpctext = xmlrpc.buildCall('rssCloud.ping', [], 'xml');
+            console.log(rpctext);
+        } else {
+            rpctext = xmlrpc.buildCall('rssCloud.ping', [resourceUrl], 'xml');
+        }
 
         return chai
             .request(SERVER_URL)
@@ -30,7 +37,11 @@ function ping(pingProtocol, resourceUrl, returnFormat) {
             req.set('accept', 'application/json');
         }
 
-        return req.send({ url: resourceUrl });
+        if (null == resourceUrl) {
+            return req.send({});
+        } else {
+            return req.send({ url: resourceUrl });
+        }
     }
 }
 
@@ -143,6 +154,46 @@ for (const pingProtocol of ['XML-RPC', 'REST']) {
             }
 
             expect(mock.requests.GET).property(feedPath).lengthOf(1, `Missing GET ${feedPath}`);
+
+            if ('xml-rpc' === protocol) {
+                expect(mock.requests.RPC2).property(notifyProcedure).lengthOf(0, `Should not XML-RPC call ${notifyProcedure}`);
+            } else {
+                expect(mock.requests.POST).property(pingPath).lengthOf(0, `Should not POST ${pingPath}`);
+            }
+        });
+
+        it('should reject a ping with a missing url', async () => {
+            const feedPath = '/rss.xml',
+                pingPath = '/feedupdated',
+                resourceUrl = null;
+
+            let apiurl = ('http-post' === protocol ? mock.serverUrl : mock.secureServerUrl) + pingPath,
+                notifyProcedure = false;
+
+            if ('xml-rpc' === protocol) {
+                apiurl = mock.serverUrl + '/RPC2';
+                notifyProcedure = 'river.feedUpdated';
+            }
+
+            mock.route('GET', feedPath, 404, 'Not Found');
+            mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
+            mock.rpc(notifyProcedure, rpcReturnSuccess(true));
+
+            let res = await ping(pingProtocol, resourceUrl, returnFormat);
+
+            expect(res).status(200);
+
+            if ('XML-RPC' === pingProtocol) {
+                expect(res.text).xml.equal(rpcReturnFault(4, 'Can\'t call "ping" because there aren\'t enough parameters.'));
+            } else {
+                if ('JSON' === returnFormat) {
+                    expect(res.body).deep.equal({ success: false, msg: `The following parameters were missing from the request body: url.` });
+                } else {
+                    expect(res.text).xml.equal(`<result success="false" msg="The following parameters were missing from the request body: url."/>`);
+                }
+            }
+
+            expect(mock.requests.GET).property(feedPath).lengthOf(0, `Should not GET ${feedPath}`);
 
             if ('xml-rpc' === protocol) {
                 expect(mock.requests.RPC2).property(notifyProcedure).lengthOf(0, `Should not XML-RPC call ${notifyProcedure}`);

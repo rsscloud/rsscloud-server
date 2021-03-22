@@ -35,10 +35,14 @@
     }
 
     router.post('/', urlencodedParser, function (req, res) {
-        const params = parsePingParams(req);
-        ping(params.url)
-            .then(result => processResponse(req, res, result))
-            .catch(err => handleError(req, res, err));
+        try {
+            const params = parsePingParams.rest(req);
+            ping(params.url)
+                .then(result => processResponse(req, res, result))
+                .catch(err => handleError(req, res, err));
+        } catch (err) {
+            return handleError(req, res, err);
+        }
     });
 
     module.exports = router;

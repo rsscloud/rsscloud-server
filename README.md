@@ -1,4 +1,4 @@
-# rssCloud Server
+# rssCloud Server v2
 
 [![MIT License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](https://github.com/rsscloud/rsscloud-server/blob/2.x/LICENSE.md)
 [![rssCloud Server 2.x](https://circleci.com/gh/rsscloud/rsscloud-server/tree/2.x.svg?style=shield)](https://circleci.com/gh/rsscloud/rsscloud-server/tree/2.x)

@@ -20,3 +20,14 @@ I should make sure I return the same response if possible.
 <notifyResult success="false" msg="The following parameters were missing from the request body: notifyProcedure, port, path, protocol." />
 ```
 
+I think I check for all of these except notifyProcedure.
+
+## Update README docs
+
+Fully spec out XML-RPC endpoints with code samples.
+
+## Build freestanding rssCloud testing tool
+
+Hopefully this can be based on the test suite I'm creating now, but it will be a hosted app that has a dashboard where you can put in the details for an rssCloud server. It mocks the RSS feed and aggregator endpoints so it can direct the real rssCloud server at resources it controls. This way it can run through a series of tests with red/greed lights to see if each test passes.
+
+Split out rssCloud.root functionality vs my extended functionality.
