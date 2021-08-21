@@ -11,7 +11,6 @@ services:
 
   rsscloud:
     build: .
-    image: rsscloud
     command: node --use_strict app.js
     environment:
       DOMAIN: rsscloud
@@ -26,7 +25,7 @@ services:
       driver: "none"
 
   rsscloud-tests:
-    image: rsscloud
+    build: .
     command: dockerize -wait tcp://mongodb:27017 -wait http://rsscloud:5337 -timeout 10s bash -c "npm test"
     environment:
       APP_URL: http://rsscloud:5337

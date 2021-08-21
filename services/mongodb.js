@@ -1,7 +1,7 @@
 (function () {
     "use strict";
 
-    const mongodb = require('mongodb'),
+    const { MongoClient } = require('mongodb'),
         state = {};
 
     module.exports = {
@@ -10,7 +10,7 @@
                 return;
             }
 
-            const client = await mongodb(uri, { useUnifiedTopology: true });
+            const client = await MongoClient.connect(uri, { useUnifiedTopology: true });
 
             state[name] = client;
 
