@@ -28,6 +28,30 @@ module.exports = {
         const subscriptions = await fetchSubscriptions(resourceUrl);
         initSubscription(subscriptions, notifyProcedure, apiurl, protocol);
         await upsertSubscriptions(subscriptions);
+
+        const index = subscriptions.pleaseNotify.findIndex(subscription => {
+            return subscription.url === apiurl;
+        });
+
+        if (-1 !== index) {
+            return subscriptions.pleaseNotify[index];
+        }
+
+        throw Error(`Cannot find ${apiurl} subscription`);
+    },
+    updateSubscription: async function (resourceUrl, subscription) {
+        const subscriptions = await fetchSubscriptions(resourceUrl);
+        const index = subscriptions.pleaseNotify.findIndex(match => {
+            return subscription.url === match.url;
+        });
+
+        if (-1 !== index) {
+            subscriptions.pleaseNotify[index] = subscription;
+            await upsertSubscriptions(subscriptions);
+            return subscriptions.pleaseNotify[index];
+        }
+
+        throw Error(`Cannot find ${apiurl} subscription`);
     },
     before: async function () {
         const db = await mongodb.connect('rsscloud', config.mongodbUri);

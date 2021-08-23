@@ -1,9 +1,11 @@
 const chai = require("chai"),
     chaiHttp = require("chai-http"),
     chaiXml = require("chai-xml"),
+    config = require('../config'),
     expect = chai.expect,
     SERVER_URL = process.env.APP_URL || "http://localhost:5337",
     mock = require("./mock"),
+    moment = require('moment'),
     mongodb = require("./mongodb"),
     xmlrpc = require("davexmlrpc"),
     rpcReturnSuccess = require('../services/rpc-return-success'),
@@ -317,6 +319,49 @@ for (const pingProtocol of ['XML-RPC', 'REST']) {
                     expect(mock.requests.POST[pingPath + i][0].body).property('url');
                     expect(mock.requests.POST[pingPath + i][0].body.url).equal(resourceUrl);
                 }
+            }
+        });
+
+        it(`should not notify expired subscribers`, async function () {
+            const feedPath = '/rss.xml',
+                pingPath = '/feedupdated',
+                resourceUrl = mock.serverUrl + feedPath;
+
+            let apiurl = ('http-post' === protocol ? mock.serverUrl : mock.secureServerUrl) + pingPath,
+                notifyProcedure = false;
+
+            if ('xml-rpc' === protocol) {
+                apiurl = mock.serverUrl + '/RPC2';
+                notifyProcedure = 'river.feedUpdated';
+            }
+
+            mock.route('GET', feedPath, 200, '<RSS Feed />');
+            mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
+            mock.rpc(notifyProcedure, rpcReturnSuccess(true));
+            const subscription = await mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
+            subscription.whenExpires = moment().utc().subtract(config.ctSecsResourceExpire * 2, 'seconds').format();
+            await mongodb.updateSubscription(resourceUrl, subscription);
+
+            let res = await ping(pingProtocol, resourceUrl, returnFormat);
+
+            expect(res).status(200);
+
+            if ('XML-RPC' === pingProtocol) {
+                expect(res.text).xml.equal(rpcReturnSuccess(true));
+            } else {
+                if ('JSON' === returnFormat) {
+                    expect(res.body).deep.equal({ success: true, msg: 'Thanks for the ping.' });
+                } else {
+                    expect(res.text).xml.equal('<result success="true" msg="Thanks for the ping."/>');
+                }
+            }
+
+            expect(mock.requests.GET).property(feedPath).lengthOf(1, `Missing GET ${feedPath}`);
+
+            if ('xml-rpc' === protocol) {
+                expect(mock.requests.RPC2).property(notifyProcedure).lengthOf(0, `Missing XML-RPC call ${notifyProcedure}`);
+            } else {
+                expect(mock.requests.POST).property(pingPath).lengthOf(0, `Missing POST ${pingPath}`);
             }
         });
 

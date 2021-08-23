@@ -63,10 +63,18 @@
         }
     }
 
+    function filterSubscribers(subscription) {
+        if (moment().isAfter(subscription.whenExpires)) {
+            return false
+        }
+
+        return true;
+    }
+
     async function notifySubscribers(resourceUrl) {
         const subscriptions = await fetchSubscriptions(resourceUrl);
 
-        await Promise.all(subscriptions.pleaseNotify.map(notifyOneSubscriber.bind(null, resourceUrl)));
+        await Promise.all(subscriptions.pleaseNotify.filter(filterSubscribers).map(notifyOneSubscriber.bind(null, resourceUrl)));
 
         console.log('upserting subscriptions');
 
