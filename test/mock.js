@@ -12,7 +12,7 @@ const https = require('https'),
     SECURE_MOCK_SERVER_URL = process.env.SECURE_MOCK_SERVER_URL || `https://${MOCK_SERVER_DOMAIN}:${SECURE_MOCK_SERVER_PORT}`,
     rpcReturnFault = require('../services/rpc-return-fault');
 
-function restController(req, res) {
+async function restController(req, res) {
     const method = req.method,
         path = req.path;
 
@@ -21,7 +21,7 @@ function restController(req, res) {
         let responseBody = this.routes[method][path].responseBody;
         res
             .status(this.routes[method][path].status)
-            .send(typeof responseBody === 'function' ? responseBody(req) : responseBody);
+            .send(typeof responseBody === 'function' ? await responseBody(req) : responseBody);
     } else {
         res
             .status(501)
@@ -29,26 +29,27 @@ function restController(req, res) {
     }
 }
 
-function rpcController(req, res) {
-    parseRpcRequest(req)
-        .then(request => {
-            req.rpcBody = request;
-            if (this.routes.RPC2[request.methodName]) {
-                this.requests.RPC2[request.methodName].push(req);
-                res
-                    .status(200)
-                    .send(this.routes.RPC2[request.methodName].responseBody);
-            } else {
-                res
-                    .status(501)
-                    .send(rpcReturnFault(1, `Unknown methodName ${request.methodName}`));
-            }
-        })
-        .catch(err => {
+async function rpcController(req, res) {
+    try {
+        req.rpcBody = await parseRpcRequest(req);
+        const method = req.rpcBody.methodName;
+
+        if (this.routes.RPC2[method]) {
+            this.requests.RPC2[method].push(req);
+            let responseBody = this.routes.RPC2[method].responseBody;
             res
-                .status(500)
-                .send(rpcReturnFault(1, err.message));
-        });
+                .status(200)
+                .send(typeof responseBody === 'function' ? await responseBody(req) : responseBody);
+        } else {
+            res
+                .status(501)
+                .send(rpcReturnFault(1, `Unknown methodName ${method}`));
+        }
+    } catch(err) {
+        res
+            .status(500)
+            .send(rpcReturnFault(1, err.message));
+    }
 }
 
 module.exports = {
