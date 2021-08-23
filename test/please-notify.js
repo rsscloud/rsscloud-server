@@ -44,29 +44,29 @@ for (const pingProtocol of ['XML-RPC', 'REST']) {
         continue;
     }
 
-    describe(`PleaseNotify ${pingProtocol} to ${protocol} returning ${returnFormat}`, () => {
+    describe(`PleaseNotify ${pingProtocol} to ${protocol} returning ${returnFormat}`, function () {
 
-        before(async () => {
+        before(async function () {
             await mongodb.before();
             await mock.before();
         });
 
-        after(async () => {
+        after(async function () {
             await mongodb.after();
             await mock.after();
         });
 
-        beforeEach(async () => {
+        beforeEach(async function () {
             await mongodb.beforeEach();
             await mock.beforeEach();
         });
 
-        afterEach(async () => {
+        afterEach(async function () {
             await mongodb.afterEach();
             await mock.afterEach();
         });
 
-        it('should accept a pleaseNotify for new resource', async () => {
+        it('should accept a pleaseNotify for new resource', async function () {
             const feedPath = '/rss.xml',
                 resourceUrl = mock.serverUrl + feedPath;
 
@@ -127,7 +127,7 @@ for (const pingProtocol of ['XML-RPC', 'REST']) {
             }
         });
 
-        it('should accept a pleaseNotify without domain for new resource', async () => {
+        it('should accept a pleaseNotify without domain for new resource', async function () {
             const feedPath = '/rss.xml',
                 resourceUrl = mock.serverUrl + feedPath;
 
@@ -186,7 +186,7 @@ for (const pingProtocol of ['XML-RPC', 'REST']) {
             }
         });
 
-        it('should reject a pleaseNotify for bad resource', async () => {
+        it('should reject a pleaseNotify for bad resource', async function () {
             const feedPath = '/rss.xml',
                 resourceUrl = mock.serverUrl + feedPath;
 

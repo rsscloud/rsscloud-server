@@ -5,76 +5,46 @@ const chai = require("chai"),
 
 chai.use(chaiHttp);
 
-describe("Static Pages", () => {
+describe("Static Pages", function () {
 
-    it("docs should return 200", done => {
-        chai
+    it("docs should return 200", async function () {
+        let res = await chai
             .request(SERVER_URL)
-            .get("/docs")
-            .end((err, res) => {
-                if (err) {
-                    return done(err);
-                }
+            .get("/docs");
 
-                expect(res).status(200);
-                done();
-            });
+        expect(res).status(200);
     });
 
-    it("home should return 200", done => {
-        chai
+    it("home should return 200", async function () {
+        let res = await chai
             .request(SERVER_URL)
-            .get("/")
-            .end((err, res) => {
-                if (err) {
-                    return done(err);
-                }
+            .get("/");
 
-                expect(res).status(200);
-                done();
-            });
+        expect(res).status(200);
     });
 
-    it("pingForm should return 200", done => {
-        chai
+    it("pingForm should return 200", async function () {
+        let res = await chai
             .request(SERVER_URL)
-            .get("/pingForm")
-            .end((err, res) => {
-                if (err) {
-                    return done(err);
-                }
+            .get("/pingForm");
 
-                expect(res).status(200);
-                done();
-            });
+        expect(res).status(200);
     });
 
-    it("pleaseNotifyForm should return 200", done => {
-        chai
+    it("pleaseNotifyForm should return 200", async function () {
+        let res = await chai
             .request(SERVER_URL)
-            .get("/pleaseNotifyForm")
-            .end((err, res) => {
-                if (err) {
-                    return done(err);
-                }
+            .get("/pleaseNotifyForm");
 
-                expect(res).status(200);
-                done();
-            });
+        expect(res).status(200);
     });
 
-    it("viewLog should return 200", done => {
-        chai
+    it("viewLog should return 200", async function () {
+        let res = await chai
             .request(SERVER_URL)
-            .get("/viewLog")
-            .end((err, res) => {
-                if (err) {
-                    return done(err);
-                }
+            .get("/viewLog");
 
-                expect(res).status(200);
-                done();
-            });
+        expect(res).status(200);
     });
 
 });

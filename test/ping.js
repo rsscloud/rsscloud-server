@@ -54,28 +54,28 @@ for (const pingProtocol of ['XML-RPC', 'REST']) {
         continue;
     }
 
-    describe(`Ping ${pingProtocol} to ${protocol} returning ${returnFormat}`, () => {
-        before(async () => {
+    describe(`Ping ${pingProtocol} to ${protocol} returning ${returnFormat}`, function () {
+        before(async function () {
             await mongodb.before();
             await mock.before();
         });
 
-        after(async () => {
+        after(async function () {
             await mongodb.after();
             await mock.after();
         });
 
-        beforeEach(async () => {
+        beforeEach(async function () {
             await mongodb.beforeEach();
             await mock.beforeEach();
         });
 
-        afterEach(async () => {
+        afterEach(async function () {
             await mongodb.afterEach();
             await mock.afterEach();
         });
 
-        it(`should accept a ping for new resource`, async () => {
+        it(`should accept a ping for new resource`, async function () {
             const feedPath = '/rss.xml',
                 pingPath = '/feedupdated',
                 resourceUrl = mock.serverUrl + feedPath;
@@ -121,7 +121,7 @@ for (const pingProtocol of ['XML-RPC', 'REST']) {
             }
         });
 
-        it('should reject a ping for bad resource', async () => {
+        it('should reject a ping for bad resource', async function () {
             const feedPath = '/rss.xml',
                 pingPath = '/feedupdated',
                 resourceUrl = mock.serverUrl + feedPath;
@@ -162,7 +162,7 @@ for (const pingProtocol of ['XML-RPC', 'REST']) {
             }
         });
 
-        it('should reject a ping with a missing url', async () => {
+        it('should reject a ping with a missing url', async function () {
             const feedPath = '/rss.xml',
                 pingPath = '/feedupdated',
                 resourceUrl = null;
@@ -202,7 +202,7 @@ for (const pingProtocol of ['XML-RPC', 'REST']) {
             }
         });
 
-        it('should accept a ping for unchanged resource', async () => {
+        it('should accept a ping for unchanged resource', async function () {
             const feedPath = '/rss.xml',
                 pingPath = '/feedupdated',
                 resourceUrl = mock.serverUrl + feedPath;
