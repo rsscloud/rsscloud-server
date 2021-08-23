@@ -2,6 +2,7 @@
     "use strict";
 
     const appMessages = require('./app-messages'),
+        config = require('../config'),
         logEvent = require('./log-event'),
         moment = require('moment'),
         mongodb = require('./mongodb'),
@@ -66,6 +67,10 @@
     function filterSubscribers(subscription) {
         if (moment().isAfter(subscription.whenExpires)) {
             return false
+        }
+
+        if (subscription.ctConsecutiveErrors >= config.maxConsecutiveErrors) {
+            return false;
         }
 
         return true;
