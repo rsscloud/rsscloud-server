@@ -408,6 +408,71 @@ for (const pingProtocol of ['XML-RPC', 'REST']) {
             }
         });
 
+        it(`should consider a very slow subscription an error`, async function () {
+            const feedPath = '/rss.xml',
+                pingPath = '/feedupdated',
+                resourceUrl = mock.serverUrl + feedPath;
+
+            let apiurl = ('http-post' === protocol ? mock.serverUrl : mock.secureServerUrl) + pingPath,
+                notifyProcedure = false;
+
+            if ('xml-rpc' === protocol) {
+                apiurl = mock.serverUrl + '/RPC2';
+                notifyProcedure = 'river.feedUpdated';
+            }
+
+            function slowRestResponse(req) {
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        resolve('Thanks for the update! :-)');
+                    }, 8000)
+                });
+            }
+
+            function slowRpcResponse(req) {
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        resolve(rpcReturnSuccess(true));
+                    }, 8000)
+                });
+            }
+
+            mock.route('GET', feedPath, 200, '<RSS Feed />');
+            mock.route('POST', pingPath, 200, slowRestResponse);
+            mock.rpc(notifyProcedure, slowRpcResponse);
+            await mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
+
+            let res = await ping(pingProtocol, resourceUrl, returnFormat);
+
+            expect(res).status(200);
+
+            const subscription = await mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
+            expect(subscription.ctConsecutiveErrors).equal(1);
+
+            if ('XML-RPC' === pingProtocol) {
+                expect(res.text).xml.equal(rpcReturnSuccess(true));
+            } else {
+                if ('JSON' === returnFormat) {
+                    expect(res.body).deep.equal({ success: true, msg: 'Thanks for the ping.' });
+                } else {
+                    expect(res.text).xml.equal('<result success="true" msg="Thanks for the ping."/>');
+                }
+            }
+
+            expect(mock.requests.GET).property(feedPath).lengthOf(1, `Missing GET ${feedPath}`);
+
+            if ('xml-rpc' === protocol) {
+                expect(mock.requests.RPC2).property(notifyProcedure).lengthOf(1, `Missing XML-RPC call ${notifyProcedure}`);
+                expect(mock.requests.RPC2[notifyProcedure][0]).property('rpcBody');
+                expect(mock.requests.RPC2[notifyProcedure][0].rpcBody.params[0]).equal(resourceUrl);
+            } else {
+                expect(mock.requests.POST).property(pingPath).lengthOf(1, `Missing POST ${pingPath}`);
+                expect(mock.requests.POST[pingPath][0]).property('body');
+                expect(mock.requests.POST[pingPath][0].body).property('url');
+                expect(mock.requests.POST[pingPath][0].body.url).equal(resourceUrl);
+            }
+        });
+
     });
 
 } // end for pingProtocol

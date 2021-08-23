@@ -2,12 +2,14 @@
     "use strict";
 
     const builder = require('xmlbuilder'),
+        config = require('../config'),
         request = require('request-promise-native');
 
     async function notifyOneRest(apiurl, resourceUrl) {
         const res = await request({
             method: 'POST',
             uri: apiurl,
+            timeout: config.requestTimeout,
             form: {
                 'url': resourceUrl
             },
@@ -36,6 +38,7 @@
         let res = await request({
             method: 'POST',
             uri: apiurl,
+            timeout: 4000,
             body: xmldoc,
             resolveWithFullResponse: true,
             headers: {

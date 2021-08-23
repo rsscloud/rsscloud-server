@@ -17,6 +17,7 @@
         return request({
             method: 'GET',
             uri: resourceUrl,
+            timeout: config.requestTimeout,
             followRedirect: true,
             maxRedirects: 3,
             resolveWithFullResponse: true

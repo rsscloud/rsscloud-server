@@ -1,7 +1,8 @@
 (function () {
     "use strict";
 
-    const notifyOne = require('./notify-one'),
+    const config = require('../config'),
+        notifyOne = require('./notify-one'),
         getRandomPassword = require('./get-random-password'),
         querystring = require('querystring'),
         request = require('request-promise-native');
@@ -14,6 +15,7 @@
             }),
             res = await request({
                 uri: testUrl,
+                timeout: config.requestTimeout,
                 resolveWithFullResponse: true
             });
 

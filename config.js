@@ -20,7 +20,8 @@ nconf
         "MAX_CONSECUTIVE_ERRORS": 3,
         "MAX_RESOURCE_SIZE": 256000,
         "CT_SECS_RESOURCE_EXPIRE": 90000,
-        "MIN_SECS_BETWEEN_PINGS": 0
+        "MIN_SECS_BETWEEN_PINGS": 0,
+        "REQUEST_TIMEOUT": 4000
     });
 
 module.exports = {
@@ -32,5 +33,6 @@ module.exports = {
     maxConsecutiveErrors: nconf.get('MAX_CONSECUTIVE_ERRORS'),
     maxResourceSize: nconf.get('MAX_RESOURCE_SIZE'),
     ctSecsResourceExpire: nconf.get('CT_SECS_RESOURCE_EXPIRE'),
-    minSecsBetweenPings: nconf.get('MIN_SECS_BETWEEN_PINGS')
+    minSecsBetweenPings: nconf.get('MIN_SECS_BETWEEN_PINGS'),
+    requestTimeout: nconf.get('REQUEST_TIMEOUT')
 };
