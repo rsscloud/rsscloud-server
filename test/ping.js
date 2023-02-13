@@ -122,6 +122,62 @@ for (const pingProtocol of ['XML-RPC', 'REST']) {
             }
         });
 
+        it.only(`should ping multiple subscribers on same domain`, async function () {
+            const feedPath = '/rss.xml',
+                pingPath1 = '/feedupdated1',
+                pingPath2 = '/feedupdated2'
+                resourceUrl = mock.serverUrl + feedPath;
+
+            let apiurl1 = ('http-post' === protocol ? mock.serverUrl : mock.secureServerUrl) + pingPath1,
+                apiurl2 = ('http-post' === protocol ? mock.serverUrl : mock.secureServerUrl) + pingPath2,
+                notifyProcedure = false;
+
+            if ('xml-rpc' === protocol) {
+                apiurl1 = mock.serverUrl + '/RPC2';
+                apiurl2 = mock.serverUrl + pingPath2;
+                notifyProcedure = 'river.feedUpdated';
+            }
+
+            mock.route('GET', feedPath, 200, '<RSS Feed />');
+            mock.route('POST', pingPath1, 200, 'Thanks for the update! :-)');
+            mock.route('POST', pingPath2, 200, 'Thanks for the update! :-)');
+            mock.rpc(notifyProcedure, rpcReturnSuccess(true));
+            await mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl1, protocol);
+            await mongodb.addSubscription(resourceUrl, false, apiurl2, 'http-post');
+
+            let res = await ping(pingProtocol, resourceUrl, returnFormat);
+
+            expect(res).status(200);
+
+            if ('XML-RPC' === pingProtocol) {
+                expect(res.text).xml.equal(rpcReturnSuccess(true));
+            } else {
+                if ('JSON' === returnFormat) {
+                    expect(res.body).deep.equal({ success: true, msg: 'Thanks for the ping.' });
+                } else {
+                    expect(res.text).xml.equal('<result success="true" msg="Thanks for the ping."/>');
+                }
+            }
+
+            expect(mock.requests.GET).property(feedPath).lengthOf(1, `Missing GET ${feedPath}`);
+
+            if ('xml-rpc' === protocol) {
+                expect(mock.requests.RPC2).property(notifyProcedure).lengthOf(1, `Missing XML-RPC call ${notifyProcedure}`);
+                expect(mock.requests.RPC2[notifyProcedure][0]).property('rpcBody');
+                expect(mock.requests.RPC2[notifyProcedure][0].rpcBody.params[0]).equal(resourceUrl);
+            } else {
+                expect(mock.requests.POST).property(pingPath1).lengthOf(1, `Missing POST ${pingPath1}`);
+                expect(mock.requests.POST[pingPath1][0]).property('body');
+                expect(mock.requests.POST[pingPath1][0].body).property('url');
+                expect(mock.requests.POST[pingPath1][0].body.url).equal(resourceUrl);
+            }
+
+            expect(mock.requests.POST).property(pingPath2).lengthOf(1, `Missing POST ${pingPath2}`);
+            expect(mock.requests.POST[pingPath2][0]).property('body');
+            expect(mock.requests.POST[pingPath2][0].body).property('url');
+            expect(mock.requests.POST[pingPath2][0].body.url).equal(resourceUrl);
+        });
+
         it('should reject a ping for bad resource', async function () {
             const feedPath = '/rss.xml',
                 pingPath = '/feedupdated',

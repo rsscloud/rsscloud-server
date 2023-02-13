@@ -2,6 +2,7 @@
     "use strict";
 
     const appMessages = require('./app-messages'),
+        ErrorResponse = require('./error-response'),
         sprintf = require('sprintf-js').sprintf;
 
     function rest(req) {
@@ -16,7 +17,7 @@
             return params;
         } else {
             s = s.substr(0, s.length - 2);
-            throw new Error(sprintf(appMessages.error.subscription.missingParams, s));
+            throw new ErrorResponse(sprintf(appMessages.error.subscription.missingParams, s));
         }
     }
 
@@ -24,9 +25,9 @@
         let params = {};
 
         if (1 > rpcParams.length) {
-            throw new Error(sprintf(appMessages.error.rpc.notEnoughParams, 'ping'));
+            throw new ErrorResponse(sprintf(appMessages.error.rpc.notEnoughParams, 'ping'));
         } else if (1 < rpcParams.length) {
-            throw new Error(sprintf(appMessages.error.rpc.tooManyParams, 'ping'));
+            throw new ErrorResponse(sprintf(appMessages.error.rpc.tooManyParams, 'ping'));
         }
 
         params.url = rpcParams[0];

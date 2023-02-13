@@ -1,7 +1,8 @@
 (function () {
     "use strict";
 
-    const errorResult = require('../services/error-result'),
+    const ErrorResponse = require('../services/error-response'),
+        errorResult = require('../services/error-result'),
         express = require('express'),
         logEmitter = require('../services/log-emitter'),
         mongodb = require('../services/mongodb'),
@@ -47,7 +48,9 @@
     }
 
     function handleError(req, res, err) {
-        console.error(err);
+        if (!(err instanceof ErrorResponse)) {
+            console.error(err);
+        }
         processResponse(req, res, errorResult(err.message));
     }
 

@@ -2,6 +2,7 @@
     "use strict";
 
     const appMessages = require('./app-messages'),
+        ErrorResponse = require('./error-response'),
         sprintf = require('sprintf-js').sprintf;
 
     function validProtocol(protocol) {
@@ -11,7 +12,7 @@
         case 'xml-rpc':
             return true;
         default:
-            throw new Error(sprintf(appMessages.error.subscription.invalidProtocol, protocol));
+            throw new ErrorResponse(sprintf(appMessages.error.subscription.invalidProtocol, protocol));
         }
     }
 
@@ -98,7 +99,7 @@
             return params;
         } else {
             s = s.substr(0, s.length - 2);
-            throw new Error(sprintf(appMessages.error.subscription.missingParams, s));
+            throw new ErrorResponse(sprintf(appMessages.error.subscription.missingParams, s));
         }
     }
 
@@ -107,9 +108,9 @@
             parts = {};
 
         if (5 > rpcParams.length) {
-            throw new Error(sprintf(appMessages.error.rpc.notEnoughParams, 'pleaseNotify'));
+            throw new ErrorResponse(sprintf(appMessages.error.rpc.notEnoughParams, 'pleaseNotify'));
         } else if (6 < rpcParams.length) {
-            throw new Error(sprintf(appMessages.error.rpc.tooManyParams, 'pleaseNotify'));
+            throw new ErrorResponse(sprintf(appMessages.error.rpc.tooManyParams, 'pleaseNotify'));
         }
 
         if (validProtocol(rpcParams[3])) {

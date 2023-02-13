@@ -4,6 +4,7 @@
     const appMessage = require('./app-messages'),
         config = require('../config'),
         crypto = require('crypto'),
+        ErrorResponse = require('./error-response'),
         initResource = require('./init-resource'),
         logEvent = require('./log-event'),
         moment = require('moment'),
@@ -17,7 +18,7 @@
         if (0 < minsecs) {
             ctsecs = moment().diff(resource.whenLastCheck, 'seconds');
             if (ctsecs < minsecs) {
-                throw new Error(sprintf(appMessage.error.ping.tooRecent, minsecs, ctsecs));
+                throw new ErrorResponse(sprintf(appMessage.error.ping.tooRecent, minsecs, ctsecs));
             }
         }
     }
@@ -46,7 +47,7 @@
         resource.whenLastCheck = moment().utc().format();
 
         if (res.statusCode < 200 || res.statusCode > 299) {
-            throw new Error(sprintf(appMessage.error.ping.readResource, resourceUrl));
+            throw new ErrorResponse(sprintf(appMessage.error.ping.readResource, resourceUrl));
         }
 
         const hash = md5Hash(res.body);

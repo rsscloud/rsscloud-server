@@ -3,6 +3,7 @@
 
     const appMessages = require('./app-messages'),
         config = require('../config'),
+        ErrorResponse = require('./error-response'),
         initSubscription = require('./init-subscription'),
         logEvent = require('./log-event'),
         moment = require('moment'),
@@ -24,11 +25,11 @@
         })
             .then(res => {
                 if (res.statusCode < 200 || res.statusCode > 299) {
-                    throw new Error(sprintf(appMessages.error.subscription.readResource, resourceUrl));
+                    throw new ErrorResponse(sprintf(appMessages.error.subscription.readResource, resourceUrl));
                 }
             })
             .catch(() => {
-                throw new Error(sprintf(appMessages.error.subscription.readResource, resourceUrl));
+                throw new ErrorResponse(sprintf(appMessages.error.subscription.readResource, resourceUrl));
             });
     }
 
@@ -84,13 +85,13 @@
             );
         } catch (err) {
             console.dir(err);
-            throw new Error(appMessages.error.subscription.failedHandler);
+            throw new ErrorResponse(appMessages.error.subscription.failedHandler);
         }
     }
 
     async function pleaseNotify(notifyProcedure, apiurl, protocol, urlList, diffDomain) {
         if (0 === urlList.length) {
-            throw new Error(appMessages.error.subscription.noResources);
+            throw new ErrorResponse(appMessages.error.subscription.noResources);
         }
 
         let lastErr, resourceUrl;

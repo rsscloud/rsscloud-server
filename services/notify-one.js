@@ -3,6 +3,7 @@
 
     const builder = require('xmlbuilder'),
         config = require('../config'),
+        ErrorResponse = require('./error-response'),
         request = require('request-promise-native');
 
     async function notifyOneRest(apiurl, resourceUrl) {
@@ -17,7 +18,7 @@
         });
 
         if (res.statusCode < 200 || res.statusCode > 299) {
-            throw new Error('Notification Failed');
+            throw new ErrorResponse('Notification Failed');
         }
 
         return true;
@@ -47,7 +48,7 @@
         });
 
         if (res.statusCode < 200 || res.statusCode > 299) {
-            throw new Error('Notification Failed');
+            throw new ErrorResponse('Notification Failed');
         }
 
         return true;

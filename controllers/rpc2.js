@@ -2,6 +2,7 @@
     "use strict";
 
     const bodyParser = require('body-parser'),
+        ErrorResponse = require('../services/error-response'),
         express = require('express'),
         parseRpcRequest = require('../services/parse-rpc-request'),
         parseNotifyParams = require('../services/parse-notify-params'),
@@ -26,7 +27,9 @@
     }
 
     function handleError(req, res, err) {
-        console.error(err);
+        if (!(err instanceof ErrorResponse)) {
+            console.error(err);
+        }
         processResponse(req, res, rpcReturnFault(4, err.message));
     }
 
