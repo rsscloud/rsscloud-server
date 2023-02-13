@@ -93,7 +93,7 @@
     async function notifySubscribersIfDirty(resource, resourceUrl) {
         if (resource.flDirty) {
             resource.ctUpdates += 1;
-            resource.whenLastUpdate = moment();
+            resource.whenLastUpdate = moment().utc().format();
             return await notifySubscribers(resourceUrl);
         }
     }
