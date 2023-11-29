@@ -44,7 +44,7 @@
         }
 
         resource.ctChecks += 1;
-        resource.whenLastCheck = moment().utc().format();
+        resource.whenLastCheck = new Date(moment().utc().format());
 
         if (res.statusCode < 200 || res.statusCode > 299) {
             throw new ErrorResponse(sprintf(appMessage.error.ping.readResource, resourceUrl));
@@ -93,7 +93,7 @@
     async function notifySubscribersIfDirty(resource, resourceUrl) {
         if (resource.flDirty) {
             resource.ctUpdates += 1;
-            resource.whenLastUpdate = moment().utc().format();
+            resource.whenLastUpdate = new Date(moment().utc().format());
             return await notifySubscribers(resourceUrl);
         }
     }

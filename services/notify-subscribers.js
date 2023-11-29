@@ -42,7 +42,7 @@
 
             subscription.ctUpdates += 1;
             subscription.ctConsecutiveErrors = 0;
-            subscription.whenLastUpdate = moment().utc().format();
+            subscription.whenLastUpdate = new Date(moment().utc().format());
 
             await logEvent(
                 'Notify',
@@ -54,7 +54,7 @@
 
             subscription.ctErrors += 1;
             subscription.ctConsecutiveErrors += 1;
-            subscription.whenLastError = moment().utc().format();
+            subscription.whenLastError = new Date(moment().utc().format());
 
             await logEvent(
                 'NotifyFailed',

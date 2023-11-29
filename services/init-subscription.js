@@ -7,11 +7,11 @@
     function initSubscription(subscriptions, notifyProcedure, apiurl, protocol) {
         const defaultSubscription = {
                 ctUpdates: 0,
-                whenLastUpdate: moment.utc('0', 'x').format(),
+                whenLastUpdate: new Date(moment.utc('0', 'x').format()),
                 ctErrors: 0,
                 ctConsecutiveErrors: 0,
-                whenLastError: moment.utc('0', 'x').format(),
-                whenExpires: moment().utc().add(config.ctSecsResourceExpire, 'seconds').format(),
+                whenLastError: new Date(moment.utc('0', 'x').format()),
+                whenExpires: new Date(moment().utc().add(config.ctSecsResourceExpire, 'seconds').format()),
                 url: apiurl,
                 notifyProcedure,
                 protocol

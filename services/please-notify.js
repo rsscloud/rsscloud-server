@@ -73,7 +73,7 @@
 
             subscriptions.pleaseNotify[index].ctUpdates += 1;
             subscriptions.pleaseNotify[index].ctConsecutiveErrors = 0;
-            subscriptions.pleaseNotify[index].whenLastUpdate = moment().utc().format();
+            subscriptions.pleaseNotify[index].whenLastUpdate = new Date(moment().utc().format());
             subscriptions.pleaseNotify[index].whenExpires = moment().utc().add(config.ctSecsResourceExpire, 'seconds').format();
 
             await upsertSubscriptions(subscriptions);

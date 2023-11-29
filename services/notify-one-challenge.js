@@ -2,6 +2,7 @@
     "use strict";
 
     const config = require('../config'),
+        ErrorResponse = require('./error-response'),
         notifyOne = require('./notify-one'),
         getRandomPassword = require('./get-random-password'),
         querystring = require('querystring'),
@@ -14,13 +15,16 @@
                 'challenge': challenge
             }),
             res = await request({
+                method: 'GET',
+                followRedirect: true,
+                maxRedirects: 3,
                 uri: testUrl,
                 timeout: config.requestTimeout,
                 resolveWithFullResponse: true
             });
 
         if (res.statusCode < 200 || res.statusCode > 299 || res.body !== challenge) {
-            throw new Error('Notification Failed');
+            throw new ErrorResponse('Notification Failed');
         }
     }
 
