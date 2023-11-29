@@ -7,16 +7,31 @@
         request = require('request-promise-native');
 
     async function notifyOneRest(apiurl, resourceUrl) {
-        const res = await request({
-            method: 'POST',
-            followAllRedirect: true,
-            uri: apiurl,
-            timeout: config.requestTimeout,
-            form: {
-                'url': resourceUrl
-            },
-            resolveWithFullResponse: true
-        });
+        let res;
+
+        try {
+            res = await request({
+                method: 'POST',
+                uri: apiurl,
+                timeout: config.requestTimeout,
+                form: {
+                    'url': resourceUrl
+                },
+                resolveWithFullResponse: true
+            });
+        } catch (err) {
+            if (!err.response) {
+                throw err;
+            }
+
+            res = err.response;
+            if (res.statusCode >= 300 || res.statusCode < 400) {
+                if (res.headers.location) {
+                    const location = new URL(res.headers.location, apiurl);
+                    return notifyOneRest(location.toString(), resourceUrl);
+                }
+            }
+        }
 
         if (res.statusCode < 200 || res.statusCode > 299) {
             throw new ErrorResponse('Notification Failed');

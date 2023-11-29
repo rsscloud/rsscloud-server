@@ -5,6 +5,7 @@ const https = require('https'),
     textParser = bodyParser.text({ type: '*/xml'}),
     urlencodedParser = bodyParser.urlencoded({ extended: false }),
     parseRpcRequest = require('../services/parse-rpc-request'),
+    querystring = require('querystring'),
     MOCK_SERVER_DOMAIN = process.env.MOCK_SERVER_DOMAIN,
     MOCK_SERVER_PORT = process.env.MOCK_SERVER_PORT || 8002,
     MOCK_SERVER_URL = process.env.MOCK_SERVER_URL || `http://${MOCK_SERVER_DOMAIN}:${MOCK_SERVER_PORT}`,
@@ -19,9 +20,21 @@ async function restController(req, res) {
     if (this.routes[method] && this.routes[method][path]) {
         this.requests[method][path].push(req);
         let responseBody = this.routes[method][path].responseBody;
-        res
-            .status(this.routes[method][path].status)
-            .send(typeof responseBody === 'function' ? await responseBody(req) : responseBody);
+        if (300 <= this.routes[method][path].status && 400 > this.routes[method][path].status) {
+            let location = typeof responseBody === 'function' ? await responseBody(req) : responseBody;
+            if (0 < Object.keys(req.query).length) {
+                location += '?' + querystring.stringify(req.query);
+            }
+            res
+                .redirect(
+                    this.routes[method][path].status,
+                    location
+                );
+        } else {
+            res
+                .status(this.routes[method][path].status)
+                .send(typeof responseBody === 'function' ? await responseBody(req) : responseBody);
+        }
     } else {
         res
             .status(501)

@@ -16,11 +16,12 @@
             }),
             res = await request({
                 method: 'GET',
-                followAllRedirect: true,
                 uri: testUrl,
                 timeout: config.requestTimeout,
                 resolveWithFullResponse: true
             });
+
+        console.log(`GET ${testUrl}`);
 
         if (res.statusCode < 200 || res.statusCode > 299 || res.body !== challenge) {
             throw new ErrorResponse('Notification Failed');

@@ -61,7 +61,7 @@
 
         params.urlList = parseUrlList(req.body);
 
-        if (undefined === req.body.domain) {
+        if (null == req.body.domain || '' === req.body.domain) {
             parts.client = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
             params.diffDomain = false;
         } else {

@@ -33,7 +33,6 @@
         try {
             res = await request({
                 method: 'GET',
-                followAllRedirect: true,
                 uri: resourceUrl,
                 timeout: config.requestTimeout,
                 resolveWithFullResponse: true

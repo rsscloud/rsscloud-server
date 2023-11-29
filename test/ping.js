@@ -122,7 +122,7 @@ for (const pingProtocol of ['XML-RPC', 'REST']) {
             }
         });
 
-        it.only(`should ping multiple subscribers on same domain`, async function () {
+        it(`should ping multiple subscribers on same domain`, async function () {
             const feedPath = '/rss.xml',
                 pingPath1 = '/feedupdated1',
                 pingPath2 = '/feedupdated2'
