@@ -16,8 +16,7 @@
             }),
             res = await request({
                 method: 'GET',
-                followRedirect: true,
-                maxRedirects: 3,
+                followAllRedirect: true,
                 uri: testUrl,
                 timeout: config.requestTimeout,
                 resolveWithFullResponse: true

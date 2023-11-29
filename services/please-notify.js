@@ -17,10 +17,9 @@
     async function checkresourceUrlStatusCode(resourceUrl) {
         return request({
             method: 'GET',
+            followAllRedirect: true,
             uri: resourceUrl,
             timeout: config.requestTimeout,
-            followRedirect: true,
-            maxRedirects: 3,
             resolveWithFullResponse: true
         })
             .then(res => {

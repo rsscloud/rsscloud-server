@@ -9,8 +9,7 @@
     async function notifyOneRest(apiurl, resourceUrl) {
         const res = await request({
             method: 'POST',
-            followRedirect: true,
-            maxRedirects: 3,
+            followAllRedirect: true,
             uri: apiurl,
             timeout: config.requestTimeout,
             form: {
