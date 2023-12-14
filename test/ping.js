@@ -57,12 +57,10 @@ for (const pingProtocol of ['XML-RPC', 'REST']) {
 
     describe(`Ping ${pingProtocol} to ${protocol} returning ${returnFormat}`, function () {
         before(async function () {
-            await mongodb.before();
             await mock.before();
         });
 
         after(async function () {
-            await mongodb.after();
             await mock.after();
         });
 

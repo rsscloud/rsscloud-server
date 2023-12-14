@@ -9,7 +9,7 @@
     "import-data": "node ./bin/import-data.js",
     "jshint": "jshint ./**/*.js",
     "eslint": "eslint --fix controllers/ services/ test/",
-    "test": "mocha -R mocha-multi --reporter-options spec=-,xunit=xunit/test-results.xml --timeout 10000",
+    "test": "mocha",
     "test-api": "docker-compose up --build --abort-on-container-exit"
   },
   "engines": {

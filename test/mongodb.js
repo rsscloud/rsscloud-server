@@ -26,10 +26,11 @@ async function upsertSubscriptions(subscriptions) {
 module.exports = {
     addSubscription: async function (resourceUrl, notifyProcedure, apiurl, protocol) {
         const subscriptions = await fetchSubscriptions(resourceUrl);
+
         initSubscription(subscriptions, notifyProcedure, apiurl, protocol);
         await upsertSubscriptions(subscriptions);
 
-        const index = subscriptions.pleaseNotify.findIndex(subscription => {
+        let index = subscriptions.pleaseNotify.findIndex(subscription => {
             return subscription.url === apiurl;
         });
 
@@ -40,10 +41,10 @@ module.exports = {
         throw Error(`Cannot find ${apiurl} subscription`);
     },
     updateSubscription: async function (resourceUrl, subscription) {
-        const subscriptions = await fetchSubscriptions(resourceUrl);
-        const index = subscriptions.pleaseNotify.findIndex(match => {
-            return subscription.url === match.url;
-        });
+        const subscriptions = await fetchSubscriptions(resourceUrl),
+            index = subscriptions.pleaseNotify.findIndex(match => {
+                return subscription.url === match.url;
+            });
 
         if (-1 !== index) {
             subscriptions.pleaseNotify[index] = subscription;
@@ -51,14 +52,11 @@ module.exports = {
             return subscriptions.pleaseNotify[index];
         }
 
-        throw Error(`Cannot find ${apiurl} subscription`);
+        throw Error(`Cannot find ${subscription.url} subscription`);
     },
     before: async function () {
-        const db = await mongodb.connect('rsscloud', config.mongodbUri);
-
+        await mongodb.connect('rsscloud', config.mongodbUri);
         console.log(`    → MongoDB 'rsscloud' Database Connected`);
-
-        return db;
     },
     after: async function () {
         return mongodb.close('rsscloud');
