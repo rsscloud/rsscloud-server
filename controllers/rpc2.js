@@ -4,6 +4,8 @@
     const bodyParser = require('body-parser'),
         ErrorResponse = require('../services/error-response'),
         express = require('express'),
+        logEvent = require('../services/log-event'),
+        moment = require('moment'),
         parseRpcRequest = require('../services/parse-rpc-request'),
         parseNotifyParams = require('../services/parse-notify-params'),
         parsePingParams = require('../services/parse-ping-params'),
@@ -37,6 +39,12 @@
         let params;
         parseRpcRequest(req)
             .then(request => {
+                logEvent(
+                    'XmlRpc',
+                    request.methodName,
+                    moment().format('x')
+                );
+
                 switch (request.methodName) {
                 case 'rssCloud.hello':
                     processResponse(req, res, rpcReturnSuccess(true));

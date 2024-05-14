@@ -21,7 +21,7 @@
                 eventtype,
                 htmltext,
                 secs,
-                time: time.toISOString(),
+                time: new Date(time.utc().format()),
                 headers: JSON.stringify(req.headers)
             });
 
@@ -30,7 +30,7 @@
             'eventtype': eventtype,
             'htmltext': htmltext,
             'secs': secs,
-            'time': time.toISOString(),
+            'time': new Date(time.utc().format()),
             'headers': req.headers
         }));
     }
