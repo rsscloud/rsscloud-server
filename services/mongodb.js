@@ -1,54 +1,50 @@
-(function () {
-    "use strict";
+const { MongoClient } = require('mongodb'),
+    state = {};
 
-    const { MongoClient } = require('mongodb'),
-        state = {};
-
-    async function connect(name, uri) {
-        if (state[name]) {
-            return;
-        }
-
-        const client = await MongoClient.connect(uri, { useUnifiedTopology: true });
-
-        state[name] = client;
-
-        // console.log(`${name} Database Connected`);
-
-        return state[name].db();
+async function connect(name, uri) {
+    if (state[name]) {
+        return;
     }
 
-    function get(name) {
-        return state[name].db();
-    }
+    const client = await MongoClient.connect(uri, { useUnifiedTopology: true });
 
-    async function close(name) {
-        if (state[name]) {
-            return state[name].close()
-                .finally(() => {
-                    delete state[name];
-                });
-        }
-    }
+    state[name] = client;
 
-    async function closeAll() {
-        await Promise.all(Object.keys(state).map(name => close));
-    }
+    // console.log(`${name} Database Connected`);
 
-    function cleanup() {
-        closeAll()
+    return state[name].db();
+}
+
+function get(name) {
+    return state[name].db();
+}
+
+async function close(name) {
+    if (state[name]) {
+        return state[name].close()
             .finally(() => {
-                process.exit();
+                delete state[name];
             });
     }
+}
 
-    process.on('SIGINT', cleanup);
-    process.on('SIGTERM', cleanup);
+async function closeAll() {
+    await Promise.all(Object.keys(state).map(name => close));
+}
 
-    module.exports = {
-        connect,
-        get,
-        close,
-        closeAll
-    };
-}());
+function cleanup() {
+    closeAll()
+        .finally(() => {
+            process.exit();
+        });
+}
+
+process.on('SIGINT', cleanup);
+process.on('SIGTERM', cleanup);
+
+module.exports = {
+    connect,
+    get,
+    close,
+    closeAll
+};

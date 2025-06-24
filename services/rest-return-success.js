@@ -1,16 +1,12 @@
-(function () {
-    "use strict";
+const builder = require('xmlbuilder');
 
-    const builder = require('xmlbuilder');
+function restReturnSuccess(success, message, element) {
+    element = element || 'result';
 
-    function restReturnSuccess(success, message, element) {
-        element = element || 'result';
+    return builder.create(element)
+        .att('success', success ? 'true' : 'false')
+        .att('msg', message)
+        .end({'pretty': true});
+}
 
-        return builder.create(element)
-            .att('success', success ? 'true' : 'false')
-            .att('msg', message)
-            .end({'pretty': true});
-    }
-
-    module.exports = restReturnSuccess;
-}());
+module.exports = restReturnSuccess;
