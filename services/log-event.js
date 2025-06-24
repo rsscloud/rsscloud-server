@@ -1,11 +1,12 @@
-const logEmitter = require('./log-emitter'),
-    moment = require('moment'),
+const getDayjs = require('./dayjs-wrapper'),
+    logEmitter = require('./log-emitter'),
     mongodb = require('./mongodb');
 
 async function logEvent(eventtype, htmltext, startticks, req) {
+    const dayjs = await getDayjs();
     let secs, time;
 
-    time = moment();
+    time = dayjs();
     secs = (parseInt(time.format('x'), 10) - parseInt(startticks, 10)) / 1000;
 
     if (undefined === req) {

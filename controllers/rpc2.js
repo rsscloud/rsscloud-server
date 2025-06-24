@@ -2,8 +2,8 @@
 const bodyParser = require('body-parser'),
     ErrorResponse = require('../services/error-response'),
     express = require('express'),
+    getDayjs = require('../services/dayjs-wrapper'),
     logEvent = require('../services/log-event'),
-    moment = require('moment'),
     parseRpcRequest = require('../services/parse-rpc-request'),
     parseNotifyParams = require('../services/parse-notify-params'),
     parsePingParams = require('../services/parse-ping-params'),
@@ -33,14 +33,15 @@ function handleError(req, res, err) {
     processResponse(req, res, rpcReturnFault(4, err.message));
 }
 
-router.post('/', textParser, function(req, res) {
+router.post('/', textParser, async function(req, res) {
     let params;
+    const dayjs = await getDayjs();
     parseRpcRequest(req)
         .then(request => {
             logEvent(
                 'XmlRpc',
                 request.methodName,
-                moment().format('x')
+                dayjs().format('x')
             );
 
             switch (request.methodName) {

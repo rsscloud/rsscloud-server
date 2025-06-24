@@ -26,7 +26,7 @@ module.exports = {
     addSubscription: async function(resourceUrl, notifyProcedure, apiurl, protocol) {
         const subscriptions = await fetchSubscriptions(resourceUrl);
 
-        initSubscription(subscriptions, notifyProcedure, apiurl, protocol);
+        await initSubscription(subscriptions, notifyProcedure, apiurl, protocol);
         await upsertSubscriptions(subscriptions);
 
         let index = subscriptions.pleaseNotify.findIndex(subscription => {

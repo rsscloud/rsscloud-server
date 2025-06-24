@@ -1,9 +1,9 @@
 const appMessages = require('./app-messages'),
     config = require('../config'),
     ErrorResponse = require('./error-response'),
+    getDayjs = require('./dayjs-wrapper'),
     initSubscription = require('./init-subscription'),
     logEvent = require('./log-event'),
-    moment = require('moment'),
     mongodb = require('./mongodb'),
     notifyOne = require('./notify-one'),
     notifyOneChallenge = require('./notify-one-challenge'),
@@ -52,11 +52,12 @@ async function upsertSubscriptions(subscriptions) {
 }
 
 async function notifyApiUrl(notifyProcedure, apiurl, protocol, resourceUrl, diffDomain) {
+    const dayjs = await getDayjs();
     const subscriptions = await fetchSubscriptions(resourceUrl),
-        startticks = moment().format('x'),
+        startticks = dayjs().format('x'),
         parts = url.parse(apiurl);
 
-    initSubscription(subscriptions, notifyProcedure, apiurl, protocol);
+    await initSubscription(subscriptions, notifyProcedure, apiurl, protocol);
 
     try {
         if (diffDomain) {
@@ -71,8 +72,8 @@ async function notifyApiUrl(notifyProcedure, apiurl, protocol, resourceUrl, diff
 
         subscriptions.pleaseNotify[index].ctUpdates += 1;
         subscriptions.pleaseNotify[index].ctConsecutiveErrors = 0;
-        subscriptions.pleaseNotify[index].whenLastUpdate = new Date(moment().utc().format());
-        subscriptions.pleaseNotify[index].whenExpires = moment().utc().add(config.ctSecsResourceExpire, 'seconds').format();
+        subscriptions.pleaseNotify[index].whenLastUpdate = new Date(dayjs().utc().format());
+        subscriptions.pleaseNotify[index].whenExpires = dayjs().utc().add(config.ctSecsResourceExpire, 'seconds').format();
 
         await upsertSubscriptions(subscriptions);
 

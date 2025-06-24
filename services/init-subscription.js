@@ -1,14 +1,15 @@
 const config = require('../config'),
-    moment = require('moment');
+    getDayjs = require('./dayjs-wrapper');
 
-function initSubscription(subscriptions, notifyProcedure, apiurl, protocol) {
+async function initSubscription(subscriptions, notifyProcedure, apiurl, protocol) {
+    const dayjs = await getDayjs();
     const defaultSubscription = {
             ctUpdates: 0,
-            whenLastUpdate: new Date(moment.utc('0', 'x').format()),
+            whenLastUpdate: new Date(dayjs.utc('0', 'x').format()),
             ctErrors: 0,
             ctConsecutiveErrors: 0,
-            whenLastError: new Date(moment.utc('0', 'x').format()),
-            whenExpires: new Date(moment().utc().add(config.ctSecsResourceExpire, 'seconds').format()),
+            whenLastError: new Date(dayjs.utc('0', 'x').format()),
+            whenExpires: new Date(dayjs().utc().add(config.ctSecsResourceExpire, 'seconds').format()),
             url: apiurl,
             notifyProcedure,
             protocol

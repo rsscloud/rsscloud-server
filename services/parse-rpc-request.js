@@ -1,7 +1,7 @@
-const moment = require('moment'),
+const getDayjs = require('./dayjs-wrapper'),
     xml2js = require('xml2js');
 
-function parseRpcParam(param) {
+async function parseRpcParam(param, dayjs) {
     let returnedValue, tag, member, values;
 
     const value = param.value || param;
@@ -20,7 +20,7 @@ function parseRpcParam(param) {
             returnedValue = 'true' === value[tag] || !!Number(value[tag]);
             break;
         case 'dateTime.iso8601':
-            returnedValue = moment.utc(value[tag], ['YYYYMMDDTHHmmss', moment.ISO_8601]);
+            returnedValue = dayjs.utc(value[tag], ['YYYYMMDDTHHmmss', dayjs.ISO_8601]);
             break;
         case 'base64':
             returnedValue = Buffer.from(value[tag], 'base64').toString('utf8');
@@ -30,17 +30,20 @@ function parseRpcParam(param) {
             if (!Array.isArray(member)) {
                 member = [member];
             }
-            returnedValue = member.reduce((acc, item) => {
-                acc[item.name] = parseRpcParam(item);
-                return acc;
-            }, {});
+            returnedValue = {};
+            for (const item of member) {
+                returnedValue[item.name] = await parseRpcParam(item, dayjs);
+            }
             break;
         case 'array':
             values = (value[tag].data || {}).value || [];
             if (!Array.isArray(values)) {
                 values = [values];
             }
-            returnedValue = values.map(parseRpcParam);
+            returnedValue = [];
+            for (const item of values) {
+                returnedValue.push(await parseRpcParam(item, dayjs));
+            }
             break;
         }
     }
@@ -53,6 +56,7 @@ function parseRpcParam(param) {
 }
 
 async function parseRpcRequest(req) {
+    const dayjs = await getDayjs();
     const parser = new xml2js.Parser({ explicitArray: false }),
         jstruct = await parser.parseStringPromise(req.body),
         methodCall = jstruct.methodCall,
@@ -67,9 +71,15 @@ async function parseRpcRequest(req) {
         throw new Error('Bad XML-RPC call, missing "methodName" element.');
     }
 
+    const parsedParams = [];
+    const paramArray = Array.isArray(params) ? params : [params];
+    for (const param of paramArray) {
+        parsedParams.push(await parseRpcParam(param, dayjs));
+    }
+
     return {
         methodName,
-        params: (Array.isArray(params) ? params : [params]).map(parseRpcParam)
+        params: parsedParams
     };
 }
 
