@@ -7,25 +7,28 @@ const appMessages = require('./app-messages'),
     mongodb = require('./mongodb'),
     notifyOne = require('./notify-one'),
     notifyOneChallenge = require('./notify-one-challenge'),
-    request = require('request-promise-native'),
     sprintf = require('sprintf-js').sprintf,
     url = require('url');
 
 async function checkresourceUrlStatusCode(resourceUrl) {
-    return request({
-        method: 'GET',
-        uri: resourceUrl,
-        timeout: config.requestTimeout,
-        resolveWithFullResponse: true
-    })
-        .then(res => {
-            if (res.statusCode < 200 || res.statusCode > 299) {
-                throw new ErrorResponse(sprintf(appMessages.error.subscription.readResource, resourceUrl));
-            }
-        })
-        .catch(() => {
-            throw new ErrorResponse(sprintf(appMessages.error.subscription.readResource, resourceUrl));
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), config.requestTimeout);
+
+    try {
+        const res = await fetch(resourceUrl, {
+            method: 'GET',
+            signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
+
+        if (res.status < 200 || res.status > 299) {
+            throw new ErrorResponse(sprintf(appMessages.error.subscription.readResource, resourceUrl));
+        }
+    } catch {
+        clearTimeout(timeoutId);
+        throw new ErrorResponse(sprintf(appMessages.error.subscription.readResource, resourceUrl));
+    }
 }
 
 async function fetchSubscriptions(resourceUrl) {
