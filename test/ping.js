@@ -1,13 +1,13 @@
-const chai = require("chai"),
-    chaiHttp = require("chai-http"),
-    chaiXml = require("chai-xml"),
+const chai = require('chai'),
+    chaiHttp = require('chai-http'),
+    chaiXml = require('chai-xml'),
     config = require('../config'),
     expect = chai.expect,
-    SERVER_URL = process.env.APP_URL || "http://localhost:5337",
-    mock = require("./mock"),
+    SERVER_URL = process.env.APP_URL || 'http://localhost:5337',
+    mock = require('./mock'),
     moment = require('moment'),
-    mongodb = require("./mongodb"),
-    xmlrpc = require("davexmlrpc"),
+    mongodb = require('./mongodb'),
+    xmlrpc = require('davexmlrpc'),
     rpcReturnSuccess = require('../services/rpc-return-success'),
     rpcReturnFault = require('../services/rpc-return-fault');
 
@@ -25,13 +25,13 @@ function ping(pingProtocol, resourceUrl, returnFormat) {
 
         return chai
             .request(SERVER_URL)
-            .post("/RPC2")
+            .post('/RPC2')
             .set('content-type', 'text/xml')
             .send(rpctext);
     } else {
         let req = chai
             .request(SERVER_URL)
-            .post("/ping")
+            .post('/ping')
             .set('content-type', 'application/x-www-form-urlencoded');
 
         if ('JSON' === returnFormat) {
@@ -55,26 +55,26 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                 continue;
             }
 
-            describe(`Ping ${pingProtocol} to ${protocol} returning ${returnFormat}`, function () {
-                before(async function () {
+            describe(`Ping ${pingProtocol} to ${protocol} returning ${returnFormat}`, function() {
+                before(async function() {
                     await mock.before();
                 });
 
-                after(async function () {
+                after(async function() {
                     await mock.after();
                 });
 
-                beforeEach(async function () {
+                beforeEach(async function() {
                     await mongodb.beforeEach();
                     await mock.beforeEach();
                 });
 
-                afterEach(async function () {
+                afterEach(async function() {
                     await mongodb.afterEach();
                     await mock.afterEach();
                 });
 
-                it(`should accept a ping for new resource`, async function () {
+                it('should accept a ping for new resource', async function() {
                     const feedPath = '/rss.xml',
                         pingPath = '/feedupdated',
                         resourceUrl = mock.serverUrl + feedPath;
@@ -120,11 +120,11 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
                 });
 
-                it(`should ping multiple subscribers on same domain`, async function () {
+                it('should ping multiple subscribers on same domain', async function() {
                     const feedPath = '/rss.xml',
                         pingPath1 = '/feedupdated1',
-                        pingPath2 = '/feedupdated2';
-                    resourceUrl = mock.serverUrl + feedPath;
+                        pingPath2 = '/feedupdated2',
+                        resourceUrl = mock.serverUrl + feedPath;
 
                     let apiurl1 = ('http-post' === protocol ? mock.serverUrl : mock.secureServerUrl) + pingPath1,
                         apiurl2 = ('http-post' === protocol ? mock.serverUrl : mock.secureServerUrl) + pingPath2,
@@ -176,7 +176,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     expect(mock.requests.POST[pingPath2][0].body.url).equal(resourceUrl);
                 });
 
-                it('should reject a ping for bad resource', async function () {
+                it('should reject a ping for bad resource', async function() {
                     const feedPath = '/rss.xml',
                         pingPath = '/feedupdated',
                         resourceUrl = mock.serverUrl + feedPath;
@@ -217,16 +217,14 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
                 });
 
-                it('should reject a ping with a missing url', async function () {
+                it('should reject a ping with a missing url', async function() {
                     const feedPath = '/rss.xml',
                         pingPath = '/feedupdated',
                         resourceUrl = null;
 
-                    let apiurl = ('http-post' === protocol ? mock.serverUrl : mock.secureServerUrl) + pingPath,
-                        notifyProcedure = false;
+                    let notifyProcedure = false;
 
                     if ('xml-rpc' === protocol) {
-                        apiurl = mock.serverUrl + '/RPC2';
                         notifyProcedure = 'river.feedUpdated';
                     }
 
@@ -242,9 +240,9 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                         expect(res.text).xml.equal(rpcReturnFault(4, 'Can\'t call "ping" because there aren\'t enough parameters.'));
                     } else {
                         if ('JSON' === returnFormat) {
-                            expect(res.body).deep.equal({ success: false, msg: `The following parameters were missing from the request body: url.` });
+                            expect(res.body).deep.equal({ success: false, msg: 'The following parameters were missing from the request body: url.' });
                         } else {
-                            expect(res.text).xml.equal(`<result success="false" msg="The following parameters were missing from the request body: url."/>`);
+                            expect(res.text).xml.equal('<result success="false" msg="The following parameters were missing from the request body: url."/>');
                         }
                     }
 
@@ -257,7 +255,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
                 });
 
-                it('should accept a ping for unchanged resource', async function () {
+                it('should accept a ping for unchanged resource', async function() {
                     const feedPath = '/rss.xml',
                         pingPath = '/feedupdated',
                         resourceUrl = mock.serverUrl + feedPath;
@@ -312,7 +310,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
                 });
 
-                it(`should accept a ping with slow subscribers`, async function () {
+                it('should accept a ping with slow subscribers', async function() {
                     this.timeout(5000);
 
                     const feedPath = '/rss.xml',
@@ -327,9 +325,9 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                         notifyProcedure = 'river.feedUpdated';
                     }
 
-                    function slowPostResponse(req) {
-                        return new Promise(function (resolve) {
-                            setTimeout(function () {
+                    function slowPostResponse(_req) {
+                        return new Promise(function(resolve) {
+                            global.setTimeout(function() {
                                 resolve('Thanks for the update! :-)');
                             }, 1000);
                         });
@@ -376,7 +374,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
                 });
 
-                it(`should not notify expired subscribers`, async function () {
+                it('should not notify expired subscribers', async function() {
                     const feedPath = '/rss.xml',
                         pingPath = '/feedupdated',
                         resourceUrl = mock.serverUrl + feedPath;
@@ -419,7 +417,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
                 });
 
-                it(`should not notify subscribers with excessive errors`, async function () {
+                it('should not notify subscribers with excessive errors', async function() {
                     const feedPath = '/rss.xml',
                         pingPath = '/feedupdated',
                         resourceUrl = mock.serverUrl + feedPath;
@@ -462,7 +460,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
                 });
 
-                it(`should consider a very slow subscription an error`, async function () {
+                it('should consider a very slow subscription an error', async function() {
                     const feedPath = '/rss.xml',
                         pingPath = '/feedupdated',
                         resourceUrl = mock.serverUrl + feedPath;
@@ -475,17 +473,17 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                         notifyProcedure = 'river.feedUpdated';
                     }
 
-                    function slowRestResponse(req) {
+                    function slowRestResponse(_req) {
                         return new Promise((resolve) => {
-                            setTimeout(() => {
+                            global.setTimeout(() => {
                                 resolve('Thanks for the update! :-)');
                             }, 8000);
                         });
                     }
 
-                    function slowRpcResponse(req) {
+                    function slowRpcResponse(_req) {
                         return new Promise((resolve) => {
-                            setTimeout(() => {
+                            global.setTimeout(() => {
                                 resolve(rpcReturnSuccess(true));
                             }, 8000);
                         });

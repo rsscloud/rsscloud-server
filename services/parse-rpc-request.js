@@ -19,13 +19,13 @@ function parseRpcParam(param) {
         case 'boolean':
             returnedValue = 'true' === value[tag] || !!Number(value[tag]);
             break;
-        case "dateTime.iso8601":
+        case 'dateTime.iso8601':
             returnedValue = moment.utc(value[tag], ['YYYYMMDDTHHmmss', moment.ISO_8601]);
             break;
-        case "base64":
-            returnedValue = Buffer.from(value[tag], "base64").toString('utf8');
+        case 'base64':
+            returnedValue = Buffer.from(value[tag], 'base64').toString('utf8');
             break;
-        case "struct":
+        case 'struct':
             member = value[tag].member || [];
             if (!Array.isArray(member)) {
                 member = [member];

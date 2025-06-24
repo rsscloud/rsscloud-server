@@ -1,11 +1,11 @@
-const chai = require("chai"),
-    chaiHttp = require("chai-http"),
-    chaiXml = require("chai-xml"),
+const chai = require('chai'),
+    chaiHttp = require('chai-http'),
+    chaiXml = require('chai-xml'),
     expect = chai.expect,
-    SERVER_URL = process.env.APP_URL || "http://localhost:5337",
-    mock = require("./mock"),
-    mongodb = require("./mongodb"),
-    xmlrpc = require("davexmlrpc"),
+    SERVER_URL = process.env.APP_URL || 'http://localhost:5337',
+    mock = require('./mock'),
+    mongodb = require('./mongodb'),
+    xmlrpc = require('davexmlrpc'),
     rpcReturnSuccess = require('../services/rpc-return-success'),
     rpcReturnFault = require('../services/rpc-return-fault');
 
@@ -18,13 +18,13 @@ function pleaseNotify(pingProtocol, body, returnFormat) {
 
         return chai
             .request(SERVER_URL)
-            .post("/RPC2")
+            .post('/RPC2')
             .set('content-type', 'text/xml')
             .send(rpctext);
     } else {
         let req = chai
             .request(SERVER_URL)
-            .post("/pleaseNotify")
+            .post('/pleaseNotify')
             .set('content-type', 'application/x-www-form-urlencoded');
 
         if ('JSON' === returnFormat) {
@@ -44,29 +44,29 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                 continue;
             }
 
-            describe(`PleaseNotify ${pingProtocol} to ${protocol} returning ${returnFormat}`, function () {
+            describe(`PleaseNotify ${pingProtocol} to ${protocol} returning ${returnFormat}`, function() {
 
-                before(async function () {
+                before(async function() {
                     await mongodb.before();
                     await mock.before();
                 });
 
-                after(async function () {
+                after(async function() {
                     await mongodb.after();
                     await mock.after();
                 });
 
-                beforeEach(async function () {
+                beforeEach(async function() {
                     await mongodb.beforeEach();
                     await mock.beforeEach();
                 });
 
-                afterEach(async function () {
+                afterEach(async function() {
                     await mongodb.afterEach();
                     await mock.afterEach();
                 });
 
-                it('should accept a pleaseNotify for new resource', async function () {
+                it('should accept a pleaseNotify for new resource', async function() {
                     const feedPath = '/rss.xml',
                         resourceUrl = mock.serverUrl + feedPath;
 
@@ -112,7 +112,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                         expect(res.text).xml.equal(rpcReturnSuccess(true));
                     } else {
                         if ('JSON' === returnFormat) {
-                            expect(res.body).deep.equal({ success: true, msg: `Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!` });
+                            expect(res.body).deep.equal({ success: true, msg: 'Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!' });
                         } else {
                             expect(res.text).xml.equal('<notifyResult success="true" msg="Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!"/>');
                         }
@@ -129,7 +129,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
                 });
 
-                it('should accept a pleaseNotify without domain for new resource', async function () {
+                it('should accept a pleaseNotify without domain for new resource', async function() {
                     const feedPath = '/rss.xml',
                         resourceUrl = mock.serverUrl + feedPath;
 
@@ -171,7 +171,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                         expect(res.text).xml.equal(rpcReturnSuccess(true));
                     } else {
                         if ('JSON' === returnFormat) {
-                            expect(res.body).deep.equal({ success: true, msg: `Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!` });
+                            expect(res.body).deep.equal({ success: true, msg: 'Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!' });
                         } else {
                             expect(res.text).xml.equal('<notifyResult success="true" msg="Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!"/>');
                         }
@@ -188,7 +188,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
                 });
 
-                it('should reject a pleaseNotify for bad resource', async function () {
+                it('should reject a pleaseNotify for bad resource', async function() {
                     const feedPath = '/rss.xml',
                         resourceUrl = mock.serverUrl + feedPath;
 
@@ -252,29 +252,29 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                 continue;
             }
 
-            describe(`PleaseNotify ${pingProtocol} to ${protocol} via redirect returning ${returnFormat}`, function () {
+            describe(`PleaseNotify ${pingProtocol} to ${protocol} via redirect returning ${returnFormat}`, function() {
 
-                before(async function () {
+                before(async function() {
                     await mongodb.before();
                     await mock.before();
                 });
 
-                after(async function () {
+                after(async function() {
                     await mongodb.after();
                     await mock.after();
                 });
 
-                beforeEach(async function () {
+                beforeEach(async function() {
                     await mongodb.beforeEach();
                     await mock.beforeEach();
                 });
 
-                afterEach(async function () {
+                afterEach(async function() {
                     await mongodb.afterEach();
                     await mock.afterEach();
                 });
 
-                it('should accept a pleaseNotify for a redirected subscriber', async function () {
+                it('should accept a pleaseNotify for a redirected subscriber', async function() {
                     const feedPath = '/rss.xml',
                         resourceUrl = mock.serverUrl + feedPath;
 
@@ -303,7 +303,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
 
                     mock.route('GET', feedPath, 200, '<RSS Feed />');
-                    mock.route('GET', redirPath, 302, (req) => {
+                    mock.route('GET', redirPath, 302, (_req) => {
                         return pingPath;
                     });
                     mock.route('GET', pingPath, 200, (req) => {
@@ -319,7 +319,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                         expect(res.text).xml.equal(rpcReturnSuccess(true));
                     } else {
                         if ('JSON' === returnFormat) {
-                            expect(res.body).deep.equal({ success: true, msg: `Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!` });
+                            expect(res.body).deep.equal({ success: true, msg: 'Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!' });
                         } else {
                             expect(res.text).xml.equal('<notifyResult success="true" msg="Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!"/>');
                         }
@@ -329,14 +329,13 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     expect(mock.requests.GET).property(pingPath).lengthOf(1, `Missing GET ${pingPath}`);
                 });
 
-                it('should accept a pleaseNotify without domain for a redirected subscriber', async function () {
+                it('should accept a pleaseNotify without domain for a redirected subscriber', async function() {
                     const feedPath = '/rss.xml',
                         resourceUrl = mock.serverUrl + feedPath;
 
                     let pingPath = '/feedupdated',
                         redirPath = '/redirect',
                         notifyProcedure = false,
-
 
                         body = {
                             port: 'https-post' === protocol ? mock.secureServerPort : mock.serverPort,
@@ -357,7 +356,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
 
                     mock.route('GET', feedPath, 200, '<RSS Feed />');
-                    mock.route('POST', redirPath, 302, (req) => {
+                    mock.route('POST', redirPath, 302, (_req) => {
                         return pingPath;
                     });
                     mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
@@ -371,7 +370,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                         expect(res.text).xml.equal(rpcReturnSuccess(true));
                     } else {
                         if ('JSON' === returnFormat) {
-                            expect(res.body).deep.equal({ success: true, msg: `Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!` });
+                            expect(res.body).deep.equal({ success: true, msg: 'Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!' });
                         } else {
                             expect(res.text).xml.equal('<notifyResult success="true" msg="Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!"/>');
                         }

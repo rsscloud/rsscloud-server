@@ -33,7 +33,7 @@ function handleError(req, res, err) {
     processResponse(req, res, rpcReturnFault(4, err.message));
 }
 
-router.post('/', textParser, function (req, res) {
+router.post('/', textParser, function(req, res) {
     let params;
     parseRpcRequest(req)
         .then(request => {
@@ -69,7 +69,7 @@ router.post('/', textParser, function (req, res) {
                     // Dave's rssCloud server always returns true whether it succeeded or not
                     ping(params.url)
                         .then(result => processResponse(req, res, rpcReturnSuccess(result.success)))
-                        .catch(err => processResponse(req, res, rpcReturnSuccess(true)));
+                        .catch(_err => processResponse(req, res, rpcReturnSuccess(true)));
                 } catch (err) {
                     handleError(req, res, err);
                 }

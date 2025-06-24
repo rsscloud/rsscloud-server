@@ -34,7 +34,7 @@ async function checkForResourceChange(resource, resourceUrl, startticks) {
             timeout: config.requestTimeout,
             resolveWithFullResponse: true
         });
-    } catch (err) {
+    } catch {
         res = { statusCode: 404 };
     }
 

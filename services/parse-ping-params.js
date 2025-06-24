@@ -3,8 +3,8 @@ const appMessages = require('./app-messages'),
     sprintf = require('sprintf-js').sprintf;
 
 function rest(req) {
-    var s = '',
-        params = {};
+    let s = '';
+    const params = {};
 
     if (undefined === req.body.url) {
         s += 'url, ';

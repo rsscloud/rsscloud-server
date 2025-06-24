@@ -1,6 +1,5 @@
-const config = require("../config"),
+const config = require('../config'),
     initSubscription = require('../services/init-subscription'),
-    moment = require('moment'),
     mongodb = require('../services/mongodb');
 
 async function fetchSubscriptions(resourceUrl) {
@@ -24,7 +23,7 @@ async function upsertSubscriptions(subscriptions) {
 }
 
 module.exports = {
-    addSubscription: async function (resourceUrl, notifyProcedure, apiurl, protocol) {
+    addSubscription: async function(resourceUrl, notifyProcedure, apiurl, protocol) {
         const subscriptions = await fetchSubscriptions(resourceUrl);
 
         initSubscription(subscriptions, notifyProcedure, apiurl, protocol);
@@ -40,7 +39,7 @@ module.exports = {
 
         throw Error(`Cannot find ${apiurl} subscription`);
     },
-    updateSubscription: async function (resourceUrl, subscription) {
+    updateSubscription: async function(resourceUrl, subscription) {
         const subscriptions = await fetchSubscriptions(resourceUrl),
             index = subscriptions.pleaseNotify.findIndex(match => {
                 return subscription.url === match.url;
@@ -54,19 +53,19 @@ module.exports = {
 
         throw Error(`Cannot find ${subscription.url} subscription`);
     },
-    before: async function () {
+    before: async function() {
         await mongodb.connect('rsscloud', config.mongodbUri);
-        console.log(`    → MongoDB 'rsscloud' Database Connected`);
+        console.log('    → MongoDB \'rsscloud\' Database Connected');
     },
-    after: async function () {
+    after: async function() {
         return mongodb.close('rsscloud');
     },
-    beforeEach: async function () {
+    beforeEach: async function() {
         await mongodb.get('rsscloud').createCollection('events');
         await mongodb.get('rsscloud').createCollection('resources');
         await mongodb.get('rsscloud').createCollection('subscriptions');
     },
-    afterEach: async function () {
+    afterEach: async function() {
         await mongodb.get('rsscloud').collection('events').drop();
         await mongodb.get('rsscloud').collection('resources').drop();
         await mongodb.get('rsscloud').collection('subscriptions').drop();
