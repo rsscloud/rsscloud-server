@@ -58,7 +58,7 @@ async function rpcController(req, res) {
                 .status(501)
                 .send(rpcReturnFault(1, `Unknown methodName ${method}`));
         }
-    } catch(err) {
+    } catch (err) {
         res
             .status(500)
             .send(rpcReturnFault(1, err.message));

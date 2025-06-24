@@ -13,7 +13,7 @@
     "test-api": "docker-compose up --build --abort-on-container-exit"
   },
   "engines": {
-    "node": ">=10.6.0"
+    "node": ">=22"
   },
   "author": "Andrew Shell <andrew@andrewshell.org>",
   "license": "MIT",
