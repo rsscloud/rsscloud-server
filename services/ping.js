@@ -7,7 +7,6 @@ const appMessage = require('./app-messages'),
     moment = require('moment'),
     mongodb = require('./mongodb'),
     notifySubscribers = require('./notify-subscribers'),
-    request = require('request-promise-native'),
     sprintf = require('sprintf-js').sprintf;
 
 function checkPingFrequency(resource) {
@@ -26,37 +25,46 @@ function md5Hash(value) {
 
 async function checkForResourceChange(resource, resourceUrl, startticks) {
     let res;
+    let body = '';
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), config.requestTimeout);
 
     try {
-        res = await request({
+        res = await fetch(resourceUrl, {
             method: 'GET',
-            uri: resourceUrl,
-            timeout: config.requestTimeout,
-            resolveWithFullResponse: true
+            signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
+
+        if (res.status >= 200 && res.status <= 299) {
+            body = await res.text();
+        }
     } catch {
-        res = { statusCode: 404 };
+        clearTimeout(timeoutId);
+        res = { status: 404 };
     }
 
     resource.ctChecks += 1;
     resource.whenLastCheck = new Date(moment().utc().format());
 
-    if (res.statusCode < 200 || res.statusCode > 299) {
+    if (res.status < 200 || res.status > 299) {
         throw new ErrorResponse(sprintf(appMessage.error.ping.readResource, resourceUrl));
     }
 
-    const hash = md5Hash(res.body);
+    const hash = md5Hash(body);
 
     if (resource.lastHash !== hash) {
         resource.flDirty = true;
-    } else if (resource.lastSize !== res.body.length) {
+    } else if (resource.lastSize !== body.length) {
         resource.flDirty = true;
     } else {
         resource.flDirty = false;
     }
 
     resource.lastHash = hash;
-    resource.lastSize = res.body.length;
+    resource.lastSize = body.length;
 
     await logEvent(
         'Ping',
