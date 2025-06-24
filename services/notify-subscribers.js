@@ -1,7 +1,7 @@
 const appMessages = require('./app-messages'),
     config = require('../config'),
+    getDayjs = require('./dayjs-wrapper'),
     logEvent = require('./log-event'),
-    moment = require('moment'),
     mongodb = require('./mongodb'),
     notifyOne = require('./notify-one'),
     sprintf = require('sprintf-js').sprintf,
@@ -28,8 +28,9 @@ async function upsertSubscriptions(subscriptions) {
 }
 
 async function notifyOneSubscriber(resourceUrl, subscription) {
+    const dayjs = await getDayjs();
     const apiurl = subscription.url,
-        startticks = moment().format('x'),
+        startticks = dayjs().format('x'),
         parts = url.parse(apiurl),
         notifyProcedure = subscription.notifyProcedure,
         protocol = subscription.protocol;
@@ -39,7 +40,7 @@ async function notifyOneSubscriber(resourceUrl, subscription) {
 
         subscription.ctUpdates += 1;
         subscription.ctConsecutiveErrors = 0;
-        subscription.whenLastUpdate = new Date(moment().utc().format());
+        subscription.whenLastUpdate = new Date(dayjs().utc().format());
 
         await logEvent(
             'Notify',
@@ -51,7 +52,7 @@ async function notifyOneSubscriber(resourceUrl, subscription) {
 
         subscription.ctErrors += 1;
         subscription.ctConsecutiveErrors += 1;
-        subscription.whenLastError = new Date(moment().utc().format());
+        subscription.whenLastError = new Date(dayjs().utc().format());
 
         await logEvent(
             'NotifyFailed',
@@ -61,8 +62,9 @@ async function notifyOneSubscriber(resourceUrl, subscription) {
     }
 }
 
-function filterSubscribers(subscription) {
-    if (moment().isAfter(subscription.whenExpires)) {
+async function filterSubscribers(subscription) {
+    const dayjs = await getDayjs();
+    if (dayjs().isAfter(subscription.whenExpires)) {
         return false;
     }
 
@@ -76,7 +78,14 @@ function filterSubscribers(subscription) {
 async function notifySubscribers(resourceUrl) {
     const subscriptions = await fetchSubscriptions(resourceUrl);
 
-    await Promise.all(subscriptions.pleaseNotify.filter(filterSubscribers).map(notifyOneSubscriber.bind(null, resourceUrl)));
+    const validSubscriptions = [];
+    for (const subscription of subscriptions.pleaseNotify) {
+        if (await filterSubscribers(subscription)) {
+            validSubscriptions.push(subscription);
+        }
+    }
+
+    await Promise.all(validSubscriptions.map(notifyOneSubscriber.bind(null, resourceUrl)));
 
     console.log('upserting subscriptions');
 

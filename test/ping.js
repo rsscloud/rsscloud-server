@@ -3,9 +3,9 @@ const chai = require('chai'),
     chaiXml = require('chai-xml'),
     config = require('../config'),
     expect = chai.expect,
+    getDayjs = require('../services/dayjs-wrapper'),
     SERVER_URL = process.env.APP_URL || 'http://localhost:5337',
     mock = require('./mock'),
-    moment = require('moment'),
     mongodb = require('./mongodb'),
     xmlrpc = require('davexmlrpc'),
     rpcReturnSuccess = require('../services/rpc-return-success'),
@@ -390,8 +390,9 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     mock.route('GET', feedPath, 200, '<RSS Feed />');
                     mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
                     mock.rpc(notifyProcedure, rpcReturnSuccess(true));
+                    const dayjs = await getDayjs();
                     const subscription = await mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
-                    subscription.whenExpires = moment().utc().subtract(config.ctSecsResourceExpire * 2, 'seconds').format();
+                    subscription.whenExpires = dayjs().utc().subtract(config.ctSecsResourceExpire * 2, 'seconds').format();
                     await mongodb.updateSubscription(resourceUrl, subscription);
 
                     let res = await ping(pingProtocol, resourceUrl, returnFormat);

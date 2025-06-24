@@ -1,21 +1,22 @@
 // TODO: Rewrite for mongodb
 
-const moment = require('moment');
+const getDayjs = require('./dayjs-wrapper');
 
-function checkSubscription(data, resourceUrl, apiurl) {
+async function checkSubscription(data, resourceUrl, apiurl) {
+    const dayjs = await getDayjs();
     const subscription = data.subscriptions[resourceUrl][apiurl];
-    if (moment(subscription.whenExpires).isBefore(moment())) {
+    if (dayjs(subscription.whenExpires).isBefore(dayjs())) {
         delete data.subscriptions[resourceUrl][apiurl];
     } else if (subscription.ctConsecutiveErrors > data.prefs.maxConsecutiveErrors) {
         delete data.subscriptions[resourceUrl][apiurl];
     }
 }
 
-function scanApiUrls(data, resourceUrl) {
+async function scanApiUrls(data, resourceUrl) {
     const subscriptions = data.subscriptions[resourceUrl];
     for (const apiurl in subscriptions) {
         if (Object.prototype.hasOwnProperty.call(subscriptions, apiurl)) {
-            checkSubscription(data, resourceUrl, apiurl);
+            await checkSubscription(data, resourceUrl, apiurl);
         }
     }
     if (0 === subscriptions.length) {
@@ -23,16 +24,16 @@ function scanApiUrls(data, resourceUrl) {
     }
 }
 
-function scanResources(data) {
+async function scanResources(data) {
     for (const resourceUrl in data.subscriptions) {
         if (Object.prototype.hasOwnProperty.call(data.subscriptions, resourceUrl)) {
-            scanApiUrls(data, resourceUrl);
+            await scanApiUrls(data, resourceUrl);
         }
     }
 }
 
-function removeExpiredSubscriptions(data) {
-    scanResources(data);
+async function removeExpiredSubscriptions(data) {
+    await scanResources(data);
 }
 
 module.exports = removeExpiredSubscriptions;

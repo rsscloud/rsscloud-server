@@ -27,7 +27,7 @@
     "express-handlebars": "^5.3.3",
     "express-ws": "^5.0.2",
     "markdown-it": "^14.1.0",
-    "moment": "^2.30.1",
+    "dayjs": "^1.11.13",
     "mongodb": "6.17.0",
     "morgan": "^1.10.0",
     "nconf": "^0.13.0",

@@ -2,17 +2,18 @@ const appMessage = require('./app-messages'),
     config = require('../config'),
     crypto = require('crypto'),
     ErrorResponse = require('./error-response'),
+    getDayjs = require('./dayjs-wrapper'),
     initResource = require('./init-resource'),
     logEvent = require('./log-event'),
-    moment = require('moment'),
     mongodb = require('./mongodb'),
     notifySubscribers = require('./notify-subscribers'),
     sprintf = require('sprintf-js').sprintf;
 
-function checkPingFrequency(resource) {
+async function checkPingFrequency(resource) {
     let ctsecs, minsecs = config.minSecsBetweenPings;
     if (0 < minsecs) {
-        ctsecs = moment().diff(resource.whenLastCheck, 'seconds');
+        const dayjs = await getDayjs();
+        ctsecs = dayjs().diff(resource.whenLastCheck, 'seconds');
         if (ctsecs < minsecs) {
             throw new ErrorResponse(sprintf(appMessage.error.ping.tooRecent, minsecs, ctsecs));
         }
@@ -46,8 +47,9 @@ async function checkForResourceChange(resource, resourceUrl, startticks) {
         res = { status: 404 };
     }
 
+    const dayjs = await getDayjs();
     resource.ctChecks += 1;
-    resource.whenLastCheck = new Date(moment().utc().format());
+    resource.whenLastCheck = new Date(dayjs().utc().format());
 
     if (res.status < 200 || res.status > 299) {
         throw new ErrorResponse(sprintf(appMessage.error.ping.readResource, resourceUrl));
@@ -95,19 +97,21 @@ async function upsertResource(resource) {
 
 async function notifySubscribersIfDirty(resource, resourceUrl) {
     if (resource.flDirty) {
+        const dayjs = await getDayjs();
         resource.ctUpdates += 1;
-        resource.whenLastUpdate = new Date(moment().utc().format());
+        resource.whenLastUpdate = new Date(dayjs().utc().format());
         return await notifySubscribers(resourceUrl);
     }
 }
 
 async function ping(resourceUrl) {
-    const startticks = moment().format('x'),
-        resource = initResource(
+    const dayjs = await getDayjs();
+    const startticks = dayjs().format('x'),
+        resource = await initResource(
             await fetchResource(resourceUrl)
         );
 
-    checkPingFrequency(resource);
+    await checkPingFrequency(resource);
     await checkForResourceChange(resource, resourceUrl, startticks);
     await notifySubscribersIfDirty(resource, resourceUrl);
     await upsertResource(resource);
