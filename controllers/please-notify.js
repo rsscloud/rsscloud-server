@@ -34,7 +34,7 @@ function handleError(req, res, err) {
     processResponse(req, res, errorResult(err.message));
 }
 
-router.post('/', urlencodedParser, function (req, res) {
+router.post('/', urlencodedParser, function(req, res) {
     const params = parseNotifyParams.rest(req);
     pleaseNotify(
         params.notifyProcedure,

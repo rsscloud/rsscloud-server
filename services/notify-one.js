@@ -1,7 +1,8 @@
 const builder = require('xmlbuilder'),
     config = require('../config'),
     ErrorResponse = require('./error-response'),
-    request = require('request-promise-native');
+    request = require('request-promise-native'),
+    { URL } = require('url');
 
 async function notifyOneRest(apiurl, resourceUrl) {
     let res;

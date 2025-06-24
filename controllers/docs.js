@@ -3,14 +3,15 @@ const express = require('express'),
     md = require('markdown-it')(),
     fs = require('fs');
 
-router.get('/', function (req, res) {
+router.get('/', (req, res) => {
     switch (req.accepts('html')) {
-    case 'html':
+    case 'html': {
         const vals = {
             htmltext: md.render(fs.readFileSync('README.md', { encoding: 'utf8' }))
         };
         res.render('docs', vals);
         break;
+    }
     default:
         res.status(406).send('Not Acceptable');
         break;

@@ -21,7 +21,7 @@ function parseUrlList(argv) {
     }
 
     for (key in argv) {
-        if (argv.hasOwnProperty(key) && 0 === key.toLowerCase().indexOf('url')) {
+        if (Object.prototype.hasOwnProperty.call(argv, key) && 0 === key.toLowerCase().indexOf('url')) {
             urlList.push(argv[key]);
         }
     }
@@ -30,21 +30,15 @@ function parseUrlList(argv) {
 }
 
 function glueUrlParts(scheme, client, port, path) {
-    let apiurl = scheme + '://';
-
     if (client.indexOf(':') > -1) {
-        client = '[' + client + ']';
+        client = `[${client}]`;
     }
-
-    apiurl += client + ':' + port;
 
     if (0 !== path.indexOf('/')) {
-        path = '/' + path;
+        path = `/${path}`;
     }
 
-    apiurl += path;
-
-    return apiurl;
+    return `${scheme}://${client}:${port}${path}`;
 }
 
 function rest(req) {

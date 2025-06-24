@@ -1,11 +1,9 @@
 // TODO: Rewrite for mongodb
 
-var moment = require('moment'),
-    mongodb = require('./mongodb');
+const moment = require('moment');
 
 function checkSubscription(data, resourceUrl, apiurl) {
-    var subscription;
-    subscription = data.subscriptions[resourceUrl][apiurl];
+    const subscription = data.subscriptions[resourceUrl][apiurl];
     if (moment(subscription.whenExpires).isBefore(moment())) {
         delete data.subscriptions[resourceUrl][apiurl];
     } else if (subscription.ctConsecutiveErrors > data.prefs.maxConsecutiveErrors) {
@@ -14,10 +12,9 @@ function checkSubscription(data, resourceUrl, apiurl) {
 }
 
 function scanApiUrls(data, resourceUrl) {
-    var apiurl, subscriptions;
-    subscriptions = data.subscriptions[resourceUrl];
-    for (apiurl in subscriptions) {
-        if (subscriptions.hasOwnProperty(apiurl)) {
+    const subscriptions = data.subscriptions[resourceUrl];
+    for (const apiurl in subscriptions) {
+        if (Object.prototype.hasOwnProperty.call(subscriptions, apiurl)) {
             checkSubscription(data, resourceUrl, apiurl);
         }
     }
@@ -27,9 +24,8 @@ function scanApiUrls(data, resourceUrl) {
 }
 
 function scanResources(data) {
-    var resourceUrl;
-    for (resourceUrl in data.subscriptions) {
-        if (data.subscriptions.hasOwnProperty(resourceUrl)) {
+    for (const resourceUrl in data.subscriptions) {
+        if (Object.prototype.hasOwnProperty.call(data.subscriptions, resourceUrl)) {
             scanApiUrls(data, resourceUrl);
         }
     }

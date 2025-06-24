@@ -29,7 +29,7 @@ async function close(name) {
 }
 
 async function closeAll() {
-    await Promise.all(Object.keys(state).map(name => close));
+    await Promise.all(Object.keys(state).map(close));
 }
 
 function cleanup() {

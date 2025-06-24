@@ -6,7 +6,9 @@ const ErrorResponse = require('../services/error-response'),
     mongodb = require('../services/mongodb'),
     router = new express.Router();
 
-async function fetchVals(db, callback) {
+require('express-ws')(router);
+
+async function fetchVals(_db, _callback) {
     const vals = {
             'eventlog': []
         },
@@ -52,20 +54,20 @@ function handleError(req, res, err) {
     processResponse(req, res, errorResult(err.message));
 }
 
-router.get('/', function (req, res) {
+router.get('/', function(req, res) {
     fetchVals()
         .then(vals => processResponse(req, res, vals))
         .catch(err => handleError(req, res, err));
 });
 
-router.ws('/', (ws, req) => {
+router.ws('/', (ws, _req) => {
     function sendLogEvent(logEvent) {
         ws.send(logEvent);
     }
 
     logEmitter.on('logged-event', sendLogEvent);
 
-    ws.on('close', function () {
+    ws.on('close', function() {
         logEmitter.removeListener('logged-event', sendLogEvent);
     });
 });

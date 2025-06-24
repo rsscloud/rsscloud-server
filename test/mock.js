@@ -84,24 +84,24 @@ module.exports = {
         'POST': {},
         'RPC2': {}
     },
-    route: function (method, path, status, responseBody) {
+    route: function(method, path, status, responseBody) {
         this.requests[method][path] = [];
         this.routes[method][path] = {
             status,
             responseBody
         };
     },
-    rpc: function (methodName, responseBody) {
+    rpc: function(methodName, responseBody) {
         const method = 'RPC2';
         this.requests[method][methodName] = [];
         this.routes[method][methodName] = {
             responseBody
         };
     },
-    before: async function () {
-        this.app.post("/RPC2", textParser, rpcController.bind(this));
-        this.app.get("*", restController.bind(this));
-        this.app.post("*", urlencodedParser, restController.bind(this));
+    before: async function() {
+        this.app.post('/RPC2', textParser, rpcController.bind(this));
+        this.app.get('*', restController.bind(this));
+        this.app.post('*', urlencodedParser, restController.bind(this));
 
         this.server = await this.app.listen(MOCK_SERVER_PORT);
         console.log(`    → Mock server started on port: ${MOCK_SERVER_PORT}`);
@@ -112,7 +112,7 @@ module.exports = {
         }, this.app).listen(SECURE_MOCK_SERVER_PORT);
         console.log(`    → Mock secure server started on port: ${SECURE_MOCK_SERVER_PORT}`);
     },
-    after: async function () {
+    after: async function() {
         if (this.server) {
             this.server.close();
             delete this.server;
@@ -127,10 +127,10 @@ module.exports = {
             };
         }
     },
-    beforeEach: async function () {
+    beforeEach: async function() {
         // Nothing
     },
-    afterEach: async function () {
+    afterEach: async function() {
         this.requests = {
             'GET': {},
             'POST': {},

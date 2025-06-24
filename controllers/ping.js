@@ -34,14 +34,13 @@ function handleError(req, res, err) {
     processResponse(req, res, errorResult(err.message));
 }
 
-router.post('/', urlencodedParser, function (req, res) {
+router.post('/', urlencodedParser, async(req, res) => {
     try {
         const params = parsePingParams.rest(req);
-        ping(params.url)
-            .then(result => processResponse(req, res, result))
-            .catch(err => handleError(req, res, err));
+        const result = await ping(params.url);
+        processResponse(req, res, result);
     } catch (err) {
-        return handleError(req, res, err);
+        handleError(req, res, err);
     }
 });
 
