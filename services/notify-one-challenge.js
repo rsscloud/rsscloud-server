@@ -11,8 +11,6 @@ async function notifyOneChallengeRest(apiurl, resourceUrl) {
         'challenge': challenge
     });
 
-    console.log(`GET ${testUrl}`);
-
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), config.requestTimeout);
 

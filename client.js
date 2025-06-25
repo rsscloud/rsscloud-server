@@ -19,13 +19,13 @@ require('console-stamp')(console, 'HH:MM:ss.l');
 nconf
     .overrides({
         'APP_NAME': 'rssCloudClient',
-        'APP_VERSION': packageJson.version,
+        'APP_VERSION': packageJson.version
     })
     .argv()
     .env()
     .defaults({
-        "DOMAIN": "localhost",
-        "PORT": 9000
+        'DOMAIN': 'localhost',
+        'PORT': 9000
     });
 
 console.log(`${nconf.get('APP_NAME')} ${nconf.get('APP_VERSION')}`);
@@ -44,21 +44,15 @@ app.use(express.static('public', {
 }));
 
 app.post('/RPC2', textParser, (req, res) => {
-    console.log('rpc');
-    console.dir(req.body);
     res.send('');
 });
 
 app.get('/*', (req, res) => {
-    const challenge = req.query.challenge || "";
-    console.log('get');
-    console.dir(req.query);
+    const challenge = req.query.challenge || '';
     res.send(challenge);
 });
 
 app.post('/*', urlencodedParser, (req, res) => {
-    console.log('post');
-    console.dir(req.body);
     res.send('');
 });
 

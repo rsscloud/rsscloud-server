@@ -82,8 +82,7 @@ async function notifyApiUrl(notifyProcedure, apiurl, protocol, resourceUrl, diff
             sprintf(appMessages.log.subscription, apiurl, parts.host, resourceUrl, parts.protocol),
             startticks
         );
-    } catch (err) {
-        console.dir(err);
+    } catch {
         throw new ErrorResponse(appMessages.error.subscription.failedHandler);
     }
 }
@@ -93,19 +92,18 @@ async function pleaseNotify(notifyProcedure, apiurl, protocol, urlList, diffDoma
         throw new ErrorResponse(appMessages.error.subscription.noResources);
     }
 
-    let lastErr, resourceUrl;
-
-    for (resourceUrl of urlList) {
-        try {
+    const results = await Promise.allSettled(
+        urlList.map(async(resourceUrl) => {
             await checkresourceUrlStatusCode(resourceUrl);
             await notifyApiUrl(notifyProcedure, apiurl, protocol, resourceUrl, diffDomain);
-        } catch (err) {
-            lastErr = err;
-        }
-    }
+        })
+    );
 
-    if (lastErr) {
-        throw lastErr;
+    // Check if all operations failed
+    const rejectedResults = results.filter(result => result.status === 'rejected');
+    if (rejectedResults.length === results.length && rejectedResults.length > 0) {
+        // If all operations failed, throw the last error
+        throw rejectedResults[rejectedResults.length - 1].reason;
     }
 
     return {

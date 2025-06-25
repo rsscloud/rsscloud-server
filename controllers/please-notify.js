@@ -34,17 +34,20 @@ function handleError(req, res, err) {
     processResponse(req, res, errorResult(err.message));
 }
 
-router.post('/', urlencodedParser, function(req, res) {
-    const params = parseNotifyParams.rest(req);
-    pleaseNotify(
-        params.notifyProcedure,
-        params.apiurl,
-        params.protocol,
-        params.urlList,
-        params.diffDomain
-    )
-        .then(result => processResponse(req, res, result))
-        .catch(err => handleError(req, res, err));
+router.post('/', urlencodedParser, async function(req, res) {
+    try {
+        const params = parseNotifyParams.rest(req);
+        const result = await pleaseNotify(
+            params.notifyProcedure,
+            params.apiurl,
+            params.protocol,
+            params.urlList,
+            params.diffDomain
+        );
+        processResponse(req, res, result);
+    } catch (err) {
+        handleError(req, res, err);
+    }
 });
 
 module.exports = router;

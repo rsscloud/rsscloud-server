@@ -45,7 +45,7 @@ module.exports = [
             'keyword-spacing': 'error',
             'space-infix-ops': 'error',
             'space-unary-ops': 'error',
-            
+
             // Code quality
             'no-unused-vars': ['error', { 'argsIgnorePattern': '^_' }],
             'no-console': 'off',
@@ -58,7 +58,7 @@ module.exports = [
             'no-extra-bind': 'error',
             'no-multi-spaces': 'error',
             'no-global-assign': 'error',
-            
+
             // Your custom overrides
             'no-underscore-dangle': 'off',
             'no-continue': 'off'
