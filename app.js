@@ -12,8 +12,6 @@ const config = require('./config'),
 
 let app, hbs, server, dayjs;
 
-require('console-stamp')(console, 'HH:MM:ss.l');
-
 console.log(`${config.appName} ${config.appVersion}`);
 
 // Schedule cleanup tasks
@@ -39,7 +37,6 @@ async function initializeDayjs() {
 }
 
 app = express();
-require('express-ws')(app);
 
 app.use(morgan('[:mydate] :method :url :status :res[content-length] - :remote-addr - :response-time ms'));
 

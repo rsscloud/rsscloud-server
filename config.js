@@ -1,40 +1,26 @@
-const nconf = require('nconf'),
-    packageJson = require('./package.json');
+const packageJson = require('./package.json');
 
-// Setup nconf to use (in-order):
-//   1. Overrides
-//   2. Command-line arguments
-//   3. Environment variables
-//   4. Default values
-nconf
-    .overrides({
-        'APP_NAME': 'rssCloudServer',
-        'APP_VERSION': packageJson.version
-    })
-    .argv()
-    .env()
-    .defaults({
-        'DOMAIN': 'localhost',
-        'PORT': 5337,
-        'MONGODB_URI': 'mongodb://localhost:27017/rsscloud',
-        'MAX_CONSECUTIVE_ERRORS': 3,
-        'MAX_RESOURCE_SIZE': 256000,
-        'CT_SECS_RESOURCE_EXPIRE': 90000,
-        'MIN_SECS_BETWEEN_PINGS': 0,
-        'REQUEST_TIMEOUT': 4000,
-        'LOG_RETENTION_HOURS': 2
-    });
+// Simple config utility that reads from process.env with defaults
+function getConfig(key, defaultValue) {
+    return process.env[key] ?? defaultValue;
+}
+
+// Parse numeric values
+function getNumericConfig(key, defaultValue) {
+    const value = process.env[key];
+    return value ? parseInt(value, 10) : defaultValue;
+}
 
 module.exports = {
-    appName: nconf.get('APP_NAME'),
-    appVersion: nconf.get('APP_VERSION'),
-    domain: nconf.get('DOMAIN'),
-    port: nconf.get('PORT'),
-    mongodbUri: nconf.get('MONGODB_URI'),
-    maxConsecutiveErrors: nconf.get('MAX_CONSECUTIVE_ERRORS'),
-    maxResourceSize: nconf.get('MAX_RESOURCE_SIZE'),
-    ctSecsResourceExpire: nconf.get('CT_SECS_RESOURCE_EXPIRE'),
-    minSecsBetweenPings: nconf.get('MIN_SECS_BETWEEN_PINGS'),
-    requestTimeout: nconf.get('REQUEST_TIMEOUT'),
-    logRetentionHours: nconf.get('LOG_RETENTION_HOURS')
+    appName: 'rssCloudServer',
+    appVersion: packageJson.version,
+    domain: getConfig('DOMAIN', 'localhost'),
+    port: getNumericConfig('PORT', 5337),
+    mongodbUri: getConfig('MONGODB_URI', 'mongodb://localhost:27017/rsscloud'),
+    maxConsecutiveErrors: getNumericConfig('MAX_CONSECUTIVE_ERRORS', 3),
+    maxResourceSize: getNumericConfig('MAX_RESOURCE_SIZE', 256000),
+    ctSecsResourceExpire: getNumericConfig('CT_SECS_RESOURCE_EXPIRE', 90000),
+    minSecsBetweenPings: getNumericConfig('MIN_SECS_BETWEEN_PINGS', 0),
+    requestTimeout: getNumericConfig('REQUEST_TIMEOUT', 4000),
+    logRetentionHours: getNumericConfig('LOG_RETENTION_HOURS', 2)
 };

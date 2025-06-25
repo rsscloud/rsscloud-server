@@ -2,13 +2,12 @@
 const ErrorResponse = require('../services/error-response'),
     errorResult = require('../services/error-result'),
     express = require('express'),
-    logEmitter = require('../services/log-emitter'),
+    getDayjs = require('../services/dayjs-wrapper'),
     mongodb = require('../services/mongodb'),
     router = new express.Router();
 
-require('express-ws')(router);
-
 async function fetchVals(_db, _callback) {
+    const dayjs = await getDayjs();
     const vals = {
             'eventlog': []
         },
@@ -26,6 +25,9 @@ async function fetchVals(_db, _callback) {
 
         item.headers = JSON.parse(item.headers);
 
+        // Format time for display (hour:minute AM/PM)
+        item.time = dayjs(item.time).format('h:mmA');
+
         return item;
     });
 
@@ -35,7 +37,6 @@ async function fetchVals(_db, _callback) {
 function processResponse(req, res, vals) {
     switch (req.accepts('html', 'json')) {
     case 'html':
-        vals.wshost = res.app.locals.host + ':' + res.app.locals.port;
         res.render('view-log', vals);
         break;
     case 'json':
@@ -58,18 +59,6 @@ router.get('/', function(req, res) {
     fetchVals()
         .then(vals => processResponse(req, res, vals))
         .catch(err => handleError(req, res, err));
-});
-
-router.ws('/', (ws, _req) => {
-    function sendLogEvent(logEvent) {
-        ws.send(logEvent);
-    }
-
-    logEmitter.on('logged-event', sendLogEvent);
-
-    ws.on('close', function() {
-        logEmitter.removeListener('logged-event', sendLogEvent);
-    });
 });
 
 module.exports = router;

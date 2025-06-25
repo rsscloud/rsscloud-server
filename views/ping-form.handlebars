@@ -1,25 +1,23 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>rssCloud v2: Ping</title>
-    <link href="/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/css/font-awesome.min.css" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
 </head>
 <body>
-<div class="container">
-    <div class="page-header">
-        <h1>rssCloud v2: Ping</h1>
-        <p>Posting to /ping is your way of alerting the server that a resource has been updated.</p>
-    </div>
+    <h1>rssCloud v2: Ping</h1>
+    <p>Posting to /ping is your way of alerting the server that a resource has been updated.</p>
 
     <form method="POST" action="ping">
-        <div class="form-group">
-            <label for="url">Resource URL</label>
-            <input type="text" class="form-control" id="url" name="url">
-        </div>
-        <button type="submit" class="btn btn-default">Ping</button>
+        <label for="url">Resource URL</label>
+        <input type="text" id="url" name="url" placeholder="https://example.com/feed.rss" required>
+        <button type="submit">Ping</button>
     </form>
-</div>
+
+    <p class="mt-20">
+        <a href="/">← Back to Home</a>
+    </p>
 </body>
 </html>

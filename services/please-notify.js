@@ -7,7 +7,6 @@ const appMessages = require('./app-messages'),
     mongodb = require('./mongodb'),
     notifyOne = require('./notify-one'),
     notifyOneChallenge = require('./notify-one-challenge'),
-    sprintf = require('sprintf-js').sprintf,
     url = require('url');
 
 async function checkresourceUrlStatusCode(resourceUrl) {
@@ -23,11 +22,11 @@ async function checkresourceUrlStatusCode(resourceUrl) {
         clearTimeout(timeoutId);
 
         if (res.status < 200 || res.status > 299) {
-            throw new ErrorResponse(sprintf(appMessages.error.subscription.readResource, resourceUrl));
+            throw new ErrorResponse(appMessages.error.subscription.readResource(resourceUrl));
         }
     } catch {
         clearTimeout(timeoutId);
-        throw new ErrorResponse(sprintf(appMessages.error.subscription.readResource, resourceUrl));
+        throw new ErrorResponse(appMessages.error.subscription.readResource(resourceUrl));
     }
 }
 
@@ -79,7 +78,7 @@ async function notifyApiUrl(notifyProcedure, apiurl, protocol, resourceUrl, diff
 
         await logEvent(
             'Subscribe',
-            sprintf(appMessages.log.subscription, apiurl, parts.host, resourceUrl, parts.protocol),
+            appMessages.log.subscription(apiurl, parts.host, resourceUrl, parts.protocol),
             startticks
         );
     } catch {
