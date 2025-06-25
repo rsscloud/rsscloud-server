@@ -31,8 +31,7 @@ nconf
 console.log(`${nconf.get('APP_NAME')} ${nconf.get('APP_VERSION')}`);
 
 morgan.format('mydate', () => {
-    const df = require('dateformat');
-    return df(new Date(), 'HH:MM:ss.l');
+    return new Date().toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 3 }).replace(/:/g, ':');
 });
 
 app = express();

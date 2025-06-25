@@ -16,6 +16,12 @@ module.exports = [
                 module: 'readonly',
                 require: 'readonly',
                 exports: 'readonly',
+                // Node.js built-in globals
+                fetch: 'readonly',
+                AbortController: 'readonly',
+                setTimeout: 'readonly',
+                clearTimeout: 'readonly',
+                URLSearchParams: 'readonly',
                 // Mocha globals
                 describe: 'readonly',
                 it: 'readonly',

@@ -17,8 +17,7 @@ This is an rssCloud Server v2 implementation in Node.js - a notification protoco
 
 - `npm test` - Run Mocha test suite (called by test-api)
 - `npm run test-api` - Run full API tests using Docker containers (MacOS tested)
-- `npm run jshint` - Run JSHint linter
-- `npm run eslint` - Run ESLint with auto-fix on controllers/, services/, test/
+- `npm run lint` - Run ESLint with auto-fix on controllers/, services/, test/
 
 ### Data Management
 
