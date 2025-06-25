@@ -59,7 +59,7 @@ app.use(require('./controllers'));
 async function startServer() {
     await initializeDayjs();
     await mongodb.connect('rsscloud', config.mongodbUri);
-    
+
     server = app.listen(config.port, () => {
         app.locals.host = config.domain;
         app.locals.port = server.address().port;

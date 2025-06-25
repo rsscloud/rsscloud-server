@@ -87,11 +87,8 @@ async function notifySubscribers(resourceUrl) {
 
     await Promise.all(validSubscriptions.map(notifyOneSubscriber.bind(null, resourceUrl)));
 
-    console.log('upserting subscriptions');
-
     await upsertSubscriptions(subscriptions);
 
-    console.log('upserted subscriptions');
 }
 
 module.exports = notifySubscribers;

@@ -6,7 +6,7 @@ async function connect(name, uri) {
         return;
     }
 
-    const client = await MongoClient.connect(uri, { useUnifiedTopology: true });
+    const client = await MongoClient.connect(uri);
 
     state[name] = client;
 

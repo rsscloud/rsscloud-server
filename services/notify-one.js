@@ -59,7 +59,7 @@ async function notifyOneRpc(notifyProcedure, apiurl, resourceUrl) {
     }).end({ pretty: true });
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), config.requestTimeout);
 
     try {
         const res = await fetch(apiurl, {

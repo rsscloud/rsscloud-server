@@ -7,7 +7,7 @@
     "start": "nodemon --use_strict ./app.js",
     "client": "nodemon --use_strict ./client.js",
     "import-data": "node ./bin/import-data.js",
-    "lint": "eslint --fix controllers/ services/ test/",
+    "lint": "eslint --fix controllers/ services/ test/ *.js",
     "format": "prettier --write .",
     "test": "mocha",
     "test-api": "docker-compose up --build --abort-on-container-exit"

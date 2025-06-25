@@ -9,19 +9,19 @@ const nconf = require('nconf'),
 nconf
     .overrides({
         'APP_NAME': 'rssCloudServer',
-        'APP_VERSION': packageJson.version,
+        'APP_VERSION': packageJson.version
     })
     .argv()
     .env()
     .defaults({
-        "DOMAIN": "localhost",
-        "PORT": 5337,
-        "MONGODB_URI": "mongodb://localhost:27017/rsscloud",
-        "MAX_CONSECUTIVE_ERRORS": 3,
-        "MAX_RESOURCE_SIZE": 256000,
-        "CT_SECS_RESOURCE_EXPIRE": 90000,
-        "MIN_SECS_BETWEEN_PINGS": 0,
-        "REQUEST_TIMEOUT": 4000
+        'DOMAIN': 'localhost',
+        'PORT': 5337,
+        'MONGODB_URI': 'mongodb://localhost:27017/rsscloud',
+        'MAX_CONSECUTIVE_ERRORS': 3,
+        'MAX_RESOURCE_SIZE': 256000,
+        'CT_SECS_RESOURCE_EXPIRE': 90000,
+        'MIN_SECS_BETWEEN_PINGS': 0,
+        'REQUEST_TIMEOUT': 4000
     });
 
 module.exports = {

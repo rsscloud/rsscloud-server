@@ -6,10 +6,15 @@ const express = require('express'),
 router.get('/', (req, res) => {
     switch (req.accepts('html')) {
     case 'html': {
-        const vals = {
-            htmltext: md.render(fs.readFileSync('README.md', { encoding: 'utf8' }))
-        };
-        res.render('docs', vals);
+        try {
+            const vals = {
+                htmltext: md.render(fs.readFileSync('README.md', { encoding: 'utf8' }))
+            };
+            res.render('docs', vals);
+        } catch (err) {
+            console.error('Error reading README.md:', err.message);
+            res.status(500).send('Internal Server Error');
+        }
         break;
     }
     default:
