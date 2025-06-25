@@ -4,7 +4,6 @@ const appMessages = require('./app-messages'),
     logEvent = require('./log-event'),
     mongodb = require('./mongodb'),
     notifyOne = require('./notify-one'),
-    sprintf = require('sprintf-js').sprintf,
     url = require('url');
 
 async function fetchSubscriptions(resourceUrl) {
@@ -44,7 +43,7 @@ async function notifyOneSubscriber(resourceUrl, subscription) {
 
         await logEvent(
             'Notify',
-            sprintf(appMessages.log.notify, apiurl, parts.host, resourceUrl, parts.protocol),
+            appMessages.log.notify(apiurl, parts.host, resourceUrl, parts.protocol),
             startticks
         );
     } catch (err) {
@@ -56,7 +55,7 @@ async function notifyOneSubscriber(resourceUrl, subscription) {
 
         await logEvent(
             'NotifyFailed',
-            sprintf(appMessages.log.notifyFailed, apiurl, parts.host, resourceUrl, parts.protocol),
+            appMessages.log.notifyFailed(apiurl, parts.host, resourceUrl, parts.protocol),
             startticks
         );
     }

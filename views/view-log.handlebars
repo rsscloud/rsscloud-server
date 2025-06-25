@@ -1,106 +1,56 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>rssCloud: Log</title>
-    <link href="/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/css/font-awesome.min.css" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
 </head>
 <body>
-<div class="container">
-    <div class="page-header">
-        <h1>rssCloud: Log</h1>
-        <p>The latest events on this rssCloud server.</p>
-    </div>
+    <h1>rssCloud: Log</h1>
+    <p>The latest events on this rssCloud server.</p>
 
-    <table class="table table-striped">
-    <thead>
-    <tr>
-        <th>Event</th>
-        <th>What Happened</th>
-        <th>When</th>
-        <th>Seconds</th>
-    </tr>
-    </thead>
-    <tbody id="eventlog">
-    {{#if eventlog}}
-    {{#each eventlog}}
-    <tr>
-        <td>{{eventtype}}</td>
-        <td>{{{htmltext}}}{{#if headers}} <i class="fa fa-info-circle btn btn-default btn-xs" data-toggle="modal" data-target="#headers{{id}}"></i>{{/if}}</td>
-        <td class="date">{{time}}</td>
-        <td>{{secs}}</td>
-    </tr>
-    {{/each}}
-    {{/if}}
-    </tbody>
+    <table class="log-table">
+        <thead>
+            <tr>
+                <th>Event</th>
+                <th>What Happened</th>
+                <th class="time-column">When</th>
+                <th class="secs-column">Seconds</th>
+            </tr>
+        </thead>
+        <tbody>
+        {{#if eventlog}}
+        {{#each eventlog}}
+            <tr>
+                <td>{{eventtype}}</td>
+                <td>
+                    {{{htmltext}}}
+                    {{#if headers}}
+                        <div class="headers">
+                            <h4>Request Headers:</h4>
+                            <ul>
+                                {{#each headers}}
+                                <li><strong>{{@key}}:</strong> {{this}}</li>
+                                {{/each}}
+                            </ul>
+                        </div>
+                    {{/if}}
+                </td>
+                <td class="time-column">{{time}}</td>
+                <td class="secs-column">{{secs}}</td>
+            </tr>
+        {{/each}}
+        {{else}}
+            <tr>
+                <td colspan="4" class="text-center">No events logged yet.</td>
+            </tr>
+        {{/if}}
+        </tbody>
     </table>
-</div>
-<div id="headers">
-{{#if eventlog}}
-{{#each eventlog}}
-<div class="modal" id="headers{{id}}">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-body">
-                <ul>
-                    {{#each headers}}
-                    <li><strong>{{@key}}:</strong> {{this}}</li>
-                    {{/each}}
-                </ul>
-            </div>
-        </div>
-    </div>
-</div>
-{{/each}}
-{{/if}}
-</div>
 
-<script src="/js/jquery-1.11.3.min.js"></script>
-<script src="/js/bootstrap.min.js"></script>
-<script src="/js/moment-with-locales.min.js"></script>
-<script src="/js/handlebars-v4.0.10.js"></script>
-<script src="/js/eventlog.tpl.js"></script>
-<script src="/js/modal.tpl.js"></script>
-<script type="text/javascript">
-    function formatDate(index, dateElem) {
-        var $dateElem = jQuery(dateElem);
-        var formatted = moment($dateElem.text()).format('h:mmA');
-        $dateElem.text(formatted);
-    }
-
-    jQuery(document).ready(function() {
-        jQuery('.date').each(formatDate);
-
-        if ("WebSocket" in window) {
-            try {
-                var socket = new WebSocket("ws://{{wshost}}/viewLog");
-
-                socket.onopen = function () {
-                    console.log("Socket.onopen: " + socket.readyState);
-                };
-
-                socket.onmessage = function(msg) {
-                    var logEvent = jQuery.parseJSON(msg.data);
-
-                    console.log(logEvent);
-
-                    var modal = jQuery.parseHTML(Handlebars.templates.modal(logEvent));
-                    jQuery("#headers").prepend(modal);
-
-                    var row = jQuery.parseHTML(Handlebars.templates.eventlog(logEvent));
-                    jQuery('.date', row).each(formatDate);
-                    jQuery("#eventlog").prepend(row);
-                };
-
-                socket.onclose = function() {
-                    console.log("Socket.onclose: " + socket.readyState);
-                };
-            } catch (exception) {
-                console.log(exception);
-            }
-        }
-    });
-</script>
+    <p class="mt-20">
+        <a href="/">← Back to Home</a>
+    </p>
 </body>
 </html>

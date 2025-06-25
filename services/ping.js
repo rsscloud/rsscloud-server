@@ -6,8 +6,7 @@ const appMessage = require('./app-messages'),
     initResource = require('./init-resource'),
     logEvent = require('./log-event'),
     mongodb = require('./mongodb'),
-    notifySubscribers = require('./notify-subscribers'),
-    sprintf = require('sprintf-js').sprintf;
+    notifySubscribers = require('./notify-subscribers');
 
 async function checkPingFrequency(resource) {
     let ctsecs, minsecs = config.minSecsBetweenPings;
@@ -15,7 +14,7 @@ async function checkPingFrequency(resource) {
         const dayjs = await getDayjs();
         ctsecs = dayjs().diff(resource.whenLastCheck, 'seconds');
         if (ctsecs < minsecs) {
-            throw new ErrorResponse(sprintf(appMessage.error.ping.tooRecent, minsecs, ctsecs));
+            throw new ErrorResponse(appMessage.error.ping.tooRecent(minsecs, ctsecs));
         }
     }
 }
@@ -52,7 +51,7 @@ async function checkForResourceChange(resource, resourceUrl, startticks) {
     resource.whenLastCheck = new Date(dayjs().utc().format());
 
     if (res.status < 200 || res.status > 299) {
-        throw new ErrorResponse(sprintf(appMessage.error.ping.readResource, resourceUrl));
+        throw new ErrorResponse(appMessage.error.ping.readResource(resourceUrl));
     }
 
     const hash = md5Hash(body);
@@ -70,7 +69,7 @@ async function checkForResourceChange(resource, resourceUrl, startticks) {
 
     await logEvent(
         'Ping',
-        sprintf(appMessage.log.ping, resourceUrl, resource.flDirty.toString()),
+        appMessage.log.ping(resourceUrl, resource.flDirty.toString()),
         startticks
     );
 }

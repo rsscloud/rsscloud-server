@@ -1,5 +1,4 @@
 const getDayjs = require('./dayjs-wrapper'),
-    logEmitter = require('./log-emitter'),
     mongodb = require('./mongodb');
 
 async function logEvent(eventtype, htmltext, startticks, req) {
@@ -13,7 +12,7 @@ async function logEvent(eventtype, htmltext, startticks, req) {
         req = { headers: false };
     }
 
-    const res = await mongodb.get('rsscloud')
+    await mongodb.get('rsscloud')
         .collection('events')
         .insertOne({
             eventtype,
@@ -22,15 +21,6 @@ async function logEvent(eventtype, htmltext, startticks, req) {
             time: new Date(time.utc().format()),
             headers: JSON.stringify(req.headers)
         });
-
-    logEmitter.emit('logged-event', JSON.stringify({
-        'id': res.insertedId.toHexString(),
-        'eventtype': eventtype,
-        'htmltext': htmltext,
-        'secs': secs,
-        'time': new Date(time.utc().format()),
-        'headers': req.headers
-    }));
 }
 
 module.exports = logEvent;
