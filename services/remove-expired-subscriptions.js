@@ -1,46 +1,77 @@
-(function () {
-    "use strict";
+const getDatabase = require('./mongodb');
+const getDayjs = require('./dayjs-wrapper');
+const config = require('../config');
 
-    // TODO: Rewrite for mongodb
+/**
+ * Removes expired and errored subscriptions from MongoDB
+ * Works with the MongoDB schema: { _id: resourceUrl, pleaseNotify: [...] }
+ */
+async function removeExpiredSubscriptions() {
+    try {
+        const db = await getDatabase();
+        const dayjs = await getDayjs();
+        const collection = db.collection('subscriptions');
 
-    var moment = require('moment'),
-        mongodb = require('./mongodb');
+        let totalRemoved = 0;
+        let documentsProcessed = 0;
+        let documentsDeleted = 0;
 
-    function checkSubscription(data, resourceUrl, apiurl) {
-        var subscription;
-        subscription = data.subscriptions[resourceUrl][apiurl];
-        if (moment(subscription.whenExpires).isBefore(moment())) {
-            delete data.subscriptions[resourceUrl][apiurl];
-        } else if (subscription.ctConsecutiveErrors > data.prefs.maxConsecutiveErrors) {
-            delete data.subscriptions[resourceUrl][apiurl];
-        }
-    }
+        // Find all subscription documents
+        const cursor = collection.find({});
 
-    function scanApiUrls(data, resourceUrl) {
-        var apiurl, subscriptions;
-        subscriptions = data.subscriptions[resourceUrl];
-        for (apiurl in subscriptions) {
-            if (subscriptions.hasOwnProperty(apiurl)) {
-                checkSubscription(data, resourceUrl, apiurl);
+        while (await cursor.hasNext()) {
+            const doc = await cursor.next();
+            documentsProcessed++;
+
+            if (!doc.pleaseNotify || !Array.isArray(doc.pleaseNotify)) {
+                continue;
+            }
+
+            // Filter out expired and errored subscriptions
+            const validSubscriptions = doc.pleaseNotify.filter(subscription => {
+                // Remove if expired
+                if (dayjs(subscription.whenExpires).isBefore(dayjs())) {
+                    totalRemoved++;
+                    return false;
+                }
+
+                // Remove if too many consecutive errors
+                if (subscription.ctConsecutiveErrors > config.maxConsecutiveErrors) {
+                    totalRemoved++;
+                    return false;
+                }
+
+                return true;
+            });
+
+            // Update document if subscriptions were removed
+            if (validSubscriptions.length !== doc.pleaseNotify.length) {
+                if (validSubscriptions.length === 0) {
+                    // Remove entire document if no valid subscriptions remain
+                    await collection.deleteOne({ _id: doc._id });
+                    documentsDeleted++;
+                } else {
+                    // Update document with filtered subscriptions
+                    await collection.updateOne(
+                        { _id: doc._id },
+                        { $set: { pleaseNotify: validSubscriptions } }
+                    );
+                }
             }
         }
-        if (0 === subscriptions.length) {
-            delete data.subscriptions[resourceUrl];
-        }
-    }
 
-    function scanResources(data) {
-        var resourceUrl;
-        for (resourceUrl in data.subscriptions) {
-            if (data.subscriptions.hasOwnProperty(resourceUrl)) {
-                scanApiUrls(data, resourceUrl);
-            }
-        }
-    }
+        console.log(`Subscription cleanup completed: ${totalRemoved} expired/errored subscriptions removed, ${documentsProcessed} documents processed, ${documentsDeleted} empty documents deleted`);
 
-    function removeExpiredSubscriptions(data) {
-        scanResources(data);
-    }
+        return {
+            subscriptionsRemoved: totalRemoved,
+            documentsProcessed,
+            documentsDeleted
+        };
 
-    module.exports = removeExpiredSubscriptions;
-}());
+    } catch (error) {
+        console.error('Error removing expired subscriptions:', error);
+        throw error;
+    }
+}
+
+module.exports = removeExpiredSubscriptions;

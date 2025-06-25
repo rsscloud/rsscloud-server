@@ -1,21 +1,18 @@
-(function () {
-    "use strict";
+const getDayjs = require('./dayjs-wrapper');
 
-    const moment = require('moment');
+async function initResource(resource) {
+    const dayjs = await getDayjs();
+    const defaultResource = {
+        flDirty: true,
+        lastSize: 0,
+        lastHash: '',
+        ctChecks: 0,
+        whenLastCheck: new Date(dayjs.utc('0', 'x').format()),
+        ctUpdates: 0,
+        whenLastUpdate: new Date(dayjs.utc('0', 'x').format())
+    };
 
-    function initResource(resource) {
-        const defaultResource = {
-            flDirty: true,
-            lastSize: 0,
-            lastHash: '',
-            ctChecks: 0,
-            whenLastCheck: new Date(moment.utc('0', 'x').format()),
-            ctUpdates: 0,
-            whenLastUpdate: new Date(moment.utc('0', 'x').format())
-        };
+    return Object.assign({}, defaultResource, resource);
+}
 
-        return Object.assign({}, defaultResource, resource);
-    }
-
-    module.exports = initResource;
-}());
+module.exports = initResource;

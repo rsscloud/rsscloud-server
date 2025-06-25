@@ -1,40 +1,33 @@
 {
   "name": "rsscloud-server",
-  "version": "2.0.0",
+  "version": "2.2.0",
   "description": "An rssCloud Server",
   "main": "app.js",
   "scripts": {
     "start": "nodemon --use_strict ./app.js",
     "client": "nodemon --use_strict ./client.js",
     "import-data": "node ./bin/import-data.js",
-    "jshint": "jshint ./**/*.js",
-    "eslint": "eslint --fix controllers/ services/ test/",
+    "lint": "eslint --fix controllers/ services/ test/ *.js",
+    "format": "prettier --write .",
     "test": "mocha",
     "test-api": "docker-compose up --build --abort-on-container-exit"
   },
   "engines": {
-    "node": ">=10.6.0"
+    "node": ">=22"
   },
   "author": "Andrew Shell <andrew@andrewshell.org>",
   "license": "MIT",
   "dependencies": {
-    "body-parser": "^1.19.0",
-    "console-stamp": "^3.0.3",
+    "body-parser": "^2.2.0",
     "cors": "^2.8.5",
-    "davexmlrpc": "^0.4.26",
-    "dotenv": "^10.0.0",
-    "express": "^4.17.1",
+    "dotenv": "^16.5.0",
+    "express": "^4.21.2",
     "express-handlebars": "^5.3.3",
-    "express-ws": "^5.0.2",
-    "markdown-it": "^12.2.0",
-    "moment": "^2.29.1",
-    "mongodb": "4.1.0",
+    "markdown-it": "^14.1.0",
+    "dayjs": "^1.11.13",
+    "mongodb": "6.17.0",
     "morgan": "^1.10.0",
-    "nconf": "^0.11.3",
-    "request": "^2.88.0",
-    "request-promise-native": "1.0.8",
-    "sprintf-js": "^1.1.2",
-    "xml2js": "^0.4.23",
+    "xml2js": "^0.6.2",
     "xmlbuilder": "^15.1.1"
   },
   "repository": {
@@ -45,14 +38,13 @@
     "chai": "^4.3.4",
     "chai-http": "^4.3.0",
     "chai-json": "^1.0.0",
-    "chai-xml": "^0.4.0",
-    "eslint": "^7.32.0",
-    "eslint-config-crockford": "^2.0.0",
+    "chai-xml": "^0.4.1",
+    "eslint": "^9.29.0",
     "https": "^1.0.0",
-    "jshint": "^2.13.1",
-    "mocha": "^9.1.0",
-    "mocha-multi": "^1.1.3",
-    "nodemon": "2.0.12",
-    "supertest": "^6.1.6"
+    "mocha": "^11.7.1",
+    "mocha-multi": "^1.1.7",
+    "nodemon": "3.1.10",
+    "prettier": "^3.6.1",
+    "supertest": "^7.1.1"
   }
 }

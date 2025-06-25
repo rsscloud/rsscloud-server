@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build output
+dist/
+build/
+
+# Third-party libraries
+public/js/
+
+# Logs
+*.log
+
+# Database
+data/
+
+# Docker
+Dockerfile
+docker-compose.yml
+
+# Documentation that should preserve formatting
+DEVNOTES.md

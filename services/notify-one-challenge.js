@@ -1,41 +1,48 @@
-(function () {
-    "use strict";
+const config = require('../config'),
+    ErrorResponse = require('./error-response'),
+    notifyOne = require('./notify-one'),
+    getRandomPassword = require('./get-random-password'),
+    querystring = require('querystring');
 
-    const config = require('../config'),
-        ErrorResponse = require('./error-response'),
-        notifyOne = require('./notify-one'),
-        getRandomPassword = require('./get-random-password'),
-        querystring = require('querystring'),
-        request = require('request-promise-native');
+async function notifyOneChallengeRest(apiurl, resourceUrl) {
+    const challenge = getRandomPassword(20);
+    const testUrl = apiurl + '?' + querystring.stringify({
+        'url': resourceUrl,
+        'challenge': challenge
+    });
 
-    async function notifyOneChallengeRest(apiurl, resourceUrl) {
-        const challenge = getRandomPassword(20),
-            testUrl = apiurl + '?' + querystring.stringify({
-                'url': resourceUrl,
-                'challenge': challenge
-            }),
-            res = await request({
-                method: 'GET',
-                uri: testUrl,
-                timeout: config.requestTimeout,
-                resolveWithFullResponse: true
-            });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), config.requestTimeout);
 
-        console.log(`GET ${testUrl}`);
+    try {
+        const res = await fetch(testUrl, {
+            method: 'GET',
+            signal: controller.signal
+        });
 
-        if (res.statusCode < 200 || res.statusCode > 299 || res.body !== challenge) {
+        clearTimeout(timeoutId);
+
+        const body = await res.text();
+
+        if (res.status < 200 || res.status > 299 || body !== challenge) {
             throw new ErrorResponse('Notification Failed');
         }
-    }
-
-    function notifyOneChallenge(notifyProcedure, apiurl, protocol, resourceUrl) {
-        if ('xml-rpc' === protocol) {
-            // rssCloud.root originally didn't support this flow
-            return notifyOne(notifyProcedure, apiurl, protocol, resourceUrl);
+    } catch (err) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+            throw new ErrorResponse('Notification Failed - Timeout');
         }
+        throw err;
+    }
+}
 
-        return notifyOneChallengeRest(apiurl, resourceUrl);
+function notifyOneChallenge(notifyProcedure, apiurl, protocol, resourceUrl) {
+    if ('xml-rpc' === protocol) {
+        // rssCloud.root originally didn't support this flow
+        return notifyOne(notifyProcedure, apiurl, protocol, resourceUrl);
     }
 
-    module.exports = notifyOneChallenge;
-}());
+    return notifyOneChallengeRest(apiurl, resourceUrl);
+}
+
+module.exports = notifyOneChallenge;
