@@ -1,4 +1,4 @@
-const getDatabase = require('./mongodb');
+const mongodb = require('./mongodb');
 const config = require('../config');
 
 /**
@@ -7,15 +7,15 @@ const config = require('../config');
  */
 async function setupLogRetention() {
     try {
-        const db = await getDatabase();
+        const db = mongodb.get('rsscloud');
         const collection = db.collection('events');
 
         const retentionSeconds = config.logRetentionHours * 3600;
 
-        // Create TTL index on the when field (log timestamp)
-        // MongoDB will automatically delete documents when 'when' is older than retentionSeconds
+        // Create TTL index on the time field (log timestamp)
+        // MongoDB will automatically delete documents when 'time' is older than retentionSeconds
         await collection.createIndex(
-            { when: 1 },
+            { time: 1 },
             {
                 expireAfterSeconds: retentionSeconds,
                 name: 'log_retention_ttl'
@@ -35,14 +35,14 @@ async function setupLogRetention() {
  */
 async function removeExpiredLogs() {
     try {
-        const db = await getDatabase();
+        const db = mongodb.get('rsscloud');
         const collection = db.collection('events');
 
         const cutoffDate = new Date();
         cutoffDate.setHours(cutoffDate.getHours() - config.logRetentionHours);
 
         const result = await collection.deleteMany({
-            when: { $lt: cutoffDate }
+            time: { $lt: cutoffDate }
         });
 
         console.log(`Removed ${result.deletedCount} expired log entries older than ${cutoffDate.toISOString()}`);
