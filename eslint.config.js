@@ -21,6 +21,8 @@ module.exports = [
                 AbortController: 'readonly',
                 setTimeout: 'readonly',
                 clearTimeout: 'readonly',
+                setInterval: 'readonly',
+                clearInterval: 'readonly',
                 URLSearchParams: 'readonly',
                 // Mocha globals
                 describe: 'readonly',

@@ -21,7 +21,8 @@ nconf
         'MAX_RESOURCE_SIZE': 256000,
         'CT_SECS_RESOURCE_EXPIRE': 90000,
         'MIN_SECS_BETWEEN_PINGS': 0,
-        'REQUEST_TIMEOUT': 4000
+        'REQUEST_TIMEOUT': 4000,
+        'LOG_RETENTION_HOURS': 2
     });
 
 module.exports = {
@@ -34,5 +35,6 @@ module.exports = {
     maxResourceSize: nconf.get('MAX_RESOURCE_SIZE'),
     ctSecsResourceExpire: nconf.get('CT_SECS_RESOURCE_EXPIRE'),
     minSecsBetweenPings: nconf.get('MIN_SECS_BETWEEN_PINGS'),
-    requestTimeout: nconf.get('REQUEST_TIMEOUT')
+    requestTimeout: nconf.get('REQUEST_TIMEOUT'),
+    logRetentionHours: nconf.get('LOG_RETENTION_HOURS')
 };

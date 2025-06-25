@@ -6,8 +6,9 @@ const config = require('./config'),
     exphbs = require('express-handlebars'),
     getDayjs = require('./services/dayjs-wrapper'),
     mongodb = require('./services/mongodb'),
-    morgan = require('morgan');
-    // removeExpiredSubscriptions = require('./services/remove-expired-subscriptions');
+    morgan = require('morgan'),
+    { setupLogRetention } = require('./services/log-cleanup'),
+    removeExpiredSubscriptions = require('./services/remove-expired-subscriptions');
 
 let app, hbs, server, dayjs;
 
@@ -15,7 +16,18 @@ require('console-stamp')(console, 'HH:MM:ss.l');
 
 console.log(`${config.appName} ${config.appVersion}`);
 
-// TODO: Every 24 hours run removeExpiredSubscriptions(data);
+// Schedule cleanup tasks
+function scheduleCleanupTasks() {
+    // Run subscription cleanup every 24 hours
+    setInterval(async() => {
+        try {
+            console.log('Running scheduled subscription cleanup...');
+            await removeExpiredSubscriptions();
+        } catch (error) {
+            console.error('Error in scheduled subscription cleanup:', error);
+        }
+    }, 24 * 60 * 60 * 1000); // 24 hours in milliseconds
+}
 
 morgan.format('mydate', () => {
     return new Date().toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 3 }).replace(/:/g, ':');
@@ -59,6 +71,16 @@ app.use(require('./controllers'));
 async function startServer() {
     await initializeDayjs();
     await mongodb.connect('rsscloud', config.mongodbUri);
+
+    // Setup log retention TTL index
+    try {
+        await setupLogRetention();
+    } catch (error) {
+        console.error('Failed to setup log retention, continuing without it:', error);
+    }
+
+    // Start cleanup scheduling
+    scheduleCleanupTasks();
 
     server = app.listen(config.port, () => {
         app.locals.host = config.domain;
