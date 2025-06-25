@@ -1,4 +1,4 @@
-const getDatabase = require('./mongodb');
+const mongodb = require('./mongodb');
 const getDayjs = require('./dayjs-wrapper');
 const config = require('../config');
 
@@ -8,7 +8,7 @@ const config = require('../config');
  */
 async function removeExpiredSubscriptions() {
     try {
-        const db = await getDatabase();
+        const db = mongodb.get('rsscloud');
         const dayjs = await getDayjs();
         const collection = db.collection('subscriptions');
 
