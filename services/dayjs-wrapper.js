@@ -7,7 +7,7 @@ async function getDayjs() {
         const advancedFormat = await import('dayjs/plugin/advancedFormat.js');
         const duration = await import('dayjs/plugin/duration.js');
         const customParseFormat = await import('dayjs/plugin/customParseFormat.js');
-        
+
         dayjs = dayjsModule.default;
         dayjs.extend(utc.default);
         dayjs.extend(advancedFormat.default);

@@ -18,8 +18,7 @@ console.log(`${config.appName} ${config.appVersion}`);
 // TODO: Every 24 hours run removeExpiredSubscriptions(data);
 
 morgan.format('mydate', () => {
-    const df = require('dateformat');
-    return df(new Date(), 'HH:MM:ss.l');
+    return new Date().toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 3 }).replace(/:/g, ':');
 });
 
 // Initialize dayjs at startup

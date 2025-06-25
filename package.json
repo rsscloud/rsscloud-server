@@ -1,6 +1,6 @@
 {
   "name": "rsscloud-server",
-  "version": "2.0.0",
+  "version": "2.2.0",
   "description": "An rssCloud Server",
   "main": "app.js",
   "scripts": {
@@ -23,7 +23,7 @@
     "cors": "^2.8.5",
     "davexmlrpc": "^0.4.26",
     "dotenv": "^16.5.0",
-    "express": "^4.17.1",
+    "express": "^4.21.2",
     "express-handlebars": "^5.3.3",
     "express-ws": "^5.0.2",
     "markdown-it": "^14.1.0",
@@ -47,10 +47,10 @@
     "eslint": "^9.29.0",
     "eslint-config-crockford": "^2.0.0",
     "https": "^1.0.0",
-    "mocha": "^11.7.0",
+    "mocha": "^11.7.1",
     "mocha-multi": "^1.1.7",
     "nodemon": "3.1.10",
-    "prettier": "^3.4.2",
+    "prettier": "^3.6.1",
     "supertest": "^7.1.1"
   }
 }
