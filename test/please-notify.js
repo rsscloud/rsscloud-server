@@ -5,7 +5,7 @@ const chai = require('chai'),
     SERVER_URL = process.env.APP_URL || 'http://localhost:5337',
     mock = require('./mock'),
     mongodb = require('./mongodb'),
-    xmlrpc = require('davexmlrpc'),
+    xmlrpcBuilder = require('./xmlrpc-builder'),
     rpcReturnSuccess = require('../services/rpc-return-success'),
     rpcReturnFault = require('../services/rpc-return-fault');
 
@@ -14,7 +14,7 @@ chai.use(chaiXml);
 
 function pleaseNotify(pingProtocol, body, returnFormat) {
     if ('XML-RPC' === pingProtocol) {
-        const rpctext = xmlrpc.buildCall('rssCloud.pleaseNotify', body, 'xml');
+        const rpctext = xmlrpcBuilder.buildPleaseNotifyCall(body);
 
         return chai
             .request(SERVER_URL)
