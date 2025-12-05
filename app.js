@@ -7,8 +7,8 @@ const config = require('./config'),
     getDayjs = require('./services/dayjs-wrapper'),
     mongodb = require('./services/mongodb'),
     morgan = require('morgan'),
-    { setupLogRetention } = require('./services/log-cleanup'),
-    removeExpiredSubscriptions = require('./services/remove-expired-subscriptions');
+    removeExpiredSubscriptions = require('./services/remove-expired-subscriptions'),
+    websocket = require('./services/websocket');
 
 let app, hbs, server, dayjs;
 
@@ -69,13 +69,6 @@ async function startServer() {
     await initializeDayjs();
     await mongodb.connect('rsscloud', config.mongodbUri);
 
-    // Setup log retention TTL index
-    try {
-        await setupLogRetention();
-    } catch (error) {
-        console.error('Failed to setup log retention, continuing without it:', error);
-    }
-
     // Start cleanup scheduling
     scheduleCleanupTasks();
 
@@ -86,6 +79,9 @@ async function startServer() {
         if (app.locals.host.indexOf(':') > -1) {
             app.locals.host = '[' + app.locals.host + ']';
         }
+
+        // Initialize WebSocket server for /wsLog
+        websocket.initialize(server);
 
         console.log(`Listening at http://${app.locals.host}:${app.locals.port}`);
     })

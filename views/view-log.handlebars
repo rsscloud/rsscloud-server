@@ -5,49 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>rssCloud: Log</title>
     <link href="/css/style.css" rel="stylesheet">
+    <script type="module" src="https://esm.sh/@andrewshell/socklog"></script>
+    <style>
+        socklog-viewer {
+            display: block;
+            height: 70vh;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        socklog-controls {
+            display: block;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
     <h1>rssCloud: Log</h1>
-    <p>The latest events on this rssCloud server.</p>
+    <p>Real-time events on this rssCloud server.</p>
 
-    <table class="log-table">
-        <thead>
-            <tr>
-                <th>Event</th>
-                <th>What Happened</th>
-                <th class="time-column">When</th>
-                <th class="secs-column">Seconds</th>
-            </tr>
-        </thead>
-        <tbody>
-        {{#if eventlog}}
-        {{#each eventlog}}
-            <tr>
-                <td>{{eventtype}}</td>
-                <td>
-                    {{{htmltext}}}
-                    {{#if headers}}
-                        <div class="headers">
-                            <h4>Request Headers:</h4>
-                            <ul>
-                                {{#each headers}}
-                                <li><strong>{{@key}}:</strong> {{this}}</li>
-                                {{/each}}
-                            </ul>
-                        </div>
-                    {{/if}}
-                </td>
-                <td class="time-column">{{time}}</td>
-                <td class="secs-column">{{secs}}</td>
-            </tr>
-        {{/each}}
-        {{else}}
-            <tr>
-                <td colspan="4" class="text-center">No events logged yet.</td>
-            </tr>
-        {{/if}}
-        </tbody>
-    </table>
+    <socklog-controls></socklog-controls>
+    <socklog-viewer url="ws://{{host}}:{{port}}/wsLog"></socklog-viewer>
 
     <p class="mt-20">
         <a href="/">← Back to Home</a>

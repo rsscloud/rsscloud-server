@@ -21,6 +21,5 @@ module.exports = {
     maxResourceSize: getNumericConfig('MAX_RESOURCE_SIZE', 256000),
     ctSecsResourceExpire: getNumericConfig('CT_SECS_RESOURCE_EXPIRE', 90000),
     minSecsBetweenPings: getNumericConfig('MIN_SECS_BETWEEN_PINGS', 0),
-    requestTimeout: getNumericConfig('REQUEST_TIMEOUT', 4000),
-    logRetentionHours: getNumericConfig('LOG_RETENTION_HOURS', 2)
+    requestTimeout: getNumericConfig('REQUEST_TIMEOUT', 4000)
 };
