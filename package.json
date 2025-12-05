@@ -10,7 +10,7 @@
     "lint": "eslint --fix controllers/ services/ test/ *.js",
     "format": "prettier --write .",
     "test": "mocha",
-    "test-api": "docker-compose up --build --abort-on-container-exit"
+    "test-api": "docker-compose up --build --abort-on-container-exit --attach rsscloud-tests --no-log-prefix"
   },
   "engines": {
     "node": ">=22"
@@ -20,13 +20,14 @@
   "dependencies": {
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
+    "dayjs": "^1.11.13",
     "dotenv": "^16.5.0",
     "express": "^4.21.2",
     "express-handlebars": "^5.3.3",
     "markdown-it": "^14.1.0",
-    "dayjs": "^1.11.13",
     "mongodb": "6.17.0",
     "morgan": "^1.10.0",
+    "ws": "^8.18.3",
     "xml2js": "^0.6.2",
     "xmlbuilder": "^15.1.1"
   },
