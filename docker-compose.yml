@@ -20,7 +20,7 @@ services:
 
   rsscloud-tests:
     build: .
-    command: dockerize -wait tcp://mongodb:27017 -wait http://rsscloud:5337 -timeout 10s bash -c "npm test"
+    command: dockerize -wait tcp://mongodb:27017 -wait http://rsscloud:5337 -timeout 10s bash -c "pnpm test"
     environment:
       APP_URL: http://rsscloud:5337
       MONGODB_URI: mongodb://mongodb:27017/rsscloud

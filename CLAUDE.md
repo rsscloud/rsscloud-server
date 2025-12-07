@@ -8,20 +8,22 @@ This is an rssCloud Server v2 implementation in Node.js - a notification protoco
 
 ## Development Commands
 
+This project uses pnpm with corepack. Run `corepack enable` to set up pnpm automatically.
+
 ### Start Development
 
-- `npm start` - Start server with nodemon (auto-reload on changes)
-- `npm run client` - Start client with nodemon
+- `pnpm start` - Start server with nodemon (auto-reload on changes)
+- `pnpm run client` - Start client with nodemon
 
 ### Testing & Quality
 
-- `npm test` - Run Mocha test suite (called by test-api)
-- `npm run test-api` - Run full API tests using Docker containers (MacOS tested)
-- `npm run lint` - Run ESLint with auto-fix on controllers/, services/, test/
+- `pnpm test` - Run Mocha test suite (called by test-api)
+- `pnpm run test-api` - Run full API tests using Docker containers (MacOS tested)
+- `pnpm run lint` - Run ESLint with auto-fix on controllers/, services/, test/
 
 ### Data Management
 
-- `npm run import-data` - Import data using bin/import-data.js
+- `pnpm run import-data` - Import data using bin/import-data.js
 
 ## Architecture
 
