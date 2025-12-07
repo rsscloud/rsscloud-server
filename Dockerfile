@@ -6,16 +6,19 @@ RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSI
     && tar -C /usr/local/bin -xzvf dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
     && rm dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz
 
+# Enable corepack for pnpm
+RUN corepack enable
+
 RUN mkdir -p /app
 
 WORKDIR /app
 
 COPY package.json .
-COPY package-lock.json .
+COPY pnpm-lock.yaml .
 
 FROM base AS dependencies
 
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
 FROM dependencies AS runtime
 
