@@ -1,10 +1,8 @@
-const appMessages = require('./app-messages'),
-    config = require('../config'),
+const config = require('../config'),
     getDayjs = require('./dayjs-wrapper'),
     logEvent = require('./log-event'),
     mongodb = require('./mongodb'),
-    notifyOne = require('./notify-one'),
-    url = require('url');
+    notifyOne = require('./notify-one');
 
 async function fetchSubscriptions(resourceUrl) {
     const subscriptions = await mongodb.get('rsscloud')
@@ -30,7 +28,6 @@ async function notifyOneSubscriber(resourceUrl, subscription) {
     const dayjs = await getDayjs();
     const apiurl = subscription.url,
         startticks = dayjs().format('x'),
-        parts = url.parse(apiurl),
         notifyProcedure = subscription.notifyProcedure,
         protocol = subscription.protocol;
 
@@ -43,7 +40,17 @@ async function notifyOneSubscriber(resourceUrl, subscription) {
 
         await logEvent(
             'Notify',
-            appMessages.log.notify(apiurl, parts.host, resourceUrl, parts.protocol),
+            {
+                subscriberUrl: apiurl,
+                notifyProcedure: notifyProcedure,
+                protocol: protocol,
+                resourceUrl: resourceUrl,
+                subscription: {
+                    totalUpdates: subscription.ctUpdates,
+                    consecutiveErrors: subscription.ctConsecutiveErrors,
+                    totalErrors: subscription.ctErrors
+                }
+            },
             startticks
         );
     } catch (err) {
@@ -55,7 +62,18 @@ async function notifyOneSubscriber(resourceUrl, subscription) {
 
         await logEvent(
             'NotifyFailed',
-            appMessages.log.notifyFailed(apiurl, parts.host, resourceUrl, parts.protocol),
+            {
+                subscriberUrl: apiurl,
+                notifyProcedure: notifyProcedure,
+                protocol: protocol,
+                resourceUrl: resourceUrl,
+                subscription: {
+                    totalUpdates: subscription.ctUpdates,
+                    consecutiveErrors: subscription.ctConsecutiveErrors,
+                    totalErrors: subscription.ctErrors
+                },
+                error: err.message
+            },
             startticks
         );
     }

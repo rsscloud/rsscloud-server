@@ -6,8 +6,7 @@ const appMessages = require('./app-messages'),
     logEvent = require('./log-event'),
     mongodb = require('./mongodb'),
     notifyOne = require('./notify-one'),
-    notifyOneChallenge = require('./notify-one-challenge'),
-    url = require('url');
+    notifyOneChallenge = require('./notify-one-challenge');
 
 async function checkresourceUrlStatusCode(resourceUrl) {
     const controller = new AbortController();
@@ -53,8 +52,7 @@ async function upsertSubscriptions(subscriptions) {
 async function notifyApiUrl(notifyProcedure, apiurl, protocol, resourceUrl, diffDomain) {
     const dayjs = await getDayjs();
     const subscriptions = await fetchSubscriptions(resourceUrl),
-        startticks = dayjs().format('x'),
-        parts = url.parse(apiurl);
+        startticks = dayjs().format('x');
 
     await initSubscription(subscriptions, notifyProcedure, apiurl, protocol);
 
@@ -78,7 +76,12 @@ async function notifyApiUrl(notifyProcedure, apiurl, protocol, resourceUrl, diff
 
         await logEvent(
             'Subscribe',
-            appMessages.log.subscription(apiurl, parts.host, resourceUrl, parts.protocol),
+            {
+                subscriberUrl: apiurl,
+                notifyProcedure: notifyProcedure,
+                resourceUrl: resourceUrl,
+                diffDomain: diffDomain
+            },
             startticks
         );
     } catch {

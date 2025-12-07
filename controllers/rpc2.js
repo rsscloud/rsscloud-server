@@ -42,7 +42,10 @@ router.post('/', textParser, async function(req, res) {
 
         logEvent(
             'XmlRpc',
-            request.methodName,
+            {
+                methodName: request.methodName,
+                params: request.params
+            },
             dayjs().format('x')
         );
 

@@ -69,7 +69,16 @@ async function checkForResourceChange(resource, resourceUrl, startticks) {
 
     await logEvent(
         'Ping',
-        appMessage.log.ping(resourceUrl, resource.flDirty.toString()),
+        {
+            resourceUrl: resourceUrl,
+            changed: resource.flDirty,
+            hash: resource.lastHash,
+            size: resource.lastSize,
+            stats: {
+                totalChecks: resource.ctChecks,
+                totalUpdates: resource.ctUpdates
+            }
+        },
         startticks
     );
 }

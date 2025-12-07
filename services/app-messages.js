@@ -16,12 +16,6 @@ module.exports = {
             tooManyParams: (method) => `Can't call "${method}" because there are too many parameters.`
         }
     },
-    log: {
-        subscription: (apiUrl, displayUrl, resourceUrl, protocol) => `Subscriber <a href="${apiUrl}">${displayUrl}</a> requests notification when the <a href="${resourceUrl}">resource</a> changes via <i>${protocol}</i> protocol.`,
-        ping: (resourceUrl, result) => `The <a href="${resourceUrl}">resource</a> was said to have changed. We checked and the claim appears to be ${result}.`,
-        notify: (apiUrl, displayUrl, resourceUrl, protocol) => `Subscriber <a href="${apiUrl}">${displayUrl}</a> was notified that <a href="${resourceUrl}">resource</a> has changed via <i>${protocol}</i> protocol.`,
-        notifyFailed: (apiUrl, displayUrl, resourceUrl, protocol) => `Failed to notify subscriber <a href="${apiUrl}">${displayUrl}</a> that <a href="${resourceUrl}">resource</a> has changed via <i>${protocol}</i> protocol.`
-    },
     success: {
         subscription: 'Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!',
         ping: 'Thanks for the ping.'

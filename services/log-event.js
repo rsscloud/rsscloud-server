@@ -1,7 +1,7 @@
 const getDayjs = require('./dayjs-wrapper'),
     websocket = require('./websocket');
 
-async function logEvent(eventtype, htmltext, startticks, req) {
+async function logEvent(eventtype, data, startticks, req) {
     const dayjs = await getDayjs();
     let secs, time;
 
@@ -14,7 +14,7 @@ async function logEvent(eventtype, htmltext, startticks, req) {
 
     websocket.broadcast({
         eventtype,
-        htmltext,
+        data,
         secs,
         time: new Date(time.utc().format()),
         headers: req.headers

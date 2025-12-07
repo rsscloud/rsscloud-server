@@ -5,27 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>rssCloud: Log</title>
     <link href="/css/style.css" rel="stylesheet">
-    <script type="module" src="https://esm.sh/@andrewshell/socklog"></script>
-    <style>
-        socklog-viewer {
-            display: block;
-            height: 70vh;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            margin-top: 10px;
-        }
-        socklog-controls {
-            display: block;
-            margin-top: 20px;
-        }
-    </style>
 </head>
 <body>
     <h1>rssCloud: Log</h1>
     <p>Real-time events on this rssCloud server.</p>
 
-    <socklog-controls></socklog-controls>
-    <socklog-viewer url="ws://{{host}}:{{port}}/wsLog"></socklog-viewer>
+    <script type="module">
+    import 'https://esm.sh/@andrewshell/socklog'
+
+    const viewer = document.getElementById('viewer')
+    const controls = document.getElementById('controls')
+
+    // Connect controls to viewer's log store
+    controls.store = viewer.getStore()
+    </script>
+
+    <div class="log-panel">
+        <socklog-controls id="controls"></socklog-controls>
+        <socklog-viewer id="viewer" url="ws://{{host}}:{{port}}/wsLog"></socklog-viewer>
+    </div>
 
     <p class="mt-20">
         <a href="/">← Back to Home</a>
