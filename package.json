@@ -1,6 +1,6 @@
 {
   "name": "rsscloud-server",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "An rssCloud Server",
   "main": "app.js",
   "scripts": {
@@ -10,7 +10,8 @@
     "lint": "eslint --fix controllers/ services/ test/ *.js",
     "format": "prettier --write .",
     "test": "mocha",
-    "test-api": "docker-compose up --build --abort-on-container-exit --attach rsscloud-tests --no-log-prefix"
+    "test-api": "docker-compose up --build --abort-on-container-exit --attach rsscloud-tests --no-log-prefix",
+    "prepare": "husky"
   },
   "engines": {
     "node": ">=22"
@@ -37,12 +38,15 @@
     "url": "https://github.com/andrewshell/rsscloud-server.git"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.2.0",
+    "@commitlint/config-conventional": "^20.2.0",
     "chai": "^4.3.4",
     "chai-http": "^4.3.0",
     "chai-json": "^1.0.0",
     "chai-xml": "^0.4.1",
     "eslint": "^9.29.0",
     "https": "^1.0.0",
+    "husky": "^9.1.7",
     "mocha": "^11.7.1",
     "mocha-multi": "^1.1.7",
     "nodemon": "3.1.10",

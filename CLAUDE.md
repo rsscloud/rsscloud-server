@@ -68,3 +68,39 @@ Uses MongoDB for storing subscriptions and resource state. Connection handled th
 - Unit tests in test/ directory using Mocha/Chai
 - Docker-based API testing with mock endpoints
 - Test fixtures and SSL certificates in test/keys/
+
+## Commits and Releases
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) enforced by commitlint via husky git hooks.
+
+### Commit Format
+
+```
+type: description
+
+[optional body]
+```
+
+### Commit Types
+
+**Trigger releases:**
+- `fix:` - Bug fixes → patch release (2.2.1 → 2.2.2)
+- `feat:` - New features → minor release (2.2.1 → 2.3.0)
+- `feat!:` or `BREAKING CHANGE:` → major release (2.2.1 → 3.0.0)
+
+**No release triggered:**
+- `chore:` - Maintenance tasks, dependencies
+- `docs:` - Documentation only
+- `style:` - Code style/formatting
+- `refactor:` - Code refactoring
+- `test:` - Adding/updating tests
+- `ci:` - CI/CD changes
+- `build:` - Build system changes
+
+### Release Workflow
+
+1. Push commits to `main`
+2. release-please automatically creates/updates a Release PR
+3. Review the Release PR (contains changelog and version bump)
+4. Merge the Release PR when ready to release
+5. release-please creates GitHub Release and git tag
