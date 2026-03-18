@@ -127,6 +127,12 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     } else {
                         expect(mock.requests.GET).property(pingPath).lengthOf(1, `Missing GET ${pingPath}`);
                     }
+
+                    // Verify resource document was created
+                    const resDoc = await mongodb.findResource(resourceUrl);
+                    expect(resDoc).to.not.be.null;
+                    expect(resDoc).to.have.property('lastHash');
+                    expect(resDoc).to.have.property('lastSize');
                 });
 
                 it('should accept a pleaseNotify without domain for new resource', async function() {

@@ -2,6 +2,7 @@ const mongodb = require('./mongodb');
 const getDayjs = require('./dayjs-wrapper');
 const jsonStore = require('./json-store');
 const config = require('../config');
+const ping = require('./ping');
 
 /**
  * Removes expired and errored subscriptions from MongoDB
@@ -50,7 +51,15 @@ async function removeExpiredSubscriptions() {
                 if (validSubscriptions.length === 0) {
                     // Remove entire document if no valid subscriptions remain
                     await collection.deleteOne({ _id: doc._id });
-                    jsonStore.setSubscriptions(doc._id, []);
+
+                    // Only remove resource if it wasn't checked in the last 24 hours
+                    const resource = await db.collection('resources').findOne({ _id: doc._id });
+                    if (resource && dayjs(resource.whenLastCheck).isAfter(dayjs().subtract(24, 'hours'))) {
+                        jsonStore.setSubscriptions(doc._id, []);
+                    } else {
+                        await db.collection('resources').deleteOne({ _id: doc._id });
+                        jsonStore.removeEntry(doc._id);
+                    }
                     documentsDeleted++;
                 } else {
                     // Update document with filtered subscriptions
@@ -63,12 +72,45 @@ async function removeExpiredSubscriptions() {
             }
         }
 
+        // Find subscriptions with no corresponding resource and create resources
+        let resourcesCreated = 0;
+        const orphanedCursor = collection.aggregate([
+            {
+                $lookup: {
+                    from: 'resources',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'resource'
+                }
+            },
+            {
+                $match: {
+                    resource: { $size: 0 }
+                }
+            }
+        ]);
+
+        while (await orphanedCursor.hasNext()) {
+            const doc = await orphanedCursor.next();
+            try {
+                await ping(doc._id);
+                resourcesCreated++;
+            } catch (err) {
+                console.log(`Failed to create resource for ${doc._id}: ${err.message}`);
+            }
+        }
+
+        if (resourcesCreated > 0) {
+            console.log(`Created ${resourcesCreated} missing resource documents`);
+        }
+
         console.log(`Subscription cleanup completed: ${totalRemoved} expired/errored subscriptions removed, ${documentsProcessed} documents processed, ${documentsDeleted} empty documents deleted`);
 
         return {
             subscriptionsRemoved: totalRemoved,
             documentsProcessed,
-            documentsDeleted
+            documentsDeleted,
+            resourcesCreated
         };
 
     } catch (error) {
