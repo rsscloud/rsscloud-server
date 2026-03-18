@@ -24,7 +24,7 @@ The API is tested using docker containers. I've only tested on MacOS so if you h
 First install [Docker Desktop for Mac](https://hub.docker.com/editions/community/docker-ce-desktop-mac)
 
 ```bash
-npm run test-api
+npm test
 ```
 
 This should build the appropriate containers and show the test output.

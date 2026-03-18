@@ -9,8 +9,8 @@
     "import-data": "node ./bin/import-data.js",
     "lint": "eslint --fix controllers/ services/ test/ *.js",
     "format": "prettier --write .",
-    "test": "mocha",
-    "test-api": "docker-compose up --build --abort-on-container-exit --attach rsscloud-tests --no-log-prefix",
+    "test": "docker-compose up --build --abort-on-container-exit --attach rsscloud-tests --no-log-prefix",
+    "test-internal": "mocha",
     "prepare": "husky"
   },
   "engines": {
