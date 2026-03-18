@@ -24,6 +24,25 @@ async function upsertSubscriptions(subscriptions) {
 }
 
 module.exports = {
+    addResource: async function(resourceUrl, resourceObj) {
+        await mongodb.get('rsscloud')
+            .collection('resources')
+            .replaceOne(
+                { _id: resourceUrl },
+                Object.assign({ _id: resourceUrl }, resourceObj),
+                { upsert: true }
+            );
+    },
+    findResource: async function(resourceUrl) {
+        return mongodb.get('rsscloud')
+            .collection('resources')
+            .findOne({ _id: resourceUrl });
+    },
+    findSubscription: async function(resourceUrl) {
+        return mongodb.get('rsscloud')
+            .collection('subscriptions')
+            .findOne({ _id: resourceUrl });
+    },
     addSubscription: async function(resourceUrl, notifyProcedure, apiurl, protocol) {
         const subscriptions = await fetchSubscriptions(resourceUrl);
 

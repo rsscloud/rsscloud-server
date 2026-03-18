@@ -29,6 +29,7 @@ function setResource(feedUrl, resourceObj) {
     }
     const clean = Object.assign({}, resourceObj);
     delete clean._id;
+    delete clean.flDirty;
     data[feedUrl].resource = clean;
 }
 
@@ -41,6 +42,10 @@ function setSubscriptions(feedUrl, pleaseNotifyArray) {
         delete clean._id;
         return clean;
     });
+}
+
+function removeEntry(feedUrl) {
+    delete data[feedUrl];
 }
 
 function getData() {
@@ -77,6 +82,7 @@ module.exports = {
     initialize,
     setResource,
     setSubscriptions,
+    removeEntry,
     getData,
     clear,
     flush,

@@ -7,28 +7,8 @@ const appMessages = require('./app-messages'),
     logEvent = require('./log-event'),
     mongodb = require('./mongodb'),
     notifyOne = require('./notify-one'),
-    notifyOneChallenge = require('./notify-one-challenge');
-
-async function checkresourceUrlStatusCode(resourceUrl) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), config.requestTimeout);
-
-    try {
-        const res = await fetch(resourceUrl, {
-            method: 'GET',
-            signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (res.status < 200 || res.status > 299) {
-            throw new ErrorResponse(appMessages.error.subscription.readResource(resourceUrl));
-        }
-    } catch {
-        clearTimeout(timeoutId);
-        throw new ErrorResponse(appMessages.error.subscription.readResource(resourceUrl));
-    }
-}
+    notifyOneChallenge = require('./notify-one-challenge'),
+    ping = require('./ping');
 
 async function fetchSubscriptions(resourceUrl) {
     const subscriptions = await mongodb.get('rsscloud')
@@ -98,7 +78,11 @@ async function pleaseNotify(notifyProcedure, apiurl, protocol, urlList, diffDoma
 
     const results = await Promise.allSettled(
         urlList.map(async(resourceUrl) => {
-            await checkresourceUrlStatusCode(resourceUrl);
+            try {
+                await ping(resourceUrl);
+            } catch {
+                throw new ErrorResponse(appMessages.error.subscription.readResource(resourceUrl));
+            }
             await notifyApiUrl(notifyProcedure, apiurl, protocol, resourceUrl, diffDomain);
         })
     );

@@ -18,7 +18,6 @@ This project uses pnpm with corepack. Run `corepack enable` to set up pnpm autom
 ### Testing & Quality
 
 - `pnpm test` - Run full API tests using Docker containers (MacOS tested)
-- `pnpm run test-internal` - Run Mocha test suite directly
 - `pnpm run lint` - Run ESLint with auto-fix on controllers/, services/, test/
 
 ### Data Management
