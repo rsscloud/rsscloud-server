@@ -4,8 +4,8 @@
   "description": "An rssCloud Server",
   "main": "app.js",
   "scripts": {
-    "start": "nodemon --use_strict ./app.js",
-    "client": "nodemon --use_strict ./client.js",
+    "start": "nodemon --use_strict --ignore data/ ./app.js",
+    "client": "nodemon --use_strict --ignore data/ ./client.js",
     "import-data": "node ./bin/import-data.js",
     "lint": "eslint --fix controllers/ services/ test/ *.js",
     "format": "prettier --write .",

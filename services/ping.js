@@ -4,6 +4,7 @@ const appMessage = require('./app-messages'),
     ErrorResponse = require('./error-response'),
     getDayjs = require('./dayjs-wrapper'),
     initResource = require('./init-resource'),
+    jsonStore = require('./json-store'),
     logEvent = require('./log-event'),
     mongodb = require('./mongodb'),
     notifySubscribers = require('./notify-subscribers');
@@ -56,13 +57,7 @@ async function checkForResourceChange(resource, resourceUrl, startticks) {
 
     const hash = md5Hash(body);
 
-    if (resource.lastHash !== hash) {
-        resource.flDirty = true;
-    } else if (resource.lastSize !== body.length) {
-        resource.flDirty = true;
-    } else {
-        resource.flDirty = false;
-    }
+    const changed = (resource.lastHash !== hash) || (resource.lastSize !== body.length);
 
     resource.lastHash = hash;
     resource.lastSize = body.length;
@@ -71,7 +66,7 @@ async function checkForResourceChange(resource, resourceUrl, startticks) {
         'Ping',
         {
             resourceUrl: resourceUrl,
-            changed: resource.flDirty,
+            changed: changed,
             hash: resource.lastHash,
             size: resource.lastSize,
             stats: {
@@ -81,6 +76,8 @@ async function checkForResourceChange(resource, resourceUrl, startticks) {
         },
         startticks
     );
+
+    return changed;
 }
 
 async function fetchResource(resourceUrl) {
@@ -101,10 +98,11 @@ async function upsertResource(resource) {
             resource,
             { upsert: true }
         );
+    jsonStore.setResource(resource._id, resource);
 }
 
-async function notifySubscribersIfDirty(resource, resourceUrl) {
-    if (resource.flDirty) {
+async function notifySubscribersIfDirty(changed, resource, resourceUrl) {
+    if (changed) {
         const dayjs = await getDayjs();
         resource.ctUpdates += 1;
         resource.whenLastUpdate = new Date(dayjs().utc().format());
@@ -120,8 +118,8 @@ async function ping(resourceUrl) {
         );
 
     await checkPingFrequency(resource);
-    await checkForResourceChange(resource, resourceUrl, startticks);
-    await notifySubscribersIfDirty(resource, resourceUrl);
+    const changed = await checkForResourceChange(resource, resourceUrl, startticks);
+    await notifySubscribersIfDirty(changed, resource, resourceUrl);
     await upsertResource(resource);
 
     return {

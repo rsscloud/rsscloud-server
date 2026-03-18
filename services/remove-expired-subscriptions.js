@@ -1,5 +1,6 @@
 const mongodb = require('./mongodb');
 const getDayjs = require('./dayjs-wrapper');
+const jsonStore = require('./json-store');
 const config = require('../config');
 
 /**
@@ -49,6 +50,7 @@ async function removeExpiredSubscriptions() {
                 if (validSubscriptions.length === 0) {
                     // Remove entire document if no valid subscriptions remain
                     await collection.deleteOne({ _id: doc._id });
+                    jsonStore.setSubscriptions(doc._id, []);
                     documentsDeleted++;
                 } else {
                     // Update document with filtered subscriptions
@@ -56,6 +58,7 @@ async function removeExpiredSubscriptions() {
                         { _id: doc._id },
                         { $set: { pleaseNotify: validSubscriptions } }
                     );
+                    jsonStore.setSubscriptions(doc._id, validSubscriptions);
                 }
             }
         }

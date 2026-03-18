@@ -3,6 +3,7 @@ const appMessages = require('./app-messages'),
     ErrorResponse = require('./error-response'),
     getDayjs = require('./dayjs-wrapper'),
     initSubscription = require('./init-subscription'),
+    jsonStore = require('./json-store'),
     logEvent = require('./log-event'),
     mongodb = require('./mongodb'),
     notifyOne = require('./notify-one'),
@@ -47,6 +48,7 @@ async function upsertSubscriptions(subscriptions) {
             subscriptions,
             { upsert: true }
         );
+    jsonStore.setSubscriptions(subscriptions._id, subscriptions.pleaseNotify);
 }
 
 async function notifyApiUrl(notifyProcedure, apiurl, protocol, resourceUrl, diffDomain) {
