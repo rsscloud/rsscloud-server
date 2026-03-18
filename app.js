@@ -38,6 +38,8 @@ async function initializeDayjs() {
 
 app = express();
 
+app.set('trust proxy', true);
+
 app.use(morgan('[:mydate] :method :url :status :res[content-length] - :remote-addr - :response-time ms'));
 
 app.use(cors());

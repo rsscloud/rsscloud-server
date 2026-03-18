@@ -11,7 +11,7 @@
     <p>Real-time events on this rssCloud server.</p>
 
     <script type="module">
-    import 'https://esm.sh/@andrewshell/socklog'
+    import 'https://esm.sh/@andrewshell/socklog@0.2.3'
 
     const viewer = document.getElementById('viewer')
     const controls = document.getElementById('controls')
@@ -22,7 +22,7 @@
 
     <div class="log-panel">
         <socklog-controls id="controls"></socklog-controls>
-        <socklog-viewer id="viewer" url="ws://{{host}}:{{port}}/wsLog"></socklog-viewer>
+        <socklog-viewer id="viewer" url="{{wsUrl}}"></socklog-viewer>
     </div>
 
     <p class="mt-20">
