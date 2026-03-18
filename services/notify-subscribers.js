@@ -1,5 +1,6 @@
 const config = require('../config'),
     getDayjs = require('./dayjs-wrapper'),
+    jsonStore = require('./json-store'),
     logEvent = require('./log-event'),
     mongodb = require('./mongodb'),
     notifyOne = require('./notify-one');
@@ -22,6 +23,7 @@ async function upsertSubscriptions(subscriptions) {
             subscriptions,
             { upsert: true }
         );
+    jsonStore.setSubscriptions(subscriptions._id, subscriptions.pleaseNotify);
 }
 
 async function notifyOneSubscriber(resourceUrl, subscription) {

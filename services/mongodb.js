@@ -32,16 +32,6 @@ async function closeAll() {
     await Promise.all(Object.keys(state).map(close));
 }
 
-function cleanup() {
-    closeAll()
-        .finally(() => {
-            process.exit();
-        });
-}
-
-process.on('SIGINT', cleanup);
-process.on('SIGTERM', cleanup);
-
 module.exports = {
     connect,
     get,

@@ -3,7 +3,6 @@ const getDayjs = require('./dayjs-wrapper');
 async function initResource(resource) {
     const dayjs = await getDayjs();
     const defaultResource = {
-        flDirty: true,
         lastSize: 0,
         lastHash: '',
         ctChecks: 0,

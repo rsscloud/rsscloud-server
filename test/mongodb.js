@@ -1,5 +1,6 @@
 const config = require('../config'),
     initSubscription = require('../services/init-subscription'),
+    jsonStore = require('../services/json-store'),
     mongodb = require('../services/mongodb');
 
 async function fetchSubscriptions(resourceUrl) {
@@ -69,5 +70,6 @@ module.exports = {
         await mongodb.get('rsscloud').collection('events').drop();
         await mongodb.get('rsscloud').collection('resources').drop();
         await mongodb.get('rsscloud').collection('subscriptions').drop();
+        jsonStore.clear();
     }
 };
