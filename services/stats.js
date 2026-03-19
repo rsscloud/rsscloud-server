@@ -16,7 +16,7 @@ function getStats() {
     } catch {
         return {
             generatedAt: null,
-            feedsPingedLast7Days: 0,
+            feedsChangedLast7Days: 0,
             feedsWithSubscribers: 0,
             uniqueAggregators: 0,
             totalActiveSubscriptions: 0,
@@ -33,18 +33,18 @@ async function generateStats() {
 
     const data = jsonStore.getData();
 
-    let feedsPingedLast7Days = 0;
+    let feedsChangedLast7Days = 0;
     let totalActiveSubscriptions = 0;
     const hostnames = new Set();
     const protocolBreakdown = { 'http-post': 0, 'https-post': 0, 'xml-rpc': 0 };
     const feedCounts = [];
 
     for (const [feedUrl, entry] of Object.entries(data)) {
-        // Count feeds pinged in last 7 days
-        if (entry.resource?.whenLastCheck) {
-            const lastCheck = new Date(entry.resource.whenLastCheck);
-            if (lastCheck >= sevenDaysAgo) {
-                feedsPingedLast7Days++;
+        // Count feeds changed in last 7 days
+        if (entry.resource?.whenLastUpdate) {
+            const lastUpdate = new Date(entry.resource.whenLastUpdate);
+            if (lastUpdate >= sevenDaysAgo) {
+                feedsChangedLast7Days++;
             }
         }
 
@@ -84,7 +84,7 @@ async function generateStats() {
 
     const stats = {
         generatedAt: dayjs().utc().format(),
-        feedsPingedLast7Days,
+        feedsChangedLast7Days,
         feedsWithSubscribers: feedCounts.length,
         uniqueAggregators: hostnames.size,
         totalActiveSubscriptions,
