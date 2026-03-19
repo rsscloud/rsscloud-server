@@ -79,7 +79,7 @@ function rest(req) {
     }
 
     if (0 === s.length) {
-        parts.scheme = 'https-post' === params.protocol ? 'https' : 'http';
+        parts.scheme = ('https-post' === params.protocol || '443' === String(req.body.port)) ? 'https' : 'http';
         parts.port = req.body.port;
         parts.path = req.body.path;
 
@@ -127,7 +127,7 @@ function rpc(req, rpcParams) {
         params.notifyProcedure = false;
     }
 
-    parts.scheme = 'https-post' === params.protocol ? 'https' : 'http';
+    parts.scheme = ('https-post' === params.protocol || '443' === String(rpcParams[1])) ? 'https' : 'http';
     parts.port = rpcParams[1];
     parts.path = rpcParams[2];
 
