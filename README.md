@@ -43,7 +43,7 @@ The POST parameters are:
 2. port
 3. path
 4. registerProcedure -- required, but isn't used in this server as it only applies to xml-rpc or soap.
-5. protocol -- the spec allows for http-post, xml-rpc or soap but this server only supports http-post. This server also supports https-post which is identical to http-post except it notifies using https as the scheme instead of http.
+5. protocol -- the spec allows for http-post, xml-rpc or soap but this server only supports http-post. This server also supports https-post which is identical to http-post except it notifies using https as the scheme instead of http. Note: if you specify http-post with port 443, the server will automatically use the https scheme for notifications. For other ports that expect https, use https-post as the protocol.
 6. url1, url2, ..., urlN this is the resource you're requesting to be notified about.  In the case of an RSS feed you would specify the URL of the RSS feed.
 
 When you POST the server first checks if the urls you specifed are returning an [HTTP 2xx status code](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2) then it attempts to notify the subscriber of an update to make sure it works.  This is done in one of two ways.
