@@ -72,6 +72,36 @@ async function removeExpiredSubscriptions() {
             }
         }
 
+        // Fix IPv4-mapped IPv6 addresses in subscription URLs (e.g. [::ffff:1.2.3.4] -> 1.2.3.4)
+        let urlsFixed = 0;
+        const fixCursor = collection.find({ 'pleaseNotify.url': { $regex: '::ffff:' } });
+
+        while (await fixCursor.hasNext()) {
+            const doc = await fixCursor.next();
+            let changed = false;
+
+            for (const subscription of doc.pleaseNotify) {
+                const fixed = subscription.url.replace(/\[::ffff:([^\]]+)\]/, '$1');
+                if (fixed !== subscription.url) {
+                    subscription.url = fixed;
+                    changed = true;
+                    urlsFixed++;
+                }
+            }
+
+            if (changed) {
+                await collection.updateOne(
+                    { _id: doc._id },
+                    { $set: { pleaseNotify: doc.pleaseNotify } }
+                );
+                jsonStore.setSubscriptions(doc._id, doc.pleaseNotify);
+            }
+        }
+
+        if (urlsFixed > 0) {
+            console.log(`Fixed ${urlsFixed} subscription URLs with IPv4-mapped IPv6 addresses`);
+        }
+
         // Find subscriptions with no corresponding resource and create resources
         let resourcesCreated = 0;
         const orphanedCursor = collection.aggregate([
@@ -104,13 +134,14 @@ async function removeExpiredSubscriptions() {
             console.log(`Created ${resourcesCreated} missing resource documents`);
         }
 
-        console.log(`Subscription cleanup completed: ${totalRemoved} expired/errored subscriptions removed, ${documentsProcessed} documents processed, ${documentsDeleted} empty documents deleted`);
+        console.log(`Subscription cleanup completed: ${totalRemoved} expired/errored subscriptions removed, ${documentsProcessed} documents processed, ${documentsDeleted} empty documents deleted, ${urlsFixed} URLs fixed`);
 
         return {
             subscriptionsRemoved: totalRemoved,
             documentsProcessed,
             documentsDeleted,
-            resourcesCreated
+            resourcesCreated,
+            urlsFixed
         };
 
     } catch (error) {

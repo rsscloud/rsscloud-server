@@ -29,6 +29,10 @@ function parseUrlList(argv) {
 }
 
 function glueUrlParts(scheme, client, port, path) {
+    if (client.startsWith('::ffff:')) {
+        client = client.slice(7);
+    }
+
     if (client.indexOf(':') > -1) {
         client = `[${client}]`;
     }
