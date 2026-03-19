@@ -111,6 +111,13 @@ tr:hover {
     background-color: #f5f5f5;
 }
 
+/* Stats-specific styles */
+.stats-table td:last-child,
+.stats-table th:last-child {
+    width: 120px;
+    text-align: right;
+}
+
 /* Log-specific styles */
 .log-table {
     font-size: 14px;
