@@ -1,5 +1,6 @@
-function ErrorResponse(message) {
+function ErrorResponse(message, code) {
     this.message = message;
+    this.code = code;
 }
 
 ErrorResponse.prototype = Object.create(Error.prototype);

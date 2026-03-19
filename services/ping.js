@@ -15,7 +15,7 @@ async function checkPingFrequency(resource) {
         const dayjs = await getDayjs();
         ctsecs = dayjs().diff(resource.whenLastCheck, 'seconds');
         if (ctsecs < minsecs) {
-            throw new ErrorResponse(appMessage.error.ping.tooRecent(minsecs, ctsecs));
+            throw new ErrorResponse(appMessage.error.ping.tooRecent(minsecs, ctsecs), 'PING_TOO_RECENT');
         }
     }
 }

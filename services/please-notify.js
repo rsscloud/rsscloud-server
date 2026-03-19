@@ -80,8 +80,10 @@ async function pleaseNotify(notifyProcedure, apiurl, protocol, urlList, diffDoma
         urlList.map(async(resourceUrl) => {
             try {
                 await ping(resourceUrl);
-            } catch {
-                throw new ErrorResponse(appMessages.error.subscription.readResource(resourceUrl));
+            } catch (err) {
+                if (err.code !== 'PING_TOO_RECENT') {
+                    throw new ErrorResponse(appMessages.error.subscription.readResource(resourceUrl));
+                }
             }
             await notifyApiUrl(notifyProcedure, apiurl, protocol, resourceUrl, diffDomain);
         })
