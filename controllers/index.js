@@ -10,6 +10,13 @@ router.use('/ping', require('./ping'));
 router.use('/pingForm', require('./ping-form'));
 router.use('/viewLog', require('./view-log'));
 router.use('/RPC2', require('./rpc2'));
+router.use('/stats', require('./stats'));
+
+router.get('/stats.json', (req, res) => {
+    const { getStats } = require('../services/stats');
+    res.set('Content-Type', 'application/json');
+    res.send(JSON.stringify(getStats(), null, 2));
+});
 
 router.get('/subscriptions.json', (req, res) => {
     res.set('Content-Type', 'application/json');

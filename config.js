@@ -22,5 +22,7 @@ module.exports = {
     ctSecsResourceExpire: getNumericConfig('CT_SECS_RESOURCE_EXPIRE', 90000),
     minSecsBetweenPings: getNumericConfig('MIN_SECS_BETWEEN_PINGS', 0),
     requestTimeout: getNumericConfig('REQUEST_TIMEOUT', 4000),
-    dataFilePath: getConfig('DATA_FILE_PATH', './data/subscriptions.json')
+    dataFilePath: getConfig('DATA_FILE_PATH', './data/subscriptions.json'),
+    statsFilePath: getConfig('STATS_FILE_PATH', './data/stats.json'),
+    statsIntervalMs: getNumericConfig('STATS_INTERVAL_MS', 3600000)
 };

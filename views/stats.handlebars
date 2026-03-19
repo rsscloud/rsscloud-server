@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>rssCloud v2 - Stats</title>
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <h1>rssCloud v2 - Stats</h1>
+
+    <h2>Overview</h2>
+    <table>
+        <tr>
+            <td>Feeds pinged in last 7 days</td>
+            <td>{{feedsPingedLast7Days}}</td>
+        </tr>
+        <tr>
+            <td>Feeds with subscribers</td>
+            <td>{{feedsWithSubscribers}}</td>
+        </tr>
+        <tr>
+            <td>Unique aggregators</td>
+            <td>{{uniqueAggregators}}</td>
+        </tr>
+        <tr>
+            <td>Total active subscriptions</td>
+            <td>{{totalActiveSubscriptions}}</td>
+        </tr>
+    </table>
+
+    <h2>Protocol Breakdown</h2>
+    <table>
+        <tr>
+            <th>Protocol</th>
+            <th>Count</th>
+        </tr>
+        <tr>
+            <td>http-post</td>
+            <td>{{protocolBreakdown.http-post}}</td>
+        </tr>
+        <tr>
+            <td>https-post</td>
+            <td>{{protocolBreakdown.https-post}}</td>
+        </tr>
+        <tr>
+            <td>xml-rpc</td>
+            <td>{{protocolBreakdown.xml-rpc}}</td>
+        </tr>
+    </table>
+
+    {{#if topFeeds.length}}
+    <h2>Top Most Subscribed Feeds</h2>
+    <table>
+        <tr>
+            <th>Feed URL</th>
+            <th>Subscribers</th>
+        </tr>
+        {{#each topFeeds}}
+        <tr>
+            <td>{{this.url}}</td>
+            <td>{{this.subscriberCount}}</td>
+        </tr>
+        {{/each}}
+    </table>
+    {{/if}}
+
+    <p>Generated at: {{generatedAt}}</p>
+    <p><a href="/stats.json">View Stats as JSON</a> | <a href="/subscriptions.json">View Raw Data as JSON</a> | <a href="/">Home</a></p>
+</body>
+</html>

@@ -7,6 +7,7 @@ const config = require('./config'),
     getDayjs = require('./services/dayjs-wrapper'),
     jsonStore = require('./services/json-store'),
     mongodb = require('./services/mongodb'),
+    stats = require('./services/stats'),
     morgan = require('morgan'),
     removeExpiredSubscriptions = require('./services/remove-expired-subscriptions'),
     websocket = require('./services/websocket');
@@ -102,6 +103,10 @@ async function startServer() {
 
     // Start cleanup scheduling
     scheduleCleanupTasks();
+
+    // Generate stats on startup, then schedule periodic regeneration
+    stats.generateStats().catch(err => console.error('Error generating initial stats:', err));
+    stats.scheduleStatsGeneration();
 
     server = app.listen(config.port, () => {
         app.locals.host = config.domain;
