@@ -83,7 +83,7 @@ describe('RemoveExpiredSubscriptions', function() {
         expect(storeData).to.not.have.property(resourceUrl);
     });
 
-    it('should keep resource when recently checked even if all subscriptions are removed', async function() {
+    it('should remove recently-checked resource when all subscriptions are removed', async function() {
         const feedPath = '/rss.xml',
             resourceUrl = mock.serverUrl + feedPath,
             pingPath = '/feedupdated',
@@ -111,14 +111,13 @@ describe('RemoveExpiredSubscriptions', function() {
         const subDoc = await mongodb.findSubscription(resourceUrl);
         expect(subDoc).to.be.null;
 
-        // Resource document should still exist (checked 1 hour ago)
+        // Resource document should also be gone
         const resDoc = await mongodb.findResource(resourceUrl);
-        expect(resDoc).to.not.be.null;
+        expect(resDoc).to.be.null;
 
-        // JSON store should still have the resource but with empty subscribers
+        // JSON store entry should be fully removed
         const storeData = jsonStore.getData();
-        expect(storeData).to.have.property(resourceUrl);
-        expect(storeData[resourceUrl].subscribers).to.have.lengthOf(0);
+        expect(storeData).to.not.have.property(resourceUrl);
     });
 
     it('should not remove resource when valid subscriptions remain', async function() {
@@ -153,6 +152,37 @@ describe('RemoveExpiredSubscriptions', function() {
         // Resource document should still exist
         const resDoc = await mongodb.findResource(resourceUrl);
         expect(resDoc).to.not.be.null;
+    });
+
+    it('should remove subscription document with empty pleaseNotify array', async function() {
+        const feedPath = '/rss.xml',
+            resourceUrl = mock.serverUrl + feedPath;
+
+        // Directly insert a subscription doc with empty pleaseNotify
+        await mongodb.addResource(resourceUrl, {
+            lastHash: 'abc',
+            lastSize: 100,
+            ctChecks: 1,
+            ctUpdates: 0,
+            whenLastCheck: new Date()
+        });
+        const db = require('../services/mongodb').get('rsscloud');
+        await db.collection('subscriptions').insertOne({ _id: resourceUrl, pleaseNotify: [] });
+        jsonStore.setResource(resourceUrl, { lastHash: 'abc', lastSize: 100 });
+        jsonStore.setSubscriptions(resourceUrl, []);
+
+        await removeExpiredSubscriptions();
+
+        // Both documents should be removed
+        const subDoc = await mongodb.findSubscription(resourceUrl);
+        expect(subDoc).to.be.null;
+
+        const resDoc = await mongodb.findResource(resourceUrl);
+        expect(resDoc).to.be.null;
+
+        // JSON store entry should be fully removed
+        const storeData = jsonStore.getData();
+        expect(storeData).to.not.have.property(resourceUrl);
     });
 
     it('should remove orphaned resource with no subscription document', async function() {

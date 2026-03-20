@@ -24,7 +24,12 @@ async function removeExpiredSubscriptions() {
             const doc = await cursor.next();
             documentsProcessed++;
 
-            if (!doc.pleaseNotify || !Array.isArray(doc.pleaseNotify)) {
+            if (!doc.pleaseNotify || !Array.isArray(doc.pleaseNotify) || doc.pleaseNotify.length === 0) {
+                // Remove documents with missing or empty pleaseNotify
+                await collection.deleteOne({ _id: doc._id });
+                await db.collection('resources').deleteOne({ _id: doc._id });
+                jsonStore.removeEntry(doc._id);
+                documentsDeleted++;
                 continue;
             }
 
@@ -50,15 +55,8 @@ async function removeExpiredSubscriptions() {
                 if (validSubscriptions.length === 0) {
                     // Remove entire document if no valid subscriptions remain
                     await collection.deleteOne({ _id: doc._id });
-
-                    // Only remove resource if it wasn't checked in the last 24 hours
-                    const resource = await db.collection('resources').findOne({ _id: doc._id });
-                    if (resource && dayjs(resource.whenLastCheck).isAfter(dayjs().subtract(24, 'hours'))) {
-                        jsonStore.setSubscriptions(doc._id, []);
-                    } else {
-                        await db.collection('resources').deleteOne({ _id: doc._id });
-                        jsonStore.removeEntry(doc._id);
-                    }
+                    await db.collection('resources').deleteOne({ _id: doc._id });
+                    jsonStore.removeEntry(doc._id);
                     documentsDeleted++;
                 } else {
                     // Update document with filtered subscriptions
@@ -121,10 +119,6 @@ async function removeExpiredSubscriptions() {
 
         while (await orphanedResourcesCursor.hasNext()) {
             const doc = await orphanedResourcesCursor.next();
-            // Skip recently-checked resources (preserved by the subscription cleanup above)
-            if (doc.whenLastCheck && dayjs(doc.whenLastCheck).isAfter(dayjs().subtract(24, 'hours'))) {
-                continue;
-            }
             await db.collection('resources').deleteOne({ _id: doc._id });
             jsonStore.removeEntry(doc._id);
             orphanedResourcesRemoved++;
