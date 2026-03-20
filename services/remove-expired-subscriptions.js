@@ -134,14 +134,48 @@ async function removeExpiredSubscriptions() {
             console.log(`Created ${resourcesCreated} missing resource documents`);
         }
 
-        console.log(`Subscription cleanup completed: ${totalRemoved} expired/errored subscriptions removed, ${documentsProcessed} documents processed, ${documentsDeleted} empty documents deleted, ${urlsFixed} URLs fixed`);
+        // Find resources with no corresponding subscription and remove them
+        let orphanedResourcesRemoved = 0;
+        const orphanedResourcesCursor = db.collection('resources').aggregate([
+            {
+                $lookup: {
+                    from: 'subscriptions',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'subscription'
+                }
+            },
+            {
+                $match: {
+                    subscription: { $size: 0 }
+                }
+            }
+        ]);
+
+        while (await orphanedResourcesCursor.hasNext()) {
+            const doc = await orphanedResourcesCursor.next();
+            // Skip recently-checked resources (preserved by the subscription cleanup above)
+            if (doc.whenLastCheck && dayjs(doc.whenLastCheck).isAfter(dayjs().subtract(24, 'hours'))) {
+                continue;
+            }
+            await db.collection('resources').deleteOne({ _id: doc._id });
+            jsonStore.removeEntry(doc._id);
+            orphanedResourcesRemoved++;
+        }
+
+        if (orphanedResourcesRemoved > 0) {
+            console.log(`Removed ${orphanedResourcesRemoved} orphaned resource documents`);
+        }
+
+        console.log(`Subscription cleanup completed: ${totalRemoved} expired/errored subscriptions removed, ${documentsProcessed} documents processed, ${documentsDeleted} empty documents deleted, ${urlsFixed} URLs fixed, ${orphanedResourcesRemoved} orphaned resources removed`);
 
         return {
             subscriptionsRemoved: totalRemoved,
             documentsProcessed,
             documentsDeleted,
             resourcesCreated,
-            urlsFixed
+            urlsFixed,
+            orphanedResourcesRemoved
         };
 
     } catch (error) {

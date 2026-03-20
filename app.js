@@ -18,6 +18,11 @@ console.log(`${config.appName} ${config.appVersion}`);
 
 // Schedule cleanup tasks
 function scheduleCleanupTasks() {
+    // Run cleanup immediately on startup
+    removeExpiredSubscriptions()
+        .then(() => console.log('Startup subscription cleanup completed'))
+        .catch(err => console.error('Error in startup subscription cleanup:', err));
+
     // Run subscription cleanup every 24 hours
     setInterval(async() => {
         try {
@@ -70,6 +75,7 @@ app.use(require('./controllers'));
 
 // Start server
 async function seedJsonStore() {
+    jsonStore.clear();
     const db = mongodb.get('rsscloud');
     const resources = await db.collection('resources').find({}).toArray();
     const subscriptions = await db.collection('subscriptions').find({}).toArray();

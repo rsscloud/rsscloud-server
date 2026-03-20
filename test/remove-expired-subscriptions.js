@@ -155,6 +155,32 @@ describe('RemoveExpiredSubscriptions', function() {
         expect(resDoc).to.not.be.null;
     });
 
+    it('should remove orphaned resource with no subscription document', async function() {
+        const feedPath = '/rss.xml',
+            resourceUrl = mock.serverUrl + feedPath,
+            dayjs = await getDayjs();
+
+        // Add resource but no subscription document (last checked 48 hours ago)
+        await mongodb.addResource(resourceUrl, {
+            lastHash: 'abc',
+            lastSize: 100,
+            ctChecks: 1,
+            ctUpdates: 0,
+            whenLastCheck: new Date(dayjs().utc().subtract(48, 'hours').format())
+        });
+        jsonStore.setResource(resourceUrl, { lastHash: 'abc', lastSize: 100 });
+
+        await removeExpiredSubscriptions();
+
+        // Resource document should be removed
+        const resDoc = await mongodb.findResource(resourceUrl);
+        expect(resDoc).to.be.null;
+
+        // JSON store entry should be fully removed
+        const storeData = jsonStore.getData();
+        expect(storeData).to.not.have.property(resourceUrl);
+    });
+
     it('should create resource for subscription without one', async function() {
         const feedPath = '/rss.xml',
             resourceUrl = mock.serverUrl + feedPath,
