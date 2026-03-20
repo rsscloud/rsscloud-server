@@ -10,7 +10,6 @@
     "lint": "eslint --fix controllers/ services/ test/ *.js",
     "format": "prettier --write .",
     "test": "docker-compose up --build --abort-on-container-exit --attach rsscloud-tests --no-log-prefix",
-    "test-internal": "mocha",
     "prepare": "husky"
   },
   "engines": {
