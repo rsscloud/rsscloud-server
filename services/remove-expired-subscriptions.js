@@ -96,9 +96,6 @@ async function removeExpiredSubscriptions() {
             }
         }
 
-        if (urlsFixed > 0) {
-            console.log(`Fixed ${urlsFixed} subscription URLs with IPv4-mapped IPv6 addresses`);
-        }
 
         // Find resources with no corresponding subscription and remove them
         let orphanedResourcesRemoved = 0;
@@ -112,12 +109,6 @@ async function removeExpiredSubscriptions() {
                 orphanedResourcesRemoved++;
             }
         }
-
-        if (orphanedResourcesRemoved > 0) {
-            console.log(`Removed ${orphanedResourcesRemoved} orphaned resource documents`);
-        }
-
-        console.log(`Subscription cleanup completed: ${totalRemoved} expired/errored subscriptions removed, ${documentsProcessed} documents processed, ${documentsDeleted} empty documents deleted, ${urlsFixed} URLs fixed, ${orphanedResourcesRemoved} orphaned resources removed`);
 
         return {
             subscriptionsRemoved: totalRemoved,
