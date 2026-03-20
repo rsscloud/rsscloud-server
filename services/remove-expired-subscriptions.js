@@ -4,8 +4,8 @@ const jsonStore = require('./json-store');
 const config = require('../config');
 
 /**
- * Removes expired and errored subscriptions from MongoDB
- * Works with the MongoDB schema: { _id: resourceUrl, pleaseNotify: [...] }
+ * Removes expired and errored subscriptions
+ * Reads from jsonStore, writes to both MongoDB and jsonStore
  */
 async function removeExpiredSubscriptions() {
     try {
@@ -17,24 +17,22 @@ async function removeExpiredSubscriptions() {
         let documentsProcessed = 0;
         let documentsDeleted = 0;
 
-        // Find all subscription documents
-        const cursor = collection.find({});
+        const storeData = jsonStore.getData();
 
-        while (await cursor.hasNext()) {
-            const doc = await cursor.next();
+        for (const [feedUrl, entry] of Object.entries(storeData)) {
             documentsProcessed++;
 
-            if (!doc.pleaseNotify || !Array.isArray(doc.pleaseNotify) || doc.pleaseNotify.length === 0) {
-                // Remove documents with missing or empty pleaseNotify
-                await collection.deleteOne({ _id: doc._id });
-                await db.collection('resources').deleteOne({ _id: doc._id });
-                jsonStore.removeEntry(doc._id);
+            if (!entry.subscribers || !Array.isArray(entry.subscribers) || entry.subscribers.length === 0) {
+                // Remove entries with missing or empty subscribers
+                await collection.deleteOne({ _id: feedUrl });
+                await db.collection('resources').deleteOne({ _id: feedUrl });
+                jsonStore.removeEntry(feedUrl);
                 documentsDeleted++;
                 continue;
             }
 
             // Filter out expired and errored subscriptions
-            const validSubscriptions = doc.pleaseNotify.filter(subscription => {
+            const validSubscriptions = entry.subscribers.filter(subscription => {
                 // Remove if expired
                 if (dayjs(subscription.whenExpires).isBefore(dayjs())) {
                     totalRemoved++;
@@ -50,48 +48,51 @@ async function removeExpiredSubscriptions() {
                 return true;
             });
 
-            // Update document if subscriptions were removed
-            if (validSubscriptions.length !== doc.pleaseNotify.length) {
+            // Update if subscriptions were removed
+            if (validSubscriptions.length !== entry.subscribers.length) {
                 if (validSubscriptions.length === 0) {
-                    // Remove entire document if no valid subscriptions remain
-                    await collection.deleteOne({ _id: doc._id });
-                    await db.collection('resources').deleteOne({ _id: doc._id });
-                    jsonStore.removeEntry(doc._id);
+                    // Remove entire entry if no valid subscriptions remain
+                    await collection.deleteOne({ _id: feedUrl });
+                    await db.collection('resources').deleteOne({ _id: feedUrl });
+                    jsonStore.removeEntry(feedUrl);
                     documentsDeleted++;
                 } else {
-                    // Update document with filtered subscriptions
+                    // Update with filtered subscriptions
                     await collection.updateOne(
-                        { _id: doc._id },
+                        { _id: feedUrl },
                         { $set: { pleaseNotify: validSubscriptions } }
                     );
-                    jsonStore.setSubscriptions(doc._id, validSubscriptions);
+                    jsonStore.setSubscriptions(feedUrl, validSubscriptions);
                 }
             }
         }
 
         // Fix IPv4-mapped IPv6 addresses in subscription URLs (e.g. [::ffff:1.2.3.4] -> 1.2.3.4)
         let urlsFixed = 0;
-        const fixCursor = collection.find({ 'pleaseNotify.url': { $regex: '::ffff:' } });
+        const currentData = jsonStore.getData();
 
-        while (await fixCursor.hasNext()) {
-            const doc = await fixCursor.next();
+        for (const [feedUrl, entry] of Object.entries(currentData)) {
+            if (!entry.subscribers || !entry.subscribers.some(sub => sub.url && sub.url.includes('::ffff:'))) {
+                continue;
+            }
+
             let changed = false;
-
-            for (const subscription of doc.pleaseNotify) {
-                const fixed = subscription.url.replace(/\[::ffff:([^\]]+)\]/, '$1');
-                if (fixed !== subscription.url) {
-                    subscription.url = fixed;
+            const fixedSubscribers = entry.subscribers.map(sub => {
+                const fixed = sub.url.replace(/\[::ffff:([^\]]+)\]/, '$1');
+                if (fixed !== sub.url) {
                     changed = true;
                     urlsFixed++;
+                    return Object.assign({}, sub, { url: fixed });
                 }
-            }
+                return sub;
+            });
 
             if (changed) {
                 await collection.updateOne(
-                    { _id: doc._id },
-                    { $set: { pleaseNotify: doc.pleaseNotify } }
+                    { _id: feedUrl },
+                    { $set: { pleaseNotify: fixedSubscribers } }
                 );
-                jsonStore.setSubscriptions(doc._id, doc.pleaseNotify);
+                jsonStore.setSubscriptions(feedUrl, fixedSubscribers);
             }
         }
 
@@ -101,27 +102,15 @@ async function removeExpiredSubscriptions() {
 
         // Find resources with no corresponding subscription and remove them
         let orphanedResourcesRemoved = 0;
-        const orphanedResourcesCursor = db.collection('resources').aggregate([
-            {
-                $lookup: {
-                    from: 'subscriptions',
-                    localField: '_id',
-                    foreignField: '_id',
-                    as: 'subscription'
-                }
-            },
-            {
-                $match: {
-                    subscription: { $size: 0 }
-                }
-            }
-        ]);
+        const latestData = jsonStore.getData();
 
-        while (await orphanedResourcesCursor.hasNext()) {
-            const doc = await orphanedResourcesCursor.next();
-            await db.collection('resources').deleteOne({ _id: doc._id });
-            jsonStore.removeEntry(doc._id);
-            orphanedResourcesRemoved++;
+        for (const [feedUrl, entry] of Object.entries(latestData)) {
+            if (entry.resource && Object.keys(entry.resource).length > 0 &&
+                (!entry.subscribers || entry.subscribers.length === 0)) {
+                await db.collection('resources').deleteOne({ _id: feedUrl });
+                jsonStore.removeEntry(feedUrl);
+                orphanedResourcesRemoved++;
+            }
         }
 
         if (orphanedResourcesRemoved > 0) {

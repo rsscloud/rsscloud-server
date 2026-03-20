@@ -5,14 +5,8 @@ const config = require('../config'),
     mongodb = require('./mongodb'),
     notifyOne = require('./notify-one');
 
-async function fetchSubscriptions(resourceUrl) {
-    const subscriptions = await mongodb.get('rsscloud')
-        .collection('subscriptions')
-        .findOne({
-            _id: resourceUrl
-        });
-
-    return subscriptions || { _id: resourceUrl, pleaseNotify: [] };
+function fetchSubscriptions(resourceUrl) {
+    return jsonStore.getSubscriptions(resourceUrl);
 }
 
 async function upsertSubscriptions(subscriptions) {

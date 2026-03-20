@@ -80,14 +80,8 @@ async function checkForResourceChange(resource, resourceUrl, startticks) {
     return changed;
 }
 
-async function fetchResource(resourceUrl) {
-    const resource = await mongodb.get('rsscloud')
-        .collection('resources')
-        .findOne({
-            _id: resourceUrl
-        });
-
-    return resource || { _id: resourceUrl };
+function fetchResource(resourceUrl) {
+    return jsonStore.getResource(resourceUrl) || { _id: resourceUrl };
 }
 
 async function upsertResource(resource) {

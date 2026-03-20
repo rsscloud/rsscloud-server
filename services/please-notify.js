@@ -10,14 +10,8 @@ const appMessages = require('./app-messages'),
     notifyOneChallenge = require('./notify-one-challenge'),
     ping = require('./ping');
 
-async function fetchSubscriptions(resourceUrl) {
-    const subscriptions = await mongodb.get('rsscloud')
-        .collection('subscriptions')
-        .findOne({
-            _id: resourceUrl
-        });
-
-    return subscriptions || { _id: resourceUrl, pleaseNotify: [] };
+function fetchSubscriptions(resourceUrl) {
+    return jsonStore.getSubscriptions(resourceUrl);
 }
 
 async function upsertSubscriptions(subscriptions) {

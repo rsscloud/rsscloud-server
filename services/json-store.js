@@ -48,6 +48,23 @@ function removeEntry(feedUrl) {
     delete data[feedUrl];
 }
 
+function getResource(feedUrl) {
+    if (!data[feedUrl] || !data[feedUrl].resource) {
+        return null;
+    }
+    return Object.assign({ _id: feedUrl }, data[feedUrl].resource);
+}
+
+function getSubscriptions(feedUrl) {
+    if (!data[feedUrl] || !data[feedUrl].subscribers) {
+        return { _id: feedUrl, pleaseNotify: [] };
+    }
+    return {
+        _id: feedUrl,
+        pleaseNotify: data[feedUrl].subscribers.map(sub => Object.assign({}, sub))
+    };
+}
+
 function getData() {
     return data;
 }
@@ -83,6 +100,8 @@ module.exports = {
     setResource,
     setSubscriptions,
     removeEntry,
+    getResource,
+    getSubscriptions,
     getData,
     clear,
     flush,

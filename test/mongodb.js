@@ -3,6 +3,8 @@ const config = require('../config'),
     jsonStore = require('../services/json-store'),
     mongodb = require('../services/mongodb');
 
+const SERVER_URL = process.env.APP_URL || 'http://localhost:5337';
+
 async function fetchSubscriptions(resourceUrl) {
     const subscriptions = await mongodb.get('rsscloud')
         .collection('subscriptions')
@@ -21,6 +23,11 @@ async function upsertSubscriptions(subscriptions) {
             subscriptions,
             { upsert: true }
         );
+    jsonStore.setSubscriptions(subscriptions._id, subscriptions.pleaseNotify);
+}
+
+async function reseedServer() {
+    await fetch(`${SERVER_URL}/admin/reseed`, { method: 'POST' });
 }
 
 module.exports = {
@@ -32,6 +39,8 @@ module.exports = {
                 Object.assign({ _id: resourceUrl }, resourceObj),
                 { upsert: true }
             );
+        jsonStore.setResource(resourceUrl, resourceObj);
+        await reseedServer();
     },
     findResource: async function(resourceUrl) {
         return mongodb.get('rsscloud')
@@ -48,6 +57,7 @@ module.exports = {
 
         await initSubscription(subscriptions, notifyProcedure, apiurl, protocol);
         await upsertSubscriptions(subscriptions);
+        await reseedServer();
 
         let index = subscriptions.pleaseNotify.findIndex(subscription => {
             return subscription.url === apiurl;
@@ -68,6 +78,7 @@ module.exports = {
         if (-1 !== index) {
             subscriptions.pleaseNotify[index] = subscription;
             await upsertSubscriptions(subscriptions);
+            await reseedServer();
             return subscriptions.pleaseNotify[index];
         }
 
@@ -90,5 +101,6 @@ module.exports = {
         await mongodb.get('rsscloud').collection('resources').drop();
         await mongodb.get('rsscloud').collection('subscriptions').drop();
         jsonStore.clear();
+        await reseedServer();
     }
 };

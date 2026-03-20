@@ -211,5 +211,4 @@ describe('RemoveExpiredSubscriptions', function() {
         expect(storeData).to.not.have.property(resourceUrl);
     });
 
-
 });
