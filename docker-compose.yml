@@ -13,6 +13,7 @@ services:
       PORT: 5337
       MONGODB_URI: mongodb://mongodb:27017/rsscloud
       NODE_TLS_REJECT_UNAUTHORIZED: 0
+      ENABLE_TEST_API: "true"
     expose:
       - 5337
     depends_on:

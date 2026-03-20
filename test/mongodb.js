@@ -27,7 +27,7 @@ async function upsertSubscriptions(subscriptions) {
 }
 
 async function reseedServer() {
-    await fetch(`${SERVER_URL}/admin/reseed`, { method: 'POST' });
+    await fetch(`${SERVER_URL}/test/reseed`, { method: 'POST' });
 }
 
 module.exports = {
