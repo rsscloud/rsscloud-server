@@ -181,31 +181,5 @@ describe('RemoveExpiredSubscriptions', function() {
         expect(storeData).to.not.have.property(resourceUrl);
     });
 
-    it('should create resource for subscription without one', async function() {
-        const feedPath = '/rss.xml',
-            resourceUrl = mock.serverUrl + feedPath,
-            pingPath = '/feedupdated',
-            apiurl = mock.serverUrl + pingPath;
-
-        // Add subscription but no resource document
-        await mongodb.addSubscription(resourceUrl, false, apiurl, 'http-post');
-
-        // Set up mock to serve feed
-        mock.route('GET', feedPath, 200, '<RSS Feed />');
-
-        await removeExpiredSubscriptions();
-
-        // Resource document should now exist
-        const resDoc = await mongodb.findResource(resourceUrl);
-        expect(resDoc).to.not.be.null;
-        expect(resDoc).to.have.property('lastHash');
-        expect(resDoc).to.have.property('lastSize');
-
-        // JSON store should also have the resource
-        const storeData = jsonStore.getData();
-        expect(storeData).to.have.property(resourceUrl);
-        expect(storeData[resourceUrl]).to.have.property('resource');
-        expect(storeData[resourceUrl].resource).to.have.property('lastHash');
-    });
 
 });

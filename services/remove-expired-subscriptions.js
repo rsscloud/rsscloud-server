@@ -2,7 +2,6 @@ const mongodb = require('./mongodb');
 const getDayjs = require('./dayjs-wrapper');
 const jsonStore = require('./json-store');
 const config = require('../config');
-const ping = require('./ping');
 
 /**
  * Removes expired and errored subscriptions from MongoDB
@@ -102,38 +101,6 @@ async function removeExpiredSubscriptions() {
             console.log(`Fixed ${urlsFixed} subscription URLs with IPv4-mapped IPv6 addresses`);
         }
 
-        // Find subscriptions with no corresponding resource and create resources
-        let resourcesCreated = 0;
-        const orphanedCursor = collection.aggregate([
-            {
-                $lookup: {
-                    from: 'resources',
-                    localField: '_id',
-                    foreignField: '_id',
-                    as: 'resource'
-                }
-            },
-            {
-                $match: {
-                    resource: { $size: 0 }
-                }
-            }
-        ]);
-
-        while (await orphanedCursor.hasNext()) {
-            const doc = await orphanedCursor.next();
-            try {
-                await ping(doc._id);
-                resourcesCreated++;
-            } catch (err) {
-                console.log(`Failed to create resource for ${doc._id}: ${err.message}`);
-            }
-        }
-
-        if (resourcesCreated > 0) {
-            console.log(`Created ${resourcesCreated} missing resource documents`);
-        }
-
         // Find resources with no corresponding subscription and remove them
         let orphanedResourcesRemoved = 0;
         const orphanedResourcesCursor = db.collection('resources').aggregate([
@@ -173,7 +140,6 @@ async function removeExpiredSubscriptions() {
             subscriptionsRemoved: totalRemoved,
             documentsProcessed,
             documentsDeleted,
-            resourcesCreated,
             urlsFixed,
             orphanedResourcesRemoved
         };
