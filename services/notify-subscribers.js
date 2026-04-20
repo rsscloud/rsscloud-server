@@ -2,21 +2,13 @@ const config = require('../config'),
     getDayjs = require('./dayjs-wrapper'),
     jsonStore = require('./json-store'),
     logEvent = require('./log-event'),
-    mongodb = require('./mongodb'),
     notifyOne = require('./notify-one');
 
 function fetchSubscriptions(resourceUrl) {
     return jsonStore.getSubscriptions(resourceUrl);
 }
 
-async function upsertSubscriptions(subscriptions) {
-    await mongodb.get('rsscloud')
-        .collection('subscriptions')
-        .replaceOne(
-            { _id: subscriptions._id },
-            subscriptions,
-            { upsert: true }
-        );
+function upsertSubscriptions(subscriptions) {
     jsonStore.setSubscriptions(subscriptions._id, subscriptions.pleaseNotify);
 }
 
@@ -100,7 +92,7 @@ async function notifySubscribers(resourceUrl) {
 
     await Promise.all(validSubscriptions.map(notifyOneSubscriber.bind(null, resourceUrl)));
 
-    await upsertSubscriptions(subscriptions);
+    upsertSubscriptions(subscriptions);
 
 }
 

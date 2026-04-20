@@ -1,30 +1,21 @@
 services:
 
-  mongodb:
-    image: mongo
-    expose:
-      - 27017
-
   rsscloud:
     build: .
     command: node --use_strict app.js
     environment:
       DOMAIN: rsscloud
       PORT: 5337
-      MONGODB_URI: mongodb://mongodb:27017/rsscloud
       NODE_TLS_REJECT_UNAUTHORIZED: 0
       ENABLE_TEST_API: "true"
     expose:
       - 5337
-    depends_on:
-      - mongodb
 
   rsscloud-tests:
     build: .
-    command: dockerize -wait tcp://mongodb:27017 -wait http://rsscloud:5337 -timeout 10s bash -c "pnpm exec mocha"
+    command: dockerize -wait http://rsscloud:5337 -timeout 10s bash -c "pnpm exec mocha"
     environment:
       APP_URL: http://rsscloud:5337
-      MONGODB_URI: mongodb://mongodb:27017/rsscloud
       MOCK_SERVER_DOMAIN: rsscloud-tests
       MOCK_SERVER_PORT: 8002
       SECURE_MOCK_SERVER_PORT: 8003
@@ -34,6 +25,5 @@ services:
       - 8002
       - 8003
     depends_on:
-      - mongodb
       - rsscloud
 

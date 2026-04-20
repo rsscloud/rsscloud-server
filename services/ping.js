@@ -6,7 +6,6 @@ const appMessage = require('./app-messages'),
     initResource = require('./init-resource'),
     jsonStore = require('./json-store'),
     logEvent = require('./log-event'),
-    mongodb = require('./mongodb'),
     notifySubscribers = require('./notify-subscribers');
 
 async function checkPingFrequency(resource) {
@@ -84,14 +83,7 @@ function fetchResource(resourceUrl) {
     return jsonStore.getResource(resourceUrl) || { _id: resourceUrl };
 }
 
-async function upsertResource(resource) {
-    await mongodb.get('rsscloud')
-        .collection('resources')
-        .replaceOne(
-            { _id: resource._id },
-            resource,
-            { upsert: true }
-        );
+function upsertResource(resource) {
     jsonStore.setResource(resource._id, resource);
 }
 
@@ -114,7 +106,7 @@ async function ping(resourceUrl) {
     await checkPingFrequency(resource);
     const changed = await checkForResourceChange(resource, resourceUrl, startticks);
     await notifySubscribersIfDirty(changed, resource, resourceUrl);
-    await upsertResource(resource);
+    upsertResource(resource);
 
     return {
         'success': true,

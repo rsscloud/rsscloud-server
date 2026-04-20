@@ -6,7 +6,7 @@ const chai = require('chai'),
     getDayjs = require('../services/dayjs-wrapper'),
     SERVER_URL = process.env.APP_URL || 'http://localhost:5337',
     mock = require('./mock'),
-    mongodb = require('./mongodb'),
+    storeApi = require('./store-api'),
     xmlrpcBuilder = require('./xmlrpc-builder'),
     rpcReturnSuccess = require('../services/rpc-return-success'),
     rpcReturnFault = require('../services/rpc-return-fault');
@@ -60,12 +60,12 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                 });
 
                 beforeEach(async function() {
-                    await mongodb.beforeEach();
+                    await storeApi.beforeEach();
                     await mock.beforeEach();
                 });
 
                 afterEach(async function() {
-                    await mongodb.afterEach();
+                    await storeApi.afterEach();
                     await mock.afterEach();
                 });
 
@@ -85,7 +85,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     mock.route('GET', feedPath, 200, '<RSS Feed />');
                     mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
                     mock.rpc(notifyProcedure, rpcReturnSuccess(true));
-                    await mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
+                    await storeApi.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
 
                     let res = await ping(pingProtocol, resourceUrl, returnFormat);
 
@@ -135,8 +135,8 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     mock.route('POST', pingPath1, 200, 'Thanks for the update! :-)');
                     mock.route('POST', pingPath2, 200, 'Thanks for the update! :-)');
                     mock.rpc(notifyProcedure, rpcReturnSuccess(true));
-                    await mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl1, protocol);
-                    await mongodb.addSubscription(resourceUrl, false, apiurl2, 'http-post');
+                    await storeApi.addSubscription(resourceUrl, notifyProcedure, apiurl1, protocol);
+                    await storeApi.addSubscription(resourceUrl, false, apiurl2, 'http-post');
 
                     let res = await ping(pingProtocol, resourceUrl, returnFormat);
 
@@ -187,7 +187,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     mock.route('GET', feedPath, 404, 'Not Found');
                     mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
                     mock.rpc(notifyProcedure, rpcReturnSuccess(true));
-                    await mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
+                    await storeApi.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
 
                     let res = await ping(pingProtocol, resourceUrl, returnFormat);
 
@@ -266,7 +266,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     mock.route('GET', feedPath, 200, '<RSS Feed />');
                     mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
                     mock.rpc(notifyProcedure, rpcReturnSuccess(true));
-                    await mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
+                    await storeApi.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
 
                     let res = await ping(pingProtocol, resourceUrl, returnFormat);
 
@@ -331,11 +331,11 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     mock.route('GET', feedPath, 200, '<RSS Feed />');
                     if ('xml-rpc' === protocol) {
                         mock.rpc(notifyProcedure, rpcReturnSuccess(true));
-                        await mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
+                        await storeApi.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
                     } else {
                         for (let i = 0; i < 10; i++) {
                             mock.route('POST', pingPath + i, 200, slowPostResponse);
-                            await mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl + i, protocol);
+                            await storeApi.addSubscription(resourceUrl, notifyProcedure, apiurl + i, protocol);
                         }
                     }
 
@@ -386,9 +386,9 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
                     mock.rpc(notifyProcedure, rpcReturnSuccess(true));
                     const dayjs = await getDayjs();
-                    const subscription = await mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
+                    const subscription = await storeApi.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
                     subscription.whenExpires = dayjs().utc().subtract(config.ctSecsResourceExpire * 2, 'seconds').format();
-                    await mongodb.updateSubscription(resourceUrl, subscription);
+                    await storeApi.updateSubscription(resourceUrl, subscription);
 
                     let res = await ping(pingProtocol, resourceUrl, returnFormat);
 
@@ -429,9 +429,9 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     mock.route('GET', feedPath, 200, '<RSS Feed />');
                     mock.route('POST', pingPath, 200, 'Thanks for the update! :-)');
                     mock.rpc(notifyProcedure, rpcReturnSuccess(true));
-                    const subscription = await mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
+                    const subscription = await storeApi.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
                     subscription.ctConsecutiveErrors = config.maxConsecutiveErrors;
-                    await mongodb.updateSubscription(resourceUrl, subscription);
+                    await storeApi.updateSubscription(resourceUrl, subscription);
 
                     let res = await ping(pingProtocol, resourceUrl, returnFormat);
 
@@ -488,13 +488,13 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     mock.route('GET', feedPath, 200, '<RSS Feed />');
                     mock.route('POST', pingPath, 200, slowRestResponse);
                     mock.rpc(notifyProcedure, slowRpcResponse);
-                    await mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
+                    await storeApi.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
 
                     let res = await ping(pingProtocol, resourceUrl, returnFormat);
 
                     expect(res).status(200);
 
-                    const subscription = await mongodb.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
+                    const subscription = await storeApi.addSubscription(resourceUrl, notifyProcedure, apiurl, protocol);
                     expect(subscription.ctConsecutiveErrors).equal(1);
 
                     if ('XML-RPC' === pingProtocol) {

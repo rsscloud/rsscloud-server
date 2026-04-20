@@ -5,7 +5,6 @@ const appMessages = require('./app-messages'),
     initSubscription = require('./init-subscription'),
     jsonStore = require('./json-store'),
     logEvent = require('./log-event'),
-    mongodb = require('./mongodb'),
     notifyOne = require('./notify-one'),
     notifyOneChallenge = require('./notify-one-challenge'),
     ping = require('./ping');
@@ -14,14 +13,7 @@ function fetchSubscriptions(resourceUrl) {
     return jsonStore.getSubscriptions(resourceUrl);
 }
 
-async function upsertSubscriptions(subscriptions) {
-    await mongodb.get('rsscloud')
-        .collection('subscriptions')
-        .replaceOne(
-            { _id: subscriptions._id },
-            subscriptions,
-            { upsert: true }
-        );
+function upsertSubscriptions(subscriptions) {
     jsonStore.setSubscriptions(subscriptions._id, subscriptions.pleaseNotify);
 }
 
@@ -48,7 +40,7 @@ async function notifyApiUrl(notifyProcedure, apiurl, protocol, resourceUrl, diff
         subscriptions.pleaseNotify[index].whenLastUpdate = new Date(dayjs().utc().format());
         subscriptions.pleaseNotify[index].whenExpires = dayjs().utc().add(config.ctSecsResourceExpire, 'seconds').format();
 
-        await upsertSubscriptions(subscriptions);
+        upsertSubscriptions(subscriptions);
 
         await logEvent(
             'Subscribe',

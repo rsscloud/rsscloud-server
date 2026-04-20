@@ -1,4 +1,3 @@
-const mongodb = require('./mongodb');
 const getDayjs = require('./dayjs-wrapper');
 const jsonStore = require('./json-store');
 const config = require('../config');
@@ -10,15 +9,9 @@ function shouldRetainEmptyEntry(entry, cutoff, dayjs) {
     return dayjs(entry.resource.whenLastUpdate).isAfter(cutoff);
 }
 
-/**
- * Removes expired and errored subscriptions
- * Reads from jsonStore, writes to both MongoDB and jsonStore
- */
 async function removeExpiredSubscriptions() {
     try {
-        const db = mongodb.get('rsscloud');
         const dayjs = await getDayjs();
-        const collection = db.collection('subscriptions');
         const cutoff = dayjs().utc().subtract(config.feedsChangedWindowDays, 'days');
 
         let totalRemoved = 0;
@@ -34,8 +27,6 @@ async function removeExpiredSubscriptions() {
                 if (shouldRetainEmptyEntry(entry, cutoff, dayjs)) {
                     continue;
                 }
-                await collection.deleteOne({ _id: feedUrl });
-                await db.collection('resources').deleteOne({ _id: feedUrl });
                 jsonStore.removeEntry(feedUrl);
                 documentsDeleted++;
                 continue;
@@ -43,13 +34,11 @@ async function removeExpiredSubscriptions() {
 
             // Filter out expired and errored subscriptions
             const validSubscriptions = entry.subscribers.filter(subscription => {
-                // Remove if expired
                 if (dayjs(subscription.whenExpires).isBefore(dayjs())) {
                     totalRemoved++;
                     return false;
                 }
 
-                // Remove if too many consecutive errors
                 if (subscription.ctConsecutiveErrors > config.maxConsecutiveErrors) {
                     totalRemoved++;
                     return false;
@@ -58,27 +47,15 @@ async function removeExpiredSubscriptions() {
                 return true;
             });
 
-            // Update if subscriptions were removed
             if (validSubscriptions.length !== entry.subscribers.length) {
                 if (validSubscriptions.length === 0) {
                     if (shouldRetainEmptyEntry(entry, cutoff, dayjs)) {
-                        await collection.updateOne(
-                            { _id: feedUrl },
-                            { $set: { pleaseNotify: [] } }
-                        );
                         jsonStore.setSubscriptions(feedUrl, []);
                     } else {
-                        await collection.deleteOne({ _id: feedUrl });
-                        await db.collection('resources').deleteOne({ _id: feedUrl });
                         jsonStore.removeEntry(feedUrl);
                         documentsDeleted++;
                     }
                 } else {
-                    // Update with filtered subscriptions
-                    await collection.updateOne(
-                        { _id: feedUrl },
-                        { $set: { pleaseNotify: validSubscriptions } }
-                    );
                     jsonStore.setSubscriptions(feedUrl, validSubscriptions);
                 }
             }
@@ -105,10 +82,6 @@ async function removeExpiredSubscriptions() {
             });
 
             if (changed) {
-                await collection.updateOne(
-                    { _id: feedUrl },
-                    { $set: { pleaseNotify: fixedSubscribers } }
-                );
                 jsonStore.setSubscriptions(feedUrl, fixedSubscribers);
             }
         }
@@ -123,7 +96,6 @@ async function removeExpiredSubscriptions() {
                 if (shouldRetainEmptyEntry(entry, cutoff, dayjs)) {
                     continue;
                 }
-                await db.collection('resources').deleteOne({ _id: feedUrl });
                 jsonStore.removeEntry(feedUrl);
                 orphanedResourcesRemoved++;
             }

@@ -2,30 +2,28 @@ const chai = require('chai'),
     config = require('../config'),
     expect = chai.expect,
     getDayjs = require('../services/dayjs-wrapper'),
-    jsonStore = require('../services/json-store'),
     mock = require('./mock'),
-    mongodb = require('./mongodb'),
-    removeExpiredSubscriptions = require('../services/remove-expired-subscriptions');
+    storeApi = require('./store-api');
 
 describe('RemoveExpiredSubscriptions', function() {
 
     before(async function() {
-        await mongodb.before();
+        await storeApi.before();
         await mock.before();
     });
 
     after(async function() {
-        await mongodb.after();
+        await storeApi.after();
         await mock.after();
     });
 
     beforeEach(async function() {
-        await mongodb.beforeEach();
+        await storeApi.beforeEach();
         await mock.beforeEach();
     });
 
     afterEach(async function() {
-        await mongodb.afterEach();
+        await storeApi.afterEach();
         await mock.afterEach();
     });
 
@@ -36,13 +34,13 @@ describe('RemoveExpiredSubscriptions', function() {
             apiurl = mock.serverUrl + pingPath,
             dayjs = await getDayjs();
 
-        const subscription = await mongodb.addSubscription(resourceUrl, false, apiurl, 'http-post');
+        const subscription = await storeApi.addSubscription(resourceUrl, false, apiurl, 'http-post');
         subscription.whenExpires = dayjs().utc().subtract(config.ctSecsResourceExpire * 2, 'seconds').format();
-        await mongodb.updateSubscription(resourceUrl, subscription);
+        await storeApi.updateSubscription(resourceUrl, subscription);
 
-        await removeExpiredSubscriptions();
+        await storeApi.removeExpired();
 
-        const doc = await mongodb.findSubscription(resourceUrl);
+        const doc = await storeApi.findSubscription(resourceUrl);
         expect(doc).to.be.null;
     });
 
@@ -54,32 +52,30 @@ describe('RemoveExpiredSubscriptions', function() {
             dayjs = await getDayjs();
 
         // Add subscription and resource
-        const subscription = await mongodb.addSubscription(resourceUrl, false, apiurl, 'http-post');
+        const subscription = await storeApi.addSubscription(resourceUrl, false, apiurl, 'http-post');
         subscription.whenExpires = dayjs().utc().subtract(config.ctSecsResourceExpire * 2, 'seconds').format();
-        await mongodb.updateSubscription(resourceUrl, subscription);
+        await storeApi.updateSubscription(resourceUrl, subscription);
 
-        await mongodb.addResource(resourceUrl, {
+        await storeApi.addResource(resourceUrl, {
             lastHash: 'abc',
             lastSize: 100,
             ctChecks: 1,
             ctUpdates: 0,
             whenLastCheck: new Date(dayjs().utc().subtract(48, 'hours').format())
         });
-        jsonStore.setResource(resourceUrl, { lastHash: 'abc', lastSize: 100 });
-        jsonStore.setSubscriptions(resourceUrl, [subscription]);
 
-        await removeExpiredSubscriptions();
+        await storeApi.removeExpired();
 
         // Subscription document should be gone
-        const subDoc = await mongodb.findSubscription(resourceUrl);
+        const subDoc = await storeApi.findSubscription(resourceUrl);
         expect(subDoc).to.be.null;
 
         // Resource document should also be gone (last checked 48 hours ago)
-        const resDoc = await mongodb.findResource(resourceUrl);
+        const resDoc = await storeApi.findResource(resourceUrl);
         expect(resDoc).to.be.null;
 
         // JSON store entry should be fully removed
-        const storeData = jsonStore.getData();
+        const storeData = await storeApi.getData();
         expect(storeData).to.not.have.property(resourceUrl);
     });
 
@@ -90,32 +86,30 @@ describe('RemoveExpiredSubscriptions', function() {
             apiurl = mock.serverUrl + pingPath,
             dayjs = await getDayjs();
 
-        const subscription = await mongodb.addSubscription(resourceUrl, false, apiurl, 'http-post');
+        const subscription = await storeApi.addSubscription(resourceUrl, false, apiurl, 'http-post');
         subscription.whenExpires = dayjs().utc().subtract(config.ctSecsResourceExpire * 2, 'seconds').format();
-        await mongodb.updateSubscription(resourceUrl, subscription);
+        await storeApi.updateSubscription(resourceUrl, subscription);
 
-        await mongodb.addResource(resourceUrl, {
+        await storeApi.addResource(resourceUrl, {
             lastHash: 'abc',
             lastSize: 100,
             ctChecks: 1,
             ctUpdates: 0,
             whenLastCheck: new Date(dayjs().utc().subtract(1, 'hour').format())
         });
-        jsonStore.setResource(resourceUrl, { lastHash: 'abc', lastSize: 100 });
-        jsonStore.setSubscriptions(resourceUrl, [subscription]);
 
-        await removeExpiredSubscriptions();
+        await storeApi.removeExpired();
 
         // Subscription document should be gone
-        const subDoc = await mongodb.findSubscription(resourceUrl);
+        const subDoc = await storeApi.findSubscription(resourceUrl);
         expect(subDoc).to.be.null;
 
         // Resource document should also be gone
-        const resDoc = await mongodb.findResource(resourceUrl);
+        const resDoc = await storeApi.findResource(resourceUrl);
         expect(resDoc).to.be.null;
 
         // JSON store entry should be fully removed
-        const storeData = jsonStore.getData();
+        const storeData = await storeApi.getData();
         expect(storeData).to.not.have.property(resourceUrl);
     });
 
@@ -126,28 +120,23 @@ describe('RemoveExpiredSubscriptions', function() {
 
         const recentUpdate = new Date(dayjs().utc().subtract(1, 'day').format());
 
-        await mongodb.addResource(resourceUrl, {
+        await storeApi.addResource(resourceUrl, {
             lastHash: 'abc',
             lastSize: 100,
             ctChecks: 1,
             ctUpdates: 1,
             whenLastUpdate: recentUpdate
         });
-        jsonStore.setResource(resourceUrl, {
-            lastHash: 'abc',
-            lastSize: 100,
-            whenLastUpdate: recentUpdate
-        });
-        jsonStore.setSubscriptions(resourceUrl, []);
+        await storeApi.setSubscriptions(resourceUrl, []);
 
-        await removeExpiredSubscriptions();
+        await storeApi.removeExpired();
 
-        // Resource should still exist in MongoDB
-        const resDoc = await mongodb.findResource(resourceUrl);
+        // Resource should still exist
+        const resDoc = await storeApi.findResource(resourceUrl);
         expect(resDoc).to.not.be.null;
 
         // JSON store entry should still exist with empty subscribers
-        const storeData = jsonStore.getData();
+        const storeData = await storeApi.getData();
         expect(storeData).to.have.property(resourceUrl);
         expect(storeData[resourceUrl].subscribers).to.deep.equal([]);
     });
@@ -159,28 +148,23 @@ describe('RemoveExpiredSubscriptions', function() {
 
         const staleUpdate = new Date(dayjs().utc().subtract(config.feedsChangedWindowDays + 1, 'days').format());
 
-        await mongodb.addResource(resourceUrl, {
+        await storeApi.addResource(resourceUrl, {
             lastHash: 'abc',
             lastSize: 100,
             ctChecks: 1,
             ctUpdates: 1,
             whenLastUpdate: staleUpdate
         });
-        jsonStore.setResource(resourceUrl, {
-            lastHash: 'abc',
-            lastSize: 100,
-            whenLastUpdate: staleUpdate
-        });
-        jsonStore.setSubscriptions(resourceUrl, []);
+        await storeApi.setSubscriptions(resourceUrl, []);
 
-        await removeExpiredSubscriptions();
+        await storeApi.removeExpired();
 
-        // Resource should be gone from MongoDB
-        const resDoc = await mongodb.findResource(resourceUrl);
+        // Resource should be gone
+        const resDoc = await storeApi.findResource(resourceUrl);
         expect(resDoc).to.be.null;
 
         // JSON store entry should be fully removed
-        const storeData = jsonStore.getData();
+        const storeData = await storeApi.getData();
         expect(storeData).to.not.have.property(resourceUrl);
     });
 
@@ -193,37 +177,31 @@ describe('RemoveExpiredSubscriptions', function() {
 
         const recentUpdate = new Date(dayjs().utc().subtract(1, 'day').format());
 
-        const subscription = await mongodb.addSubscription(resourceUrl, false, apiurl, 'http-post');
+        const subscription = await storeApi.addSubscription(resourceUrl, false, apiurl, 'http-post');
         subscription.whenExpires = dayjs().utc().subtract(config.ctSecsResourceExpire * 2, 'seconds').format();
-        await mongodb.updateSubscription(resourceUrl, subscription);
+        await storeApi.updateSubscription(resourceUrl, subscription);
 
-        await mongodb.addResource(resourceUrl, {
+        await storeApi.addResource(resourceUrl, {
             lastHash: 'abc',
             lastSize: 100,
             ctChecks: 1,
             ctUpdates: 1,
             whenLastUpdate: recentUpdate
         });
-        jsonStore.setResource(resourceUrl, {
-            lastHash: 'abc',
-            lastSize: 100,
-            whenLastUpdate: recentUpdate
-        });
-        jsonStore.setSubscriptions(resourceUrl, [subscription]);
 
-        await removeExpiredSubscriptions();
+        await storeApi.removeExpired();
 
         // Subscription document should still exist with empty pleaseNotify
-        const subDoc = await mongodb.findSubscription(resourceUrl);
+        const subDoc = await storeApi.findSubscription(resourceUrl);
         expect(subDoc).to.not.be.null;
         expect(subDoc.pleaseNotify).to.deep.equal([]);
 
         // Resource document should still exist
-        const resDoc = await mongodb.findResource(resourceUrl);
+        const resDoc = await storeApi.findResource(resourceUrl);
         expect(resDoc).to.not.be.null;
 
         // JSON store entry should still exist with empty subscribers
-        const storeData = jsonStore.getData();
+        const storeData = await storeApi.getData();
         expect(storeData).to.have.property(resourceUrl);
         expect(storeData[resourceUrl].subscribers).to.deep.equal([]);
     });
@@ -238,27 +216,27 @@ describe('RemoveExpiredSubscriptions', function() {
             dayjs = await getDayjs();
 
         // Add two subscriptions - one expired, one valid
-        const subscription1 = await mongodb.addSubscription(resourceUrl, false, apiurl1, 'http-post');
+        const subscription1 = await storeApi.addSubscription(resourceUrl, false, apiurl1, 'http-post');
         subscription1.whenExpires = dayjs().utc().subtract(config.ctSecsResourceExpire * 2, 'seconds').format();
-        await mongodb.updateSubscription(resourceUrl, subscription1);
+        await storeApi.updateSubscription(resourceUrl, subscription1);
 
-        await mongodb.addSubscription(resourceUrl, false, apiurl2, 'http-post');
+        await storeApi.addSubscription(resourceUrl, false, apiurl2, 'http-post');
 
         // Add resource
-        await mongodb.addResource(resourceUrl, {
+        await storeApi.addResource(resourceUrl, {
             lastHash: 'abc', lastSize: 100, ctChecks: 1, ctUpdates: 0
         });
 
-        await removeExpiredSubscriptions();
+        await storeApi.removeExpired();
 
         // Subscription document should still exist with valid subscription
-        const subDoc = await mongodb.findSubscription(resourceUrl);
+        const subDoc = await storeApi.findSubscription(resourceUrl);
         expect(subDoc).to.not.be.null;
         expect(subDoc.pleaseNotify).to.have.lengthOf(1);
         expect(subDoc.pleaseNotify[0].url).to.equal(apiurl2);
 
         // Resource document should still exist
-        const resDoc = await mongodb.findResource(resourceUrl);
+        const resDoc = await storeApi.findResource(resourceUrl);
         expect(resDoc).to.not.be.null;
     });
 
@@ -266,30 +244,26 @@ describe('RemoveExpiredSubscriptions', function() {
         const feedPath = '/rss.xml',
             resourceUrl = mock.serverUrl + feedPath;
 
-        // Directly insert a subscription doc with empty pleaseNotify
-        await mongodb.addResource(resourceUrl, {
+        await storeApi.addResource(resourceUrl, {
             lastHash: 'abc',
             lastSize: 100,
             ctChecks: 1,
             ctUpdates: 0,
             whenLastCheck: new Date()
         });
-        const db = require('../services/mongodb').get('rsscloud');
-        await db.collection('subscriptions').insertOne({ _id: resourceUrl, pleaseNotify: [] });
-        jsonStore.setResource(resourceUrl, { lastHash: 'abc', lastSize: 100 });
-        jsonStore.setSubscriptions(resourceUrl, []);
+        await storeApi.setSubscriptions(resourceUrl, []);
 
-        await removeExpiredSubscriptions();
+        await storeApi.removeExpired();
 
         // Both documents should be removed
-        const subDoc = await mongodb.findSubscription(resourceUrl);
+        const subDoc = await storeApi.findSubscription(resourceUrl);
         expect(subDoc).to.be.null;
 
-        const resDoc = await mongodb.findResource(resourceUrl);
+        const resDoc = await storeApi.findResource(resourceUrl);
         expect(resDoc).to.be.null;
 
         // JSON store entry should be fully removed
-        const storeData = jsonStore.getData();
+        const storeData = await storeApi.getData();
         expect(storeData).to.not.have.property(resourceUrl);
     });
 
@@ -299,23 +273,22 @@ describe('RemoveExpiredSubscriptions', function() {
             dayjs = await getDayjs();
 
         // Add resource but no subscription document (last checked 48 hours ago)
-        await mongodb.addResource(resourceUrl, {
+        await storeApi.addResource(resourceUrl, {
             lastHash: 'abc',
             lastSize: 100,
             ctChecks: 1,
             ctUpdates: 0,
             whenLastCheck: new Date(dayjs().utc().subtract(48, 'hours').format())
         });
-        jsonStore.setResource(resourceUrl, { lastHash: 'abc', lastSize: 100 });
 
-        await removeExpiredSubscriptions();
+        await storeApi.removeExpired();
 
         // Resource document should be removed
-        const resDoc = await mongodb.findResource(resourceUrl);
+        const resDoc = await storeApi.findResource(resourceUrl);
         expect(resDoc).to.be.null;
 
         // JSON store entry should be fully removed
-        const storeData = jsonStore.getData();
+        const storeData = await storeApi.getData();
         expect(storeData).to.not.have.property(resourceUrl);
     });
 

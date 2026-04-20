@@ -20,23 +20,19 @@ This project uses pnpm with corepack. Run `corepack enable` to set up pnpm autom
 - `pnpm test` - Run full API tests using Docker containers (MacOS tested)
 - `pnpm run lint` - Run ESLint with auto-fix on controllers/, services/, test/
 
-### Data Management
-
-- `pnpm run import-data` - Import data using bin/import-data.js
-
 ## Architecture
 
 ### Core Application Structure
 
-- **app.js** - Main Express application entry point, sets up middleware, MongoDB connection, and starts server
-- **config.js** - Configuration management using nconf (env vars, CLI args, defaults)
+- **app.js** - Main Express application entry point, sets up middleware, loads jsonStore from disk, and starts server
+- **config.js** - Configuration management reading from env vars with defaults
 - **controllers/** - Express route handlers for API endpoints
 - **services/** - Business logic modules for core functionality
 - **views/** - Handlebars templates for web interface
 
 ### Key Services
 
-- **services/mongodb.js** - MongoDB connection management with graceful shutdown
+- **services/json-store.js** - Disk-backed in-memory store; the sole source of truth for resources and subscriptions. Flushes atomically to `./data/subscriptions.json` on an interval and at shutdown.
 - **services/notify-\*.js** - Notification system for subscribers
 - **services/ping.js** - RSS feed update detection and processing
 - **services/please-notify.js** - Subscription management
@@ -53,14 +49,14 @@ This project uses pnpm with corepack. Run `corepack enable` to set up pnpm autom
 
 Environment variables (with defaults in config.js):
 
-- `MONGODB_URI` (default: mongodb://localhost:27017/rsscloud)
 - `DOMAIN` (default: localhost)
 - `PORT` (default: 5337)
+- `DATA_FILE_PATH` (default: `./data/subscriptions.json`)
 - Resource limits: MAX_RESOURCE_SIZE, REQUEST_TIMEOUT, etc.
 
-### Database
+### Data Storage
 
-Uses MongoDB for storing subscriptions and resource state. Connection handled through services/mongodb.js with proper cleanup on shutdown.
+State is persisted to a JSON file (default `./data/subscriptions.json`) managed by services/json-store.js. The store loads into memory at startup and flushes atomically on an interval and at shutdown. No external database is required.
 
 ### Testing
 

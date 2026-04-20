@@ -4,7 +4,7 @@ const chai = require('chai'),
     expect = chai.expect,
     SERVER_URL = process.env.APP_URL || 'http://localhost:5337',
     mock = require('./mock'),
-    mongodb = require('./mongodb'),
+    storeApi = require('./store-api'),
     xmlrpcBuilder = require('./xmlrpc-builder'),
     rpcReturnSuccess = require('../services/rpc-return-success'),
     rpcReturnFault = require('../services/rpc-return-fault');
@@ -47,22 +47,22 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
             describe(`PleaseNotify ${pingProtocol} to ${protocol} returning ${returnFormat}`, function() {
 
                 before(async function() {
-                    await mongodb.before();
+                    await storeApi.before();
                     await mock.before();
                 });
 
                 after(async function() {
-                    await mongodb.after();
+                    await storeApi.after();
                     await mock.after();
                 });
 
                 beforeEach(async function() {
-                    await mongodb.beforeEach();
+                    await storeApi.beforeEach();
                     await mock.beforeEach();
                 });
 
                 afterEach(async function() {
-                    await mongodb.afterEach();
+                    await storeApi.afterEach();
                     await mock.afterEach();
                 });
 
@@ -129,7 +129,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
 
                     // Verify resource document was created
-                    const resDoc = await mongodb.findResource(resourceUrl);
+                    const resDoc = await storeApi.findResource(resourceUrl);
                     expect(resDoc).to.not.be.null;
                     expect(resDoc).to.have.property('lastHash');
                     expect(resDoc).to.have.property('lastSize');
@@ -261,22 +261,22 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
             describe(`PleaseNotify ${pingProtocol} to ${protocol} via redirect returning ${returnFormat}`, function() {
 
                 before(async function() {
-                    await mongodb.before();
+                    await storeApi.before();
                     await mock.before();
                 });
 
                 after(async function() {
-                    await mongodb.after();
+                    await storeApi.after();
                     await mock.after();
                 });
 
                 beforeEach(async function() {
-                    await mongodb.beforeEach();
+                    await storeApi.beforeEach();
                     await mock.beforeEach();
                 });
 
                 afterEach(async function() {
-                    await mongodb.afterEach();
+                    await storeApi.afterEach();
                     await mock.afterEach();
                 });
 
