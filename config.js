@@ -24,5 +24,6 @@ module.exports = {
     requestTimeout: getNumericConfig('REQUEST_TIMEOUT', 4000),
     dataFilePath: getConfig('DATA_FILE_PATH', './data/subscriptions.json'),
     statsFilePath: getConfig('STATS_FILE_PATH', './data/stats.json'),
-    statsIntervalMs: getNumericConfig('STATS_INTERVAL_MS', 3600000)
+    statsIntervalMs: getNumericConfig('STATS_INTERVAL_MS', 3600000),
+    feedsChangedWindowDays: getNumericConfig('FEEDS_CHANGED_WINDOW_DAYS', 7)
 };

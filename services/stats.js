@@ -29,7 +29,7 @@ function getStats() {
 async function generateStats() {
     const dayjs = await getDayjs();
     const now = dayjs().utc().format();
-    const sevenDaysAgo = dayjs().utc().subtract(7, 'days').toDate();
+    const cutoff = dayjs().utc().subtract(config.feedsChangedWindowDays, 'days').toDate();
 
     const data = jsonStore.getData();
 
@@ -40,10 +40,9 @@ async function generateStats() {
     const feedCounts = [];
 
     for (const [feedUrl, entry] of Object.entries(data)) {
-        // Count feeds changed in last 7 days
         if (entry.resource?.whenLastUpdate) {
             const lastUpdate = new Date(entry.resource.whenLastUpdate);
-            if (lastUpdate >= sevenDaysAgo) {
+            if (lastUpdate >= cutoff) {
                 feedsChangedLast7Days++;
             }
         }

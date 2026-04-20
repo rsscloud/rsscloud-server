@@ -3,6 +3,13 @@ const getDayjs = require('./dayjs-wrapper');
 const jsonStore = require('./json-store');
 const config = require('../config');
 
+function shouldRetainEmptyEntry(entry, cutoff, dayjs) {
+    if (!entry.resource || !entry.resource.whenLastUpdate) {
+        return false;
+    }
+    return dayjs(entry.resource.whenLastUpdate).isAfter(cutoff);
+}
+
 /**
  * Removes expired and errored subscriptions
  * Reads from jsonStore, writes to both MongoDB and jsonStore
@@ -12,6 +19,7 @@ async function removeExpiredSubscriptions() {
         const db = mongodb.get('rsscloud');
         const dayjs = await getDayjs();
         const collection = db.collection('subscriptions');
+        const cutoff = dayjs().utc().subtract(config.feedsChangedWindowDays, 'days');
 
         let totalRemoved = 0;
         let documentsProcessed = 0;
@@ -23,7 +31,9 @@ async function removeExpiredSubscriptions() {
             documentsProcessed++;
 
             if (!entry.subscribers || !Array.isArray(entry.subscribers) || entry.subscribers.length === 0) {
-                // Remove entries with missing or empty subscribers
+                if (shouldRetainEmptyEntry(entry, cutoff, dayjs)) {
+                    continue;
+                }
                 await collection.deleteOne({ _id: feedUrl });
                 await db.collection('resources').deleteOne({ _id: feedUrl });
                 jsonStore.removeEntry(feedUrl);
@@ -51,11 +61,18 @@ async function removeExpiredSubscriptions() {
             // Update if subscriptions were removed
             if (validSubscriptions.length !== entry.subscribers.length) {
                 if (validSubscriptions.length === 0) {
-                    // Remove entire entry if no valid subscriptions remain
-                    await collection.deleteOne({ _id: feedUrl });
-                    await db.collection('resources').deleteOne({ _id: feedUrl });
-                    jsonStore.removeEntry(feedUrl);
-                    documentsDeleted++;
+                    if (shouldRetainEmptyEntry(entry, cutoff, dayjs)) {
+                        await collection.updateOne(
+                            { _id: feedUrl },
+                            { $set: { pleaseNotify: [] } }
+                        );
+                        jsonStore.setSubscriptions(feedUrl, []);
+                    } else {
+                        await collection.deleteOne({ _id: feedUrl });
+                        await db.collection('resources').deleteOne({ _id: feedUrl });
+                        jsonStore.removeEntry(feedUrl);
+                        documentsDeleted++;
+                    }
                 } else {
                     // Update with filtered subscriptions
                     await collection.updateOne(
@@ -96,7 +113,6 @@ async function removeExpiredSubscriptions() {
             }
         }
 
-
         // Find resources with no corresponding subscription and remove them
         let orphanedResourcesRemoved = 0;
         const latestData = jsonStore.getData();
@@ -104,6 +120,9 @@ async function removeExpiredSubscriptions() {
         for (const [feedUrl, entry] of Object.entries(latestData)) {
             if (entry.resource && Object.keys(entry.resource).length > 0 &&
                 (!entry.subscribers || entry.subscribers.length === 0)) {
+                if (shouldRetainEmptyEntry(entry, cutoff, dayjs)) {
+                    continue;
+                }
                 await db.collection('resources').deleteOne({ _id: feedUrl });
                 jsonStore.removeEntry(feedUrl);
                 orphanedResourcesRemoved++;
