@@ -83,14 +83,13 @@ describe('RemoveExpiredSubscriptions', function() {
         expect(storeData).to.not.have.property(resourceUrl);
     });
 
-    it('should remove recently-checked resource when all subscriptions are removed', async function() {
+    it('should remove resource when all subscriptions are removed and whenLastUpdate is absent', async function() {
         const feedPath = '/rss.xml',
             resourceUrl = mock.serverUrl + feedPath,
             pingPath = '/feedupdated',
             apiurl = mock.serverUrl + pingPath,
             dayjs = await getDayjs();
 
-        // Add subscription and recently-checked resource
         const subscription = await mongodb.addSubscription(resourceUrl, false, apiurl, 'http-post');
         subscription.whenExpires = dayjs().utc().subtract(config.ctSecsResourceExpire * 2, 'seconds').format();
         await mongodb.updateSubscription(resourceUrl, subscription);
@@ -118,6 +117,115 @@ describe('RemoveExpiredSubscriptions', function() {
         // JSON store entry should be fully removed
         const storeData = jsonStore.getData();
         expect(storeData).to.not.have.property(resourceUrl);
+    });
+
+    it('should retain empty-subscribers entry when whenLastUpdate is within retention window', async function() {
+        const feedPath = '/rss.xml',
+            resourceUrl = mock.serverUrl + feedPath,
+            dayjs = await getDayjs();
+
+        const recentUpdate = new Date(dayjs().utc().subtract(1, 'day').format());
+
+        await mongodb.addResource(resourceUrl, {
+            lastHash: 'abc',
+            lastSize: 100,
+            ctChecks: 1,
+            ctUpdates: 1,
+            whenLastUpdate: recentUpdate
+        });
+        jsonStore.setResource(resourceUrl, {
+            lastHash: 'abc',
+            lastSize: 100,
+            whenLastUpdate: recentUpdate
+        });
+        jsonStore.setSubscriptions(resourceUrl, []);
+
+        await removeExpiredSubscriptions();
+
+        // Resource should still exist in MongoDB
+        const resDoc = await mongodb.findResource(resourceUrl);
+        expect(resDoc).to.not.be.null;
+
+        // JSON store entry should still exist with empty subscribers
+        const storeData = jsonStore.getData();
+        expect(storeData).to.have.property(resourceUrl);
+        expect(storeData[resourceUrl].subscribers).to.deep.equal([]);
+    });
+
+    it('should remove empty-subscribers entry when whenLastUpdate is beyond retention window', async function() {
+        const feedPath = '/rss.xml',
+            resourceUrl = mock.serverUrl + feedPath,
+            dayjs = await getDayjs();
+
+        const staleUpdate = new Date(dayjs().utc().subtract(config.feedsChangedWindowDays + 1, 'days').format());
+
+        await mongodb.addResource(resourceUrl, {
+            lastHash: 'abc',
+            lastSize: 100,
+            ctChecks: 1,
+            ctUpdates: 1,
+            whenLastUpdate: staleUpdate
+        });
+        jsonStore.setResource(resourceUrl, {
+            lastHash: 'abc',
+            lastSize: 100,
+            whenLastUpdate: staleUpdate
+        });
+        jsonStore.setSubscriptions(resourceUrl, []);
+
+        await removeExpiredSubscriptions();
+
+        // Resource should be gone from MongoDB
+        const resDoc = await mongodb.findResource(resourceUrl);
+        expect(resDoc).to.be.null;
+
+        // JSON store entry should be fully removed
+        const storeData = jsonStore.getData();
+        expect(storeData).to.not.have.property(resourceUrl);
+    });
+
+    it('should retain entry when last subscription expires but whenLastUpdate is recent', async function() {
+        const feedPath = '/rss.xml',
+            resourceUrl = mock.serverUrl + feedPath,
+            pingPath = '/feedupdated',
+            apiurl = mock.serverUrl + pingPath,
+            dayjs = await getDayjs();
+
+        const recentUpdate = new Date(dayjs().utc().subtract(1, 'day').format());
+
+        const subscription = await mongodb.addSubscription(resourceUrl, false, apiurl, 'http-post');
+        subscription.whenExpires = dayjs().utc().subtract(config.ctSecsResourceExpire * 2, 'seconds').format();
+        await mongodb.updateSubscription(resourceUrl, subscription);
+
+        await mongodb.addResource(resourceUrl, {
+            lastHash: 'abc',
+            lastSize: 100,
+            ctChecks: 1,
+            ctUpdates: 1,
+            whenLastUpdate: recentUpdate
+        });
+        jsonStore.setResource(resourceUrl, {
+            lastHash: 'abc',
+            lastSize: 100,
+            whenLastUpdate: recentUpdate
+        });
+        jsonStore.setSubscriptions(resourceUrl, [subscription]);
+
+        await removeExpiredSubscriptions();
+
+        // Subscription document should still exist with empty pleaseNotify
+        const subDoc = await mongodb.findSubscription(resourceUrl);
+        expect(subDoc).to.not.be.null;
+        expect(subDoc.pleaseNotify).to.deep.equal([]);
+
+        // Resource document should still exist
+        const resDoc = await mongodb.findResource(resourceUrl);
+        expect(resDoc).to.not.be.null;
+
+        // JSON store entry should still exist with empty subscribers
+        const storeData = jsonStore.getData();
+        expect(storeData).to.have.property(resourceUrl);
+        expect(storeData[resourceUrl].subscribers).to.deep.equal([]);
     });
 
     it('should not remove resource when valid subscriptions remain', async function() {
