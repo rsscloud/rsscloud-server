@@ -16,7 +16,6 @@ module.exports = {
     appVersion: packageJson.version,
     domain: getConfig('DOMAIN', 'localhost'),
     port: getNumericConfig('PORT', 5337),
-    mongodbUri: getConfig('MONGODB_URI', 'mongodb://localhost:27017/rsscloud'),
     maxConsecutiveErrors: getNumericConfig('MAX_CONSECUTIVE_ERRORS', 3),
     maxResourceSize: getNumericConfig('MAX_RESOURCE_SIZE', 256000),
     ctSecsResourceExpire: getNumericConfig('CT_SECS_RESOURCE_EXPIRE', 90000),

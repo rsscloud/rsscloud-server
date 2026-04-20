@@ -6,7 +6,6 @@ const config = require('./config'),
     exphbs = require('express-handlebars'),
     getDayjs = require('./services/dayjs-wrapper'),
     jsonStore = require('./services/json-store'),
-    mongodb = require('./services/mongodb'),
     stats = require('./services/stats'),
     morgan = require('morgan'),
     removeExpiredSubscriptions = require('./services/remove-expired-subscriptions'),
@@ -73,27 +72,8 @@ app.use(express.static('public', {
 // Load controllers
 app.use(require('./controllers'));
 
-// Start server
-async function seedJsonStore() {
-    jsonStore.clear();
-    const db = mongodb.get('rsscloud');
-    const resources = await db.collection('resources').find({}).toArray();
-    const subscriptions = await db.collection('subscriptions').find({}).toArray();
-
-    for (const resource of resources) {
-        jsonStore.setResource(resource._id, resource);
-    }
-
-    for (const sub of subscriptions) {
-        jsonStore.setSubscriptions(sub._id, sub.pleaseNotify || []);
-    }
-
-    jsonStore.flush();
-}
-
 async function gracefulShutdown() {
     jsonStore.shutdown();
-    await mongodb.closeAll();
     process.exit();
 }
 
@@ -102,10 +82,8 @@ process.on('SIGTERM', gracefulShutdown);
 
 async function startServer() {
     await initializeDayjs();
-    await mongodb.connect('rsscloud', config.mongodbUri);
 
     jsonStore.initialize(config.dataFilePath);
-    await seedJsonStore();
 
     // Start cleanup scheduling
     scheduleCleanupTasks();
