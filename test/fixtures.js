@@ -1,9 +1,9 @@
-const mongodb = require('./mongodb');
+const storeApi = require('./store-api');
 
 exports.mochaGlobalSetup = async function() {
-    await mongodb.before();
+    await storeApi.before();
 };
 
 exports.mochaGlobalTeardown = async function() {
-    await mongodb.after();
+    await storeApi.after();
 };
