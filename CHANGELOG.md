@@ -1,5 +1,22 @@
 # Changelog
 
+## [3.0.0](https://github.com/rsscloud/rsscloud-server/compare/v2.4.0...v3.0.0) (2026-04-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* MONGODB_URI is no longer read. Deployments must mount a persistent volume at the data directory (DATA_FILE_PATH, default ./data/subscriptions.json) instead of relying on MongoDB. The bin/import-data.js script is removed.
+
+### Features
+
+* add test HTTP CRUD endpoints and store-api helper ([18b6570](https://github.com/rsscloud/rsscloud-server/commit/18b6570ae33729faf96ccf2d066b1bce64b2a013))
+* expand stats feed list with Show All toggle and last-updated timestamps ([525b76e](https://github.com/rsscloud/rsscloud-server/commit/525b76e55aa7c012c46d2095610308d01df97337))
+* remove MongoDB, jsonStore is sole data store ([5fa07b2](https://github.com/rsscloud/rsscloud-server/commit/5fa07b2f2fe2afd50b4ab4d4fd29df32aa58ada3))
+* render stats "Generated at" in browser's local timezone ([adac238](https://github.com/rsscloud/rsscloud-server/commit/adac2388fd00b1d024e3a23d3c698129a7818ce2))
+* retain empty-subscriber entries within feedsChangedWindowDays ([db6c16f](https://github.com/rsscloud/rsscloud-server/commit/db6c16f8973938ecbe28a303dad31120faf94774))
+* retain empty-subscriber entries within feedsChangedWindowDays ([631f234](https://github.com/rsscloud/rsscloud-server/commit/631f234b60822321a18f46c1e7140b203422d4b3))
+* show WebSocket feed URL on viewLog page ([f0a0b0f](https://github.com/rsscloud/rsscloud-server/commit/f0a0b0f115c6cca162d3c8e0c6feeee484613a23))
+
 ## [2.4.0](https://github.com/rsscloud/rsscloud-server/compare/v2.3.1...v2.4.0) (2026-03-20)
 
 
