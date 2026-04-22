@@ -58,10 +58,33 @@
         </tr>
         {{#each topFeeds}}
         <tr>
-            <td>{{this.url}}</td>
+            <td>
+                {{this.url}}
+                {{#if this.whenLastUpdate}}
+                <br><small class="feed-last-update">Last updated: <time datetime="{{this.whenLastUpdate}}">{{this.whenLastUpdate}}</time></small>
+                {{/if}}
+            </td>
             <td>{{this.subscriberCount}}</td>
         </tr>
         {{/each}}
+        {{#each moreFeeds}}
+        <tr class="more-feed-row" hidden>
+            <td>
+                {{this.url}}
+                {{#if this.whenLastUpdate}}
+                <br><small class="feed-last-update">Last updated: <time datetime="{{this.whenLastUpdate}}">{{this.whenLastUpdate}}</time></small>
+                {{/if}}
+            </td>
+            <td>{{this.subscriberCount}}</td>
+        </tr>
+        {{/each}}
+        {{#if moreFeeds.length}}
+        <tr class="toggle-row">
+            <td colspan="2">
+                <a href="#" id="toggle-all-feeds" role="button" aria-expanded="false">Show All &#x25BC;</a>
+            </td>
+        </tr>
+        {{/if}}
     </table>
     {{/if}}
 
@@ -74,6 +97,29 @@
         var d = new Date(el.getAttribute('datetime'));
         if (isNaN(d.getTime())) return;
         el.textContent = d.toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'long' });
+    })();
+    (function () {
+        var els = document.querySelectorAll('.feed-last-update time');
+        if (!els.length) return;
+        els.forEach(function (el) {
+            var d = new Date(el.getAttribute('datetime'));
+            if (isNaN(d.getTime())) return;
+            el.textContent = d.toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'long' });
+        });
+    })();
+    (function () {
+        var btn = document.getElementById('toggle-all-feeds');
+        if (!btn) return;
+        var rows = document.querySelectorAll('.more-feed-row');
+        if (!rows.length) return;
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            var expanded = btn.getAttribute('aria-expanded') === 'true';
+            var next = !expanded;
+            rows.forEach(function (r) { r.hidden = !next; });
+            btn.setAttribute('aria-expanded', next ? 'true' : 'false');
+            btn.textContent = next ? 'Show Less ▲' : 'Show All ▼';
+        });
     })();
     </script>
     <p><a href="/stats.json">View Stats as JSON</a> | <a href="/subscriptions.json">View Raw Data as JSON</a> | <a href="/">Home</a></p>

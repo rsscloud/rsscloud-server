@@ -21,6 +21,7 @@ function getStats() {
             uniqueAggregators: 0,
             totalActiveSubscriptions: 0,
             topFeeds: [],
+            moreFeeds: [],
             protocolBreakdown: { 'http-post': 0, 'https-post': 0, 'xml-rpc': 0 }
         };
     }
@@ -40,8 +41,9 @@ async function generateStats() {
     const feedCounts = [];
 
     for (const [feedUrl, entry] of Object.entries(data)) {
+        let lastUpdate = null;
         if (entry.resource?.whenLastUpdate) {
-            const lastUpdate = new Date(entry.resource.whenLastUpdate);
+            lastUpdate = new Date(entry.resource.whenLastUpdate);
             if (lastUpdate >= cutoff) {
                 feedsChangedLast7Days++;
             }
@@ -69,7 +71,10 @@ async function generateStats() {
         }
 
         if (activeCount > 0) {
-            feedCounts.push({ url: feedUrl, subscriberCount: activeCount });
+            const whenLastUpdate = lastUpdate && lastUpdate.getTime() > 0
+                ? lastUpdate.toISOString()
+                : null;
+            feedCounts.push({ url: feedUrl, subscriberCount: activeCount, whenLastUpdate });
         }
     }
 
@@ -80,6 +85,7 @@ async function generateStats() {
         const threshold = topFeeds[9].subscriberCount;
         topFeeds = feedCounts.filter(f => f.subscriberCount >= threshold);
     }
+    const moreFeeds = feedCounts.slice(topFeeds.length);
 
     const stats = {
         generatedAt: dayjs().utc().format(),
@@ -88,6 +94,7 @@ async function generateStats() {
         uniqueAggregators: hostnames.size,
         totalActiveSubscriptions,
         topFeeds,
+        moreFeeds,
         protocolBreakdown
     };
 

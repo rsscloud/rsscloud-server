@@ -118,6 +118,33 @@ tr:hover {
     text-align: right;
 }
 
+.stats-table .toggle-row td {
+    background-color: #f8f9fa;
+    text-align: center;
+    width: auto;
+    border-bottom: none;
+    padding: 10px 12px;
+}
+
+.stats-table .toggle-row:hover {
+    background-color: #f8f9fa;
+}
+
+.stats-table .toggle-row a {
+    color: #2c3e50;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.stats-table .toggle-row a:hover {
+    text-decoration: underline;
+}
+
+.stats-table .feed-last-update {
+    color: #777;
+    font-size: 0.85em;
+}
+
 /* Log-specific styles */
 .log-table {
     font-size: 14px;
