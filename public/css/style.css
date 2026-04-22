@@ -237,3 +237,15 @@ tr:hover {
     border-radius: 8px;
     overflow: hidden;
 }
+
+.feed-url {
+    margin-top: 4px;
+    margin-bottom: 0;
+    font-size: 1em;
+    color: #999;
+}
+
+.feed-url code {
+    font-size: 1em;
+    color: #888;
+}
