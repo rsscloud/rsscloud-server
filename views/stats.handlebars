@@ -65,7 +65,17 @@
     </table>
     {{/if}}
 
-    <p>Generated at: {{generatedAt}}</p>
+    <p>Generated at: <time datetime="{{generatedAt}}" id="generated-at">{{generatedAt}}</time></p>
+
+    <script>
+    (function () {
+        var el = document.getElementById('generated-at');
+        if (!el) return;
+        var d = new Date(el.getAttribute('datetime'));
+        if (isNaN(d.getTime())) return;
+        el.textContent = d.toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'long' });
+    })();
+    </script>
     <p><a href="/stats.json">View Stats as JSON</a> | <a href="/subscriptions.json">View Raw Data as JSON</a> | <a href="/">Home</a></p>
 </body>
 </html>
