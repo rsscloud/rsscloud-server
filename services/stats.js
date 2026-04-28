@@ -74,7 +74,8 @@ async function generateStats() {
             const whenLastUpdate = lastUpdate && lastUpdate.getTime() > 0
                 ? lastUpdate.toISOString()
                 : null;
-            feedCounts.push({ url: feedUrl, subscriberCount: activeCount, whenLastUpdate });
+            const feedTitle = entry.resource?.feedTitle || null;
+            feedCounts.push({ url: feedUrl, subscriberCount: activeCount, whenLastUpdate, feedTitle });
         }
     }
 

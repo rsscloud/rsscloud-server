@@ -50,7 +50,7 @@
     </table>
 
     {{#if topFeeds.length}}
-    <h2>Top Most Subscribed Feeds</h2>
+    <h2>Top Most Subscribed Feeds <a href="/feeds.opml" title="OPML subscription list"><img src="https://s3.amazonaws.com/scripting.com/images/xml.gif" alt="OPML" width="36" height="14"></a></h2>
     <table class="stats-table">
         <tr>
             <th>Feed URL</th>
@@ -59,7 +59,7 @@
         {{#each topFeeds}}
         <tr>
             <td>
-                {{this.url}}
+                <a href="{{this.url}}"{{#if this.feedTitle}} title="{{this.feedTitle}}"{{/if}}>{{this.url}}</a>
                 {{#if this.whenLastUpdate}}
                 <br><small class="feed-last-update">Last updated: <time datetime="{{this.whenLastUpdate}}">{{this.whenLastUpdate}}</time></small>
                 {{/if}}
@@ -70,7 +70,7 @@
         {{#each moreFeeds}}
         <tr class="more-feed-row" hidden>
             <td>
-                {{this.url}}
+                <a href="{{this.url}}"{{#if this.feedTitle}} title="{{this.feedTitle}}"{{/if}}>{{this.url}}</a>
                 {{#if this.whenLastUpdate}}
                 <br><small class="feed-last-update">Last updated: <time datetime="{{this.whenLastUpdate}}">{{this.whenLastUpdate}}</time></small>
                 {{/if}}

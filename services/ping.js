@@ -6,7 +6,8 @@ const appMessage = require('./app-messages'),
     initResource = require('./init-resource'),
     jsonStore = require('./json-store'),
     logEvent = require('./log-event'),
-    notifySubscribers = require('./notify-subscribers');
+    notifySubscribers = require('./notify-subscribers'),
+    parseFeed = require('./parse-feed');
 
 async function checkPingFrequency(resource) {
     let ctsecs, minsecs = config.minSecsBetweenPings;
@@ -60,6 +61,17 @@ async function checkForResourceChange(resource, resourceUrl, startticks) {
 
     resource.lastHash = hash;
     resource.lastSize = body.length;
+
+    if (body && (changed || !resource.feedTitle)) {
+        const meta = await parseFeed(body);
+        if (meta) {
+            if (meta.type) resource.feedType = meta.type;
+            if (meta.title) resource.feedTitle = meta.title;
+            if (meta.description) resource.feedDescription = meta.description;
+            if (meta.htmlUrl) resource.feedHtmlUrl = meta.htmlUrl;
+            if (meta.language) resource.feedLanguage = meta.language;
+        }
+    }
 
     await logEvent(
         'Ping',
