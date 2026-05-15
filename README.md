@@ -26,6 +26,24 @@ file on disk, configured via `DATA_FILE_PATH` (default
 on an interval, at shutdown, and on unexpected exit. No external database is
 required.
 
+## Upgrading from 2.x to 3.0
+
+Version 3.0 removes MongoDB entirely; the JSON file is the only data store.
+There is no automatic migration from MongoDB, so do **not** upgrade directly
+from an older 2.x release to 3.0 or your existing subscriptions will be lost.
+
+Migrate in two steps:
+
+1. **Upgrade to 2.4.0 first.** This release dual-writes to both MongoDB and
+   the JSON file. Run it until the data file (`DATA_FILE_PATH`, default
+   `./data/subscriptions.json`) has been written and reflects your current
+   subscriptions.
+2. **Then upgrade to 3.0.** It reads only the JSON file and ignores
+   `MONGODB_URI`. Make sure the data directory is on a persistent volume so
+   the file survives restarts and redeploys.
+
+Once on 3.0 you can decommission MongoDB.
+
 ## How to test
 
 The API is tested using docker containers. I've only tested on MacOS so if you have experience testing on other platforms I'd love having these notes updated for those platforms.
