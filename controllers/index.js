@@ -1,5 +1,7 @@
 const express = require('express'),
     builder = require('xmlbuilder'),
+    fs = require('fs'),
+    md = require('markdown-it')(),
     config = require('../config'),
     getDayjs = require('../services/dayjs-wrapper'),
     jsonStore = require('../services/json-store'),
@@ -7,6 +9,20 @@ const express = require('express'),
 
 router.use('/', require('./home'));
 router.use('/docs', require('./docs'));
+
+router.get('/LICENSE.md', (req, res) => {
+    try {
+        const htmltext = md.render(fs.readFileSync('LICENSE.md', { encoding: 'utf8' }));
+        res.render('docs', {
+            title: 'rssCloud Server: License',
+            heading: 'rssCloud Server: License',
+            htmltext
+        });
+    } catch (err) {
+        console.error('Error reading LICENSE.md:', err.message);
+        res.status(500).send('Internal Server Error');
+    }
+});
 router.use('/pleaseNotify', require('./please-notify'));
 router.use('/pleaseNotifyForm', require('./please-notify-form'));
 router.use('/ping', require('./ping'));
