@@ -2,7 +2,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](LICENSE.md)
 [![CircleCI](https://circleci.com/gh/rsscloud/rsscloud-server.svg?style=shield)](https://circleci.com/gh/rsscloud/rsscloud-server)
-[![Andrew Shell's Weblog](https://img.shields.io/badge/weblog-rssCloud-brightgreen)](https://blog.andrewshell.org/search/?keywords=rsscloud)
+[![Andrew Shell's Weblog](https://img.shields.io/badge/weblog-rssCloud-brightgreen)](https://andrewshell.org/search/?keywords=rsscloud)
 
 rssCloud Server implementation in Node.js
 
