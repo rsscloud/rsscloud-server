@@ -80,6 +80,19 @@ async function gracefulShutdown() {
 process.on('SIGINT', gracefulShutdown);
 process.on('SIGTERM', gracefulShutdown);
 
+// Persist data before dying on an unexpected error
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught exception, flushing data store before exit:', error);
+    jsonStore.shutdown();
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled promise rejection, flushing data store before exit:', reason);
+    jsonStore.shutdown();
+    process.exit(1);
+});
+
 async function startServer() {
     await initializeDayjs();
 

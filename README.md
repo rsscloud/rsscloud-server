@@ -1,4 +1,4 @@
-# rssCloud Server v2
+# rssCloud Server
 
 [![MIT License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](LICENSE.md)
 [![CircleCI](https://circleci.com/gh/rsscloud/rsscloud-server.svg?style=shield)](https://circleci.com/gh/rsscloud/rsscloud-server)
@@ -8,12 +8,23 @@ rssCloud Server implementation in Node.js
 
 ## How to install
 
+This project uses [pnpm](https://pnpm.io/) via corepack. Node.js 22+ is required.
+
 ```bash
 git clone https://github.com/rsscloud/rsscloud-server.git
 cd rsscloud-server
-npm install
-npm start
+corepack enable
+pnpm install
+pnpm start
 ```
+
+## Data storage
+
+State (resources and subscriptions) is held in memory and persisted to a JSON
+file on disk, configured via `DATA_FILE_PATH` (default
+`./data/subscriptions.json`). The store loads at startup and flushes atomically
+on an interval, at shutdown, and on unexpected exit. No external database is
+required.
 
 ## How to test
 
@@ -24,7 +35,7 @@ The API is tested using docker containers. I've only tested on MacOS so if you h
 First install [Docker Desktop for Mac](https://hub.docker.com/editions/community/docker-ce-desktop-mac)
 
 ```bash
-npm test
+pnpm test
 ```
 
 This should build the appropriate containers and show the test output.

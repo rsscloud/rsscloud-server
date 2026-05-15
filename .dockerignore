@@ -1,0 +1,12 @@
+.git
+.github
+.circleci
+node_modules
+data
+xunit
+.nyc_output
+.env
+.DS_Store
+Procfile
+tunnel.sh
+*.log

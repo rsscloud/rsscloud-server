@@ -82,6 +82,8 @@ function flush() {
         const tmpPath = filePath + '.tmp';
         fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2));
         fs.renameSync(tmpPath, filePath);
+    } catch (error) {
+        console.error('Error flushing json-store to disk:', error);
     } finally {
         flushing = false;
     }

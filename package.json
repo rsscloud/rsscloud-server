@@ -32,7 +32,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/andrewshell/rsscloud-server.git"
+    "url": "https://github.com/rsscloud/rsscloud-server.git"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.5.0",
