@@ -17,16 +17,21 @@
   "packageManager": "pnpm@10.11.0",
   "author": "Andrew Shell <andrew@andrewshell.org>",
   "license": "MIT",
+  "pnpm": {
+    "overrides": {
+      "serialize-javascript": ">=7.0.5"
+    }
+  },
   "dependencies": {
     "body-parser": "^2.2.2",
     "cors": "^2.8.6",
     "dayjs": "^1.11.20",
-    "dotenv": "^17.3.1",
-    "express": "^4.22.1",
+    "dotenv": "^17.4.2",
+    "express": "^4.22.2",
     "express-handlebars": "^5.3.5",
     "markdown-it": "^14.1.1",
     "morgan": "^1.10.1",
-    "ws": "^8.19.0",
+    "ws": "^8.20.1",
     "xml2js": "^0.6.2",
     "xmlbuilder": "^15.1.1"
   },
@@ -35,19 +40,19 @@
     "url": "https://github.com/rsscloud/rsscloud-server.git"
   },
   "devDependencies": {
-    "@commitlint/cli": "^20.5.0",
-    "@commitlint/config-conventional": "^20.5.0",
+    "@commitlint/cli": "^20.5.3",
+    "@commitlint/config-conventional": "^20.5.3",
     "chai": "^4.5.0",
     "chai-http": "^4.4.0",
     "chai-json": "^1.0.0",
     "chai-xml": "^0.4.1",
-    "eslint": "^10.0.3",
+    "eslint": "^10.4.0",
     "https": "^1.0.0",
     "husky": "^9.1.7",
     "mocha": "^11.7.5",
     "mocha-multi": "^1.1.7",
     "nodemon": "3.1.14",
-    "prettier": "^3.8.1",
+    "prettier": "^3.8.3",
     "supertest": "^7.2.2"
   }
 }
