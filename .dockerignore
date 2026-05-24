@@ -3,6 +3,8 @@
 .circleci
 **/node_modules
 **/data
+packages/*/dist
+packages/*/coverage
 xunit
 .nyc_output
 .env
