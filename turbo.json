@@ -1,0 +1,48 @@
+{
+    "$schema": "https://turborepo.com/schema.json",
+    "ui": "stream",
+    "globalDependencies": ["pnpm-lock.yaml", ".node-version", ".npmrc"],
+    "globalEnv": ["NODE_ENV", "CI"],
+    "tasks": {
+        "build": {
+            "dependsOn": ["^build"],
+            "inputs": ["src/**", "tsup.config.ts", "tsconfig*.json", "package.json"],
+            "outputs": ["dist/**"]
+        },
+        "lint": {
+            "inputs": [
+                "src/**",
+                "controllers/**",
+                "services/**",
+                "test/**",
+                "*.js",
+                "eslint.config.*",
+                "package.json"
+            ],
+            "outputs": []
+        },
+        "typecheck": {
+            "dependsOn": ["^build"],
+            "inputs": ["src/**", "tsconfig*.json", "package.json"],
+            "outputs": []
+        },
+        "test": {
+            "dependsOn": ["^build"],
+            "inputs": [
+                "src/**",
+                "test/**",
+                "vitest.config.ts",
+                "tsconfig*.json",
+                "package.json"
+            ],
+            "outputs": ["coverage/**"]
+        },
+        "clean": {
+            "cache": false
+        },
+        "dev": {
+            "cache": false,
+            "persistent": true
+        }
+    }
+}

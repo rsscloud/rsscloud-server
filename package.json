@@ -6,12 +6,14 @@
     "scripts": {
         "start": "pnpm --filter @rsscloud/server run dev",
         "client": "pnpm --filter @rsscloud/server run client",
-        "build": "pnpm -r --if-present run build",
-        "lint": "pnpm -r --if-present run lint",
-        "typecheck": "pnpm -r --if-present run typecheck",
+        "build": "turbo run build",
+        "lint": "turbo run lint",
+        "typecheck": "turbo run typecheck",
         "format": "prettier --write .",
         "test": "docker-compose up --build --abort-on-container-exit --attach rsscloud-tests --no-log-prefix",
-        "test:core": "pnpm --filter @rsscloud/core run test",
+        "test:unit": "turbo run test",
+        "test:core": "turbo run test --filter=@rsscloud/core",
+        "clean": "turbo run clean",
         "prepare": "husky"
     },
     "packageManager": "pnpm@10.11.0",
@@ -31,6 +33,7 @@
         "@commitlint/cli": "^20.5.3",
         "@commitlint/config-conventional": "^20.5.3",
         "husky": "^9.1.7",
-        "prettier": "^3.8.3"
+        "prettier": "^3.8.3",
+        "turbo": "^2.9.14"
     }
 }
