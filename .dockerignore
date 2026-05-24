@@ -5,6 +5,7 @@
 **/data
 packages/*/dist
 packages/*/coverage
+.turbo
 xunit
 .nyc_output
 .env
