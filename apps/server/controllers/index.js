@@ -1,6 +1,7 @@
 const express = require('express'),
     builder = require('xmlbuilder'),
     fs = require('fs'),
+    path = require('path'),
     md = require('markdown-it')(),
     config = require('../config'),
     getDayjs = require('../services/dayjs-wrapper'),
@@ -13,7 +14,7 @@ router.use('/docs', require('./docs'));
 router.get('/LICENSE.md', (req, res) => {
     try {
         const htmltext = md.render(
-            fs.readFileSync('LICENSE.md', { encoding: 'utf8' })
+            fs.readFileSync(path.join(__dirname, '..', '..', '..', 'LICENSE.md'), { encoding: 'utf8' })
         );
         res.render('docs', {
             title: 'rssCloud Server: License',
