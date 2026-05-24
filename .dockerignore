@@ -1,6 +1,5 @@
 .git
 .github
-.circleci
 **/node_modules
 **/data
 packages/*/dist
