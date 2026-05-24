@@ -1,8 +1,8 @@
 .DS_Store
 .env
 .nyc_output/
-/data/
-/node_modules/
-/xunit/
+data/
+node_modules/
+xunit/
 Procfile
 tunnel.sh

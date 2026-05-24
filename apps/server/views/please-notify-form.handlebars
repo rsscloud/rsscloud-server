@@ -1,0 +1,74 @@
+<html lang='en'>
+    <head>
+        <meta charset='utf-8' />
+        <meta name='viewport' content='width=device-width, initial-scale=1' />
+        <title>rssCloud Server: Please Notify</title>
+        <link href='/css/style.css' rel='stylesheet' />
+    </head>
+    <body>
+        <h1>rssCloud Server: Please Notify</h1>
+        <p>Posting to /pleaseNotify is your way of alerting the server that you
+            want to receive notifications when one or more resources are
+            updated.</p>
+
+        <form method='POST' action='pleaseNotify'>
+            <label for='domain'>Domain</label>
+            <input
+                type='text'
+                id='domain'
+                name='domain'
+                placeholder='example.com'
+            />
+
+            <label for='port'>Port</label>
+            <input
+                type='text'
+                id='port'
+                name='port'
+                placeholder='80'
+                required
+            />
+
+            <label for='path'>Path</label>
+            <input
+                type='text'
+                id='path'
+                name='path'
+                placeholder='/notify'
+                required
+            />
+
+            <label for='registerProcedure'>Register Procedure</label>
+            <input
+                type='text'
+                id='registerProcedure'
+                name='registerProcedure'
+                placeholder='weblogUpdates'
+            />
+
+            <label for='protocol'>Protocol</label>
+            <input
+                type='text'
+                id='protocol'
+                name='protocol'
+                placeholder='http-post'
+                required
+            />
+
+            <label for='url1'>Resource URL</label>
+            <input
+                type='text'
+                id='url1'
+                name='url1'
+                placeholder='https://example.com/feed.rss'
+                required
+            />
+
+            <button type='submit'>Please Notify</button>
+        </form>
+
+        <p class='mt-20'>
+            <a href='/'>← Back to Home</a>
+        </p>
+    </body>
+</html>

@@ -35,21 +35,21 @@ module.exports = [
         },
         rules: {
             // Crockford-inspired formatting
-            'indent': ['error', 4],
-            'quotes': ['error', 'single'],
-            'semi': ['error', 'always'],
+            indent: ['error', 4],
+            quotes: ['error', 'single'],
+            semi: ['error', 'always'],
             'no-trailing-spaces': 'error',
             'eol-last': 'error',
-            'no-multiple-empty-lines': ['error', { 'max': 1 }],
+            'no-multiple-empty-lines': ['error', { max: 1 }],
             'comma-dangle': ['error', 'never'],
-            'brace-style': ['error', '1tbs', { 'allowSingleLine': true }],
+            'brace-style': ['error', '1tbs', { allowSingleLine: true }],
             'space-before-function-paren': ['error', 'never'],
             'keyword-spacing': 'error',
             'space-infix-ops': 'error',
             'space-unary-ops': 'error',
 
             // Code quality
-            'no-unused-vars': ['error', { 'argsIgnorePattern': '^_' }],
+            'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
             'no-console': 'off',
             'no-debugger': 'error',
             'no-eval': 'error',

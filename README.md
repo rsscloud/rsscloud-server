@@ -72,10 +72,10 @@ The POST parameters are:
 2. port
 3. path
 4. registerProcedure -- required, but isn't used in this server as it only applies to xml-rpc or soap.
-5. protocol -- the spec allows for http-post, xml-rpc or soap but this server only supports http-post and xml-rpc. This server also supports https-post which is identical to http-post except it notifies using https as the scheme instead of http. *Note: if you specify http-post with port 443, the server will automatically use the https scheme for notifications.* For other ports that expect https, use https-post as the protocol.
-6. url1, url2, ..., urlN this is the resource you're requesting to be notified about.  In the case of an RSS feed you would specify the URL of the RSS feed.
+5. protocol -- the spec allows for http-post, xml-rpc or soap but this server only supports http-post and xml-rpc. This server also supports https-post which is identical to http-post except it notifies using https as the scheme instead of http. _Note: if you specify http-post with port 443, the server will automatically use the https scheme for notifications._ For other ports that expect https, use https-post as the protocol.
+6. url1, url2, ..., urlN this is the resource you're requesting to be notified about. In the case of an RSS feed you would specify the URL of the RSS feed.
 
-When you POST the server first checks if the urls you specifed are returning an [HTTP 2xx status code](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2) then it attempts to notify the subscriber of an update to make sure it works.  This is done in one of two ways.
+When you POST the server first checks if the urls you specifed are returning an [HTTP 2xx status code](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2) then it attempts to notify the subscriber of an update to make sure it works. This is done in one of two ways.
 
 1. If you did not specify a domain parameter and we're using the requesting IP address we perform a POST request to the URL represented by `http://<ip>:<port><path>` with a single parameter `url`. To accept the subscription that resource just needs to return an HTTP 2xx status code.
 2. If you did specify a domain parameter then we perform a GET request to the URL represented by `http://<domain>:<port><path>` with two query string parameters, url and challenge. To accept the subscription that resource needs to return an HTTP 2xx status code and have the challenge value as the response body.
@@ -95,7 +95,10 @@ Examples:
 ```
 
 ```json
-{"success":false,"msg":"The subscription was cancelled because the call failed when we tested the handler."}
+{
+    "success": false,
+    "msg": "The subscription was cancelled because the call failed when we tested the handler."
+}
 ```
 
 ### POST /ping
@@ -106,7 +109,7 @@ The POST parameters are:
 
 1. url
 
-When you POST the server first checks if the url has actually changed since the last time it checked.  If it has, it will go through it's list of subscribers and POST to the subscriber with the parameter `url`.
+When you POST the server first checks if the url has actually changed since the last time it checked. If it has, it will go through it's list of subscribers and POST to the subscriber with the parameter `url`.
 
 The default response type is text/xml but if you POST with an [accept header](http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1) specifying `application/json` we will return a JSON formatted response.
 
@@ -118,7 +121,7 @@ Examples:
 ```
 
 ```json
-{"success":true,"msg":"Thanks for the ping."}
+{ "success": true, "msg": "Thanks for the ping." }
 ```
 
 ### GET /pingForm

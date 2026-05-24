@@ -1,8 +1,8 @@
 .git
 .github
 .circleci
-node_modules
-data
+**/node_modules
+**/data
 xunit
 .nyc_output
 .env
