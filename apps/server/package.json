@@ -8,7 +8,7 @@
         "dev": "nodemon --use_strict --ignore data/ ./app.js",
         "client": "nodemon --use_strict --ignore data/ ./client.js",
         "lint": "eslint --fix controllers/ services/ test/ *.js",
-        "test": "mocha"
+        "e2e-test": "mocha"
     },
     "engines": {
         "node": ">=22"
