@@ -8,21 +8,27 @@ This is an rssCloud Server implementation in Node.js - a notification protocol s
 
 ## Monorepo Structure
 
-This project is a pnpm workspace monorepo. The server application lives in `apps/server/`.
+This project is a pnpm workspace monorepo orchestrated by [Turborepo](https://turborepo.com/).
 
 ```
-/                          # Workspace root
-├── apps/server/           # rssCloud Server application
-│   ├── app.js             # Express entry point
-│   ├── config.js          # Configuration from env vars
-│   ├── controllers/       # Route handlers
-│   ├── services/          # Business logic
-│   ├── views/             # Handlebars templates
-│   ├── public/            # Static assets
-│   └── test/              # Mocha/Chai tests
-├── pnpm-workspace.yaml    # Workspace definition
-├── Dockerfile             # Docker build
-└── docker-compose.yml     # Test environment
+/                              # Workspace root
+├── apps/
+│   ├── server/                # rssCloud Server application
+│   │   ├── app.js             # Express entry point
+│   │   ├── config.js          # Configuration from env vars
+│   │   ├── controllers/       # Route handlers
+│   │   ├── services/          # Business logic
+│   │   ├── views/             # Handlebars templates
+│   │   ├── public/            # Static assets
+│   │   └── Dockerfile         # Lean production image
+│   └── e2e/                   # End-to-end test suite (private)
+│       ├── test/              # Mocha/Chai tests + mock servers
+│       ├── Dockerfile         # Test-runner image (mocha + dockerize)
+│       └── docker-compose.yml # Orchestrates server + e2e containers
+├── packages/
+│   └── core/                  # @rsscloud/core: shared primitives (TS, tsup)
+├── pnpm-workspace.yaml        # Workspace definition
+└── turbo.json                 # Task orchestration + caching
 ```
 
 ## Development Commands
@@ -34,10 +40,13 @@ This project uses pnpm with corepack. Run `corepack enable` to set up pnpm autom
 - `pnpm start` - Start server with nodemon (auto-reload on changes)
 - `pnpm run client` - Start client with nodemon
 
-### Testing & Quality (from repo root)
+### Testing & Quality (from repo root, all routed through turbo)
 
-- `pnpm test` - Run full API tests using Docker containers (MacOS tested)
-- `pnpm run lint` - Run ESLint with auto-fix on server code
+- `pnpm test` - Run docker-based end-to-end tests via `apps/e2e/docker-compose.yml` (MacOS tested)
+- `pnpm run test:unit` - Run unit tests across all packages (just `@rsscloud/core`'s vitest today)
+- `pnpm run build` - Build all packages (just `@rsscloud/core`'s tsup today)
+- `pnpm run lint` - Run ESLint across all packages
+- `pnpm run typecheck` - Run TypeScript typecheck across all packages
 - `pnpm run format` - Run Prettier on the entire repo
 
 ## Architecture
@@ -80,9 +89,10 @@ State is persisted to a JSON file (default `./data/subscriptions.json`) managed 
 
 ### Testing
 
-- Tests in apps/server/test/ using Mocha/Chai
-- Docker-based API testing with mock endpoints
-- Test fixtures and SSL certificates in apps/server/test/keys/
+- End-to-end tests live in `apps/e2e/test/` (separate workspace package, `@rsscloud/e2e`)
+- Tests use Mocha/Chai, orchestrated via `apps/e2e/docker-compose.yml`
+- Mock servers spin up on ports 8002/8003; SSL certs in `apps/e2e/test/keys/`
+- Server-internal helpers used by tests (RPC builders, dayjs wrapper, init-subscription, config) are duplicated under `apps/e2e/test/helpers/` to keep the suite decoupled from `apps/server` internals
 
 ## Commits and Releases
 
