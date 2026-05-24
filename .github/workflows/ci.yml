@@ -66,12 +66,12 @@ jobs:
               uses: docker/setup-buildx-action@v3
 
             - name: Run integration tests
-              run: docker compose up --build --abort-on-container-exit --attach rsscloud-tests --no-log-prefix
+              run: docker compose -f apps/e2e/docker-compose.yml up --build --abort-on-container-exit --attach rsscloud-tests --no-log-prefix
 
             - name: Upload xunit results
               if: always()
               uses: actions/upload-artifact@v4
               with:
                   name: server-xunit
-                  path: xunit/test-results.xml
+                  path: apps/e2e/xunit/test-results.xml
                   if-no-files-found: warn
