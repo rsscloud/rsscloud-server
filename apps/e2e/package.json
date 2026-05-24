@@ -1,0 +1,32 @@
+{
+    "name": "@rsscloud/e2e",
+    "version": "0.0.0",
+    "private": true,
+    "description": "End-to-end tests for rssCloud server",
+    "engines": {
+        "node": ">=22"
+    },
+    "scripts": {
+        "e2e-test": "mocha",
+        "test:e2e": "docker-compose up --build --abort-on-container-exit --attach rsscloud-tests --no-log-prefix",
+        "lint": "eslint --fix test/ *.js"
+    },
+    "author": "Andrew Shell <andrew@andrewshell.org>",
+    "license": "MIT",
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "body-parser": "^2.2.2",
+        "chai": "^4.5.0",
+        "chai-http": "^4.4.0",
+        "chai-json": "^1.0.0",
+        "chai-xml": "^0.4.1",
+        "dayjs": "^1.11.20",
+        "eslint": "^10.4.0",
+        "express": "^4.22.2",
+        "mocha": "^11.7.5",
+        "mocha-multi": "^1.1.7",
+        "supertest": "^7.2.2",
+        "xml2js": "^0.6.2",
+        "xmlbuilder": "^15.1.1"
+    }
+}

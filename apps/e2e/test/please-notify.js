@@ -6,8 +6,8 @@ const chai = require('chai'),
     mock = require('./mock'),
     storeApi = require('./store-api'),
     xmlrpcBuilder = require('./xmlrpc-builder'),
-    rpcReturnSuccess = require('../services/rpc-return-success'),
-    rpcReturnFault = require('../services/rpc-return-fault');
+    rpcReturnSuccess = require('./helpers/rpc-return-success'),
+    rpcReturnFault = require('./helpers/rpc-return-fault');
 
 chai.use(chaiHttp);
 chai.use(chaiXml);

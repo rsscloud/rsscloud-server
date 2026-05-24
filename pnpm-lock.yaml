@@ -27,6 +27,51 @@ importers:
         specifier: ^2.9.14
         version: 2.9.14
 
+  apps/e2e:
+    devDependencies:
+      '@eslint/js':
+        specifier: ^10.0.1
+        version: 10.0.1(eslint@10.4.0(jiti@2.6.1))
+      body-parser:
+        specifier: ^2.2.2
+        version: 2.2.2
+      chai:
+        specifier: ^4.5.0
+        version: 4.5.0
+      chai-http:
+        specifier: ^4.4.0
+        version: 4.4.0
+      chai-json:
+        specifier: ^1.0.0
+        version: 1.0.0
+      chai-xml:
+        specifier: ^0.4.1
+        version: 0.4.1(chai@4.5.0)
+      dayjs:
+        specifier: ^1.11.20
+        version: 1.11.20
+      eslint:
+        specifier: ^10.4.0
+        version: 10.4.0(jiti@2.6.1)
+      express:
+        specifier: ^4.22.2
+        version: 4.22.2
+      mocha:
+        specifier: ^11.7.5
+        version: 11.7.5
+      mocha-multi:
+        specifier: ^1.1.7
+        version: 1.1.7(mocha@11.7.5)
+      supertest:
+        specifier: ^7.2.2
+        version: 7.2.2
+      xml2js:
+        specifier: ^0.6.2
+        version: 0.6.2
+      xmlbuilder:
+        specifier: ^15.1.1
+        version: 15.1.1
+
   apps/server:
     dependencies:
       body-parser:
@@ -66,36 +111,12 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.4.0(jiti@2.6.1))
-      chai:
-        specifier: ^4.5.0
-        version: 4.5.0
-      chai-http:
-        specifier: ^4.4.0
-        version: 4.4.0
-      chai-json:
-        specifier: ^1.0.0
-        version: 1.0.0
-      chai-xml:
-        specifier: ^0.4.1
-        version: 0.4.1(chai@4.5.0)
       eslint:
         specifier: ^10.4.0
         version: 10.4.0(jiti@2.6.1)
-      https:
-        specifier: ^1.0.0
-        version: 1.0.0
-      mocha:
-        specifier: ^11.7.5
-        version: 11.7.5
-      mocha-multi:
-        specifier: ^1.1.7
-        version: 1.1.7(mocha@11.7.5)
       nodemon:
         specifier: 3.1.14
         version: 3.1.14
-      supertest:
-        specifier: ^7.2.2
-        version: 7.2.2
 
   packages/core:
     devDependencies:
@@ -1614,9 +1635,6 @@ packages:
   http-errors@2.0.1:
     resolution: {integrity: sha512-4FbRdAX+bSdmo4AUFuS0WNiPz8NgFt+r8ThgNWmlrjQjt1Q7ZR9+zTlce2859x4KSXrwIsaeTqDoKQmtP8pLmQ==}
     engines: {node: '>= 0.8'}
-
-  https@1.0.0:
-    resolution: {integrity: sha512-4EC57ddXrkaF0x83Oj8sM6SLQHAWXw90Skqu2M4AEWENZ3F02dFJE/GARA8igO79tcgYqGrD7ae4f5L3um2lgg==}
 
   husky@9.1.7:
     resolution: {integrity: sha512-5gs5ytaNjBrh5Ow3zrvdUUY+0VxIuWVL4i9irt6friV+BqdCfmV11CQTWMiBYWHbXhco+J1kHfTOUkePhCDvMA==}
@@ -4107,8 +4125,6 @@ snapshots:
       setprototypeof: 1.2.0
       statuses: 2.0.2
       toidentifier: 1.0.1
-
-  https@1.0.0: {}
 
   husky@9.1.7: {}
 
