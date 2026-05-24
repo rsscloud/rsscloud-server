@@ -4,25 +4,45 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an rssCloud Server v2 implementation in Node.js - a notification protocol server that allows RSS feeds to notify subscribers when they are updated. The server handles subscription management and real-time notifications for RSS/feed updates.
+This is an rssCloud Server implementation in Node.js - a notification protocol server that allows RSS feeds to notify subscribers when they are updated. The server handles subscription management and real-time notifications for RSS/feed updates.
+
+## Monorepo Structure
+
+This project is a pnpm workspace monorepo. The server application lives in `apps/server/`.
+
+```
+/                          # Workspace root
+├── apps/server/           # rssCloud Server application
+│   ├── app.js             # Express entry point
+│   ├── config.js          # Configuration from env vars
+│   ├── controllers/       # Route handlers
+│   ├── services/          # Business logic
+│   ├── views/             # Handlebars templates
+│   ├── public/            # Static assets
+│   └── test/              # Mocha/Chai tests
+├── pnpm-workspace.yaml    # Workspace definition
+├── Dockerfile             # Docker build
+└── docker-compose.yml     # Test environment
+```
 
 ## Development Commands
 
 This project uses pnpm with corepack. Run `corepack enable` to set up pnpm automatically.
 
-### Start Development
+### Start Development (from repo root)
 
 - `pnpm start` - Start server with nodemon (auto-reload on changes)
 - `pnpm run client` - Start client with nodemon
 
-### Testing & Quality
+### Testing & Quality (from repo root)
 
 - `pnpm test` - Run full API tests using Docker containers (MacOS tested)
-- `pnpm run lint` - Run ESLint with auto-fix on controllers/, services/, test/
+- `pnpm run lint` - Run ESLint with auto-fix on server code
+- `pnpm run format` - Run Prettier on the entire repo
 
 ## Architecture
 
-### Core Application Structure
+### Core Application Structure (apps/server/)
 
 - **app.js** - Main Express application entry point, sets up middleware, loads jsonStore from disk, and starts server
 - **config.js** - Configuration management reading from env vars with defaults
@@ -47,7 +67,7 @@ This project uses pnpm with corepack. Run `corepack enable` to set up pnpm autom
 
 ### Configuration
 
-Environment variables (with defaults in config.js):
+Environment variables (with defaults in apps/server/config.js):
 
 - `DOMAIN` (default: localhost)
 - `PORT` (default: 5337)
@@ -60,9 +80,9 @@ State is persisted to a JSON file (default `./data/subscriptions.json`) managed 
 
 ### Testing
 
-- Unit tests in test/ directory using Mocha/Chai
+- Tests in apps/server/test/ using Mocha/Chai
 - Docker-based API testing with mock endpoints
-- Test fixtures and SSL certificates in test/keys/
+- Test fixtures and SSL certificates in apps/server/test/keys/
 
 ## Commits and Releases
 
@@ -79,11 +99,13 @@ type: description
 ### Commit Types
 
 **Trigger releases:**
-- `fix:` - Bug fixes → patch release (2.2.1 → 2.2.2)
-- `feat:` - New features → minor release (2.2.1 → 2.3.0)
-- `feat!:` or `BREAKING CHANGE:` → major release (2.2.1 → 3.0.0)
+
+- `fix:` - Bug fixes → patch release
+- `feat:` - New features → minor release
+- `feat!:` or `BREAKING CHANGE:` → major release
 
 **No release triggered:**
+
 - `chore:` - Maintenance tasks, dependencies
 - `docs:` - Documentation only
 - `style:` - Code style/formatting

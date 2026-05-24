@@ -1,58 +1,30 @@
 {
-  "name": "rsscloud-server",
-  "version": "3.0.0",
-  "description": "An rssCloud Server",
-  "main": "app.js",
-  "scripts": {
-    "start": "nodemon --use_strict --ignore data/ ./app.js",
-    "client": "nodemon --use_strict --ignore data/ ./client.js",
-    "lint": "eslint --fix controllers/ services/ test/ *.js",
-    "format": "prettier --write .",
-    "test": "docker-compose up --build --abort-on-container-exit --attach rsscloud-tests --no-log-prefix",
-    "prepare": "husky"
-  },
-  "engines": {
-    "node": ">=22"
-  },
-  "packageManager": "pnpm@10.11.0",
-  "author": "Andrew Shell <andrew@andrewshell.org>",
-  "license": "MIT",
-  "pnpm": {
-    "overrides": {
-      "serialize-javascript": ">=7.0.5"
+    "name": "rsscloud-monorepo",
+    "version": "0.0.0",
+    "private": true,
+    "description": "rssCloud monorepo",
+    "scripts": {
+        "start": "pnpm --filter @rsscloud/server run dev",
+        "client": "pnpm --filter @rsscloud/server run client",
+        "lint": "pnpm --filter @rsscloud/server run lint",
+        "format": "prettier --write .",
+        "test": "docker-compose up --build --abort-on-container-exit --attach rsscloud-tests --no-log-prefix",
+        "prepare": "husky"
+    },
+    "packageManager": "pnpm@10.11.0",
+    "pnpm": {
+        "overrides": {
+            "serialize-javascript": ">=7.0.5"
+        }
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/rsscloud/rsscloud-server.git"
+    },
+    "devDependencies": {
+        "@commitlint/cli": "^20.5.3",
+        "@commitlint/config-conventional": "^20.5.3",
+        "husky": "^9.1.7",
+        "prettier": "^3.8.3"
     }
-  },
-  "dependencies": {
-    "body-parser": "^2.2.2",
-    "cors": "^2.8.6",
-    "dayjs": "^1.11.20",
-    "dotenv": "^17.4.2",
-    "express": "^4.22.2",
-    "express-handlebars": "^5.3.5",
-    "markdown-it": "^14.1.1",
-    "morgan": "^1.10.1",
-    "ws": "^8.20.1",
-    "xml2js": "^0.6.2",
-    "xmlbuilder": "^15.1.1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/rsscloud/rsscloud-server.git"
-  },
-  "devDependencies": {
-    "@commitlint/cli": "^20.5.3",
-    "@commitlint/config-conventional": "^20.5.3",
-    "chai": "^4.5.0",
-    "chai-http": "^4.4.0",
-    "chai-json": "^1.0.0",
-    "chai-xml": "^0.4.1",
-    "eslint": "^10.4.0",
-    "https": "^1.0.0",
-    "husky": "^9.1.7",
-    "mocha": "^11.7.5",
-    "mocha-multi": "^1.1.7",
-    "nodemon": "3.1.14",
-    "prettier": "^3.8.3",
-    "supertest": "^7.2.2"
-  }
 }

@@ -14,7 +14,9 @@ RUN mkdir -p /app
 WORKDIR /app
 
 COPY package.json .
+COPY pnpm-workspace.yaml .
 COPY pnpm-lock.yaml .
+COPY apps/server/package.json apps/server/
 
 FROM base AS dependencies
 
