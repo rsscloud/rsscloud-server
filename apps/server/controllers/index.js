@@ -44,7 +44,7 @@ router.get('/subscriptions.json', (req, res) => {
     res.send(JSON.stringify(jsonStore.getData(), null, 2));
 });
 
-router.get('/feeds.opml', async (req, res, next) => {
+router.get('/feeds.opml', async(req, res, next) => {
     try {
         const dayjs = await getDayjs();
         const nowIso = dayjs().utc().format();

@@ -353,7 +353,7 @@ app.get('/', (req, res) => {
 });
 
 // Route: Subscribe to feed notifications
-app.post('/subscribe', urlencodedParser, async (req, res) => {
+app.post('/subscribe', urlencodedParser, async(req, res) => {
     const feedName = req.body.feedName || 'rss-01.xml';
     const useXmlRpc = req.body.xmlrpc === 'on';
     const feedUrl = `http://${clientConfig.domain}:${clientConfig.port}/${feedName}`;
@@ -428,7 +428,7 @@ app.post('/subscribe', urlencodedParser, async (req, res) => {
 });
 
 // Route: Ping feed (add item and notify)
-app.post('/ping-feed', urlencodedParser, async (req, res) => {
+app.post('/ping-feed', urlencodedParser, async(req, res) => {
     const feedName = req.body.feedName || 'rss-01.xml';
     const useXmlRpc = req.body.xmlrpc === 'on';
     const feedUrl = `http://${clientConfig.domain}:${clientConfig.port}/${feedName}`;
@@ -557,12 +557,12 @@ server = app
     })
     .on('error', error => {
         switch (error.code) {
-            case 'EADDRINUSE':
-                console.log(
-                    `Error: Port ${clientConfig.port} is already in use.`
-                );
-                break;
-            default:
-                console.log(error.code);
+        case 'EADDRINUSE':
+            console.log(
+                `Error: Port ${clientConfig.port} is already in use.`
+            );
+            break;
+        default:
+            console.log(error.code);
         }
     });

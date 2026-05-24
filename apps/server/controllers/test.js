@@ -70,7 +70,7 @@ router.post('/getData', (req, res) => {
     }
 });
 
-router.post('/removeExpired', async (req, res) => {
+router.post('/removeExpired', async(req, res) => {
     try {
         const result = await removeExpiredSubscriptions();
         res.json({ success: true, result });

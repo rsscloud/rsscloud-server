@@ -8,48 +8,48 @@ async function parseRpcParam(param, dayjs) {
 
     for (tag in value) {
         switch (tag) {
-            case 'i4':
-            case 'int':
-            case 'double':
-                returnedValue = Number(value[tag]);
-                break;
-            case 'string':
-                returnedValue = value[tag];
-                break;
-            case 'boolean':
-                returnedValue = 'true' === value[tag] || !!Number(value[tag]);
-                break;
-            case 'dateTime.iso8601':
-                returnedValue = dayjs.utc(value[tag], [
-                    'YYYYMMDDTHHmmss',
-                    dayjs.ISO_8601
-                ]);
-                break;
-            case 'base64':
-                returnedValue = Buffer.from(value[tag], 'base64').toString(
-                    'utf8'
-                );
-                break;
-            case 'struct':
-                member = value[tag].member || [];
-                if (!Array.isArray(member)) {
-                    member = [member];
-                }
-                returnedValue = {};
-                for (const item of member) {
-                    returnedValue[item.name] = await parseRpcParam(item, dayjs);
-                }
-                break;
-            case 'array':
-                values = (value[tag].data || {}).value || [];
-                if (!Array.isArray(values)) {
-                    values = [values];
-                }
-                returnedValue = [];
-                for (const item of values) {
-                    returnedValue.push(await parseRpcParam(item, dayjs));
-                }
-                break;
+        case 'i4':
+        case 'int':
+        case 'double':
+            returnedValue = Number(value[tag]);
+            break;
+        case 'string':
+            returnedValue = value[tag];
+            break;
+        case 'boolean':
+            returnedValue = 'true' === value[tag] || !!Number(value[tag]);
+            break;
+        case 'dateTime.iso8601':
+            returnedValue = dayjs.utc(value[tag], [
+                'YYYYMMDDTHHmmss',
+                dayjs.ISO_8601
+            ]);
+            break;
+        case 'base64':
+            returnedValue = Buffer.from(value[tag], 'base64').toString(
+                'utf8'
+            );
+            break;
+        case 'struct':
+            member = value[tag].member || [];
+            if (!Array.isArray(member)) {
+                member = [member];
+            }
+            returnedValue = {};
+            for (const item of member) {
+                returnedValue[item.name] = await parseRpcParam(item, dayjs);
+            }
+            break;
+        case 'array':
+            values = (value[tag].data || {}).value || [];
+            if (!Array.isArray(values)) {
+                values = [values];
+            }
+            returnedValue = [];
+            for (const item of values) {
+                returnedValue.push(await parseRpcParam(item, dayjs));
+            }
+            break;
         }
     }
 

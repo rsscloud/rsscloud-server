@@ -10,18 +10,18 @@ const bodyParser = require('body-parser'),
 
 function processResponse(req, res, result) {
     switch (req.accepts('xml', 'json')) {
-        case 'xml':
-            res.set('Content-Type', 'text/xml');
-            res.send(
-                restReturnSuccess(result.success, result.msg, 'notifyResult')
-            );
-            break;
-        case 'json':
-            res.json(result);
-            break;
-        default:
-            res.status(406).send('Not Acceptable');
-            break;
+    case 'xml':
+        res.set('Content-Type', 'text/xml');
+        res.send(
+            restReturnSuccess(result.success, result.msg, 'notifyResult')
+        );
+        break;
+    case 'json':
+        res.json(result);
+        break;
+    default:
+        res.status(406).send('Not Acceptable');
+        break;
     }
 }
 
@@ -32,7 +32,7 @@ function handleError(req, res, err) {
     processResponse(req, res, errorResult(err.message));
 }
 
-router.post('/', urlencodedParser, async function (req, res) {
+router.post('/', urlencodedParser, async function(req, res) {
     try {
         const params = parseNotifyParams.rest(req);
         const result = await pleaseNotify(

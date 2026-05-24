@@ -15,13 +15,13 @@ const bodyParser = require('body-parser'),
 
 function processResponse(req, res, xmlString) {
     switch (req.accepts('xml')) {
-        case 'xml':
-            res.set('Content-Type', 'text/xml');
-            res.send(xmlString);
-            break;
-        default:
-            res.status(406).send('Not Acceptable');
-            break;
+    case 'xml':
+        res.set('Content-Type', 'text/xml');
+        res.send(xmlString);
+        break;
+    default:
+        res.status(406).send('Not Acceptable');
+        break;
     }
 }
 
@@ -32,7 +32,7 @@ function handleError(req, res, err) {
     processResponse(req, res, rpcReturnFault(4, err.message));
 }
 
-router.post('/', textParser, async function (req, res) {
+router.post('/', textParser, async function(req, res) {
     let params;
     const dayjs = await getDayjs();
 
@@ -49,50 +49,50 @@ router.post('/', textParser, async function (req, res) {
         );
 
         switch (request.methodName) {
-            case 'rssCloud.hello':
-                processResponse(req, res, rpcReturnSuccess(true));
-                break;
-            case 'rssCloud.pleaseNotify':
-                try {
-                    params = parseNotifyParams.rpc(req, request.params);
-                    const result = await pleaseNotify(
-                        params.notifyProcedure,
-                        params.apiurl,
-                        params.protocol,
-                        params.urlList,
-                        params.diffDomain
-                    );
-                    processResponse(req, res, rpcReturnSuccess(result.success));
-                } catch (err) {
-                    handleError(req, res, err);
-                }
-                break;
-            case 'rssCloud.ping':
-                try {
-                    params = parsePingParams.rpc(req, request.params);
-                    // Dave's rssCloud server always returns true whether it succeeded or not
-                    try {
-                        const result = await ping(params.url);
-                        processResponse(
-                            req,
-                            res,
-                            rpcReturnSuccess(result.success)
-                        );
-                    } catch {
-                        processResponse(req, res, rpcReturnSuccess(true));
-                    }
-                } catch (err) {
-                    handleError(req, res, err);
-                }
-                break;
-            default:
-                handleError(
-                    req,
-                    res,
-                    new Error(
-                        `Can't make the call because "${request.methodName}" is not defined.`
-                    )
+        case 'rssCloud.hello':
+            processResponse(req, res, rpcReturnSuccess(true));
+            break;
+        case 'rssCloud.pleaseNotify':
+            try {
+                params = parseNotifyParams.rpc(req, request.params);
+                const result = await pleaseNotify(
+                    params.notifyProcedure,
+                    params.apiurl,
+                    params.protocol,
+                    params.urlList,
+                    params.diffDomain
                 );
+                processResponse(req, res, rpcReturnSuccess(result.success));
+            } catch (err) {
+                handleError(req, res, err);
+            }
+            break;
+        case 'rssCloud.ping':
+            try {
+                params = parsePingParams.rpc(req, request.params);
+                // Dave's rssCloud server always returns true whether it succeeded or not
+                try {
+                    const result = await ping(params.url);
+                    processResponse(
+                        req,
+                        res,
+                        rpcReturnSuccess(result.success)
+                    );
+                } catch {
+                    processResponse(req, res, rpcReturnSuccess(true));
+                }
+            } catch (err) {
+                handleError(req, res, err);
+            }
+            break;
+        default:
+            handleError(
+                req,
+                res,
+                new Error(
+                    `Can't make the call because "${request.methodName}" is not defined.`
+                )
+            );
         }
     } catch (err) {
         handleError(req, res, err);
