@@ -5,28 +5,28 @@ const chai = require('chai'),
     mock = require('./mock'),
     storeApi = require('./store-api');
 
-describe('RemoveExpiredSubscriptions', function () {
-    before(async function () {
+describe('RemoveExpiredSubscriptions', function() {
+    before(async function() {
         await storeApi.before();
         await mock.before();
     });
 
-    after(async function () {
+    after(async function() {
         await storeApi.after();
         await mock.after();
     });
 
-    beforeEach(async function () {
+    beforeEach(async function() {
         await storeApi.beforeEach();
         await mock.beforeEach();
     });
 
-    afterEach(async function () {
+    afterEach(async function() {
         await storeApi.afterEach();
         await mock.afterEach();
     });
 
-    it('should remove expired subscriptions', async function () {
+    it('should remove expired subscriptions', async function() {
         const feedPath = '/rss.xml',
             resourceUrl = mock.serverUrl + feedPath,
             pingPath = '/feedupdated',
@@ -51,7 +51,7 @@ describe('RemoveExpiredSubscriptions', function () {
         expect(doc).to.be.null;
     });
 
-    it('should remove resource when all subscriptions are removed', async function () {
+    it('should remove resource when all subscriptions are removed', async function() {
         const feedPath = '/rss.xml',
             resourceUrl = mock.serverUrl + feedPath,
             pingPath = '/feedupdated',
@@ -96,7 +96,7 @@ describe('RemoveExpiredSubscriptions', function () {
         expect(storeData).to.not.have.property(resourceUrl);
     });
 
-    it('should remove resource when all subscriptions are removed and whenLastUpdate is absent', async function () {
+    it('should remove resource when all subscriptions are removed and whenLastUpdate is absent', async function() {
         const feedPath = '/rss.xml',
             resourceUrl = mock.serverUrl + feedPath,
             pingPath = '/feedupdated',
@@ -138,7 +138,7 @@ describe('RemoveExpiredSubscriptions', function () {
         expect(storeData).to.not.have.property(resourceUrl);
     });
 
-    it('should retain empty-subscribers entry when whenLastUpdate is within retention window', async function () {
+    it('should retain empty-subscribers entry when whenLastUpdate is within retention window', async function() {
         const feedPath = '/rss.xml',
             resourceUrl = mock.serverUrl + feedPath,
             dayjs = await getDayjs();
@@ -168,7 +168,7 @@ describe('RemoveExpiredSubscriptions', function () {
         expect(storeData[resourceUrl].subscribers).to.deep.equal([]);
     });
 
-    it('should remove empty-subscribers entry when whenLastUpdate is beyond retention window', async function () {
+    it('should remove empty-subscribers entry when whenLastUpdate is beyond retention window', async function() {
         const feedPath = '/rss.xml',
             resourceUrl = mock.serverUrl + feedPath,
             dayjs = await getDayjs();
@@ -200,7 +200,7 @@ describe('RemoveExpiredSubscriptions', function () {
         expect(storeData).to.not.have.property(resourceUrl);
     });
 
-    it('should retain entry when last subscription expires but whenLastUpdate is recent', async function () {
+    it('should retain entry when last subscription expires but whenLastUpdate is recent', async function() {
         const feedPath = '/rss.xml',
             resourceUrl = mock.serverUrl + feedPath,
             pingPath = '/feedupdated',
@@ -248,7 +248,7 @@ describe('RemoveExpiredSubscriptions', function () {
         expect(storeData[resourceUrl].subscribers).to.deep.equal([]);
     });
 
-    it('should not remove resource when valid subscriptions remain', async function () {
+    it('should not remove resource when valid subscriptions remain', async function() {
         const feedPath = '/rss.xml',
             resourceUrl = mock.serverUrl + feedPath,
             pingPath1 = '/feedupdated1',
@@ -298,7 +298,7 @@ describe('RemoveExpiredSubscriptions', function () {
         expect(resDoc).to.not.be.null;
     });
 
-    it('should remove subscription document with empty pleaseNotify array', async function () {
+    it('should remove subscription document with empty pleaseNotify array', async function() {
         const feedPath = '/rss.xml',
             resourceUrl = mock.serverUrl + feedPath;
 
@@ -325,7 +325,7 @@ describe('RemoveExpiredSubscriptions', function () {
         expect(storeData).to.not.have.property(resourceUrl);
     });
 
-    it('should remove orphaned resource with no subscription document', async function () {
+    it('should remove orphaned resource with no subscription document', async function() {
         const feedPath = '/rss.xml',
             resourceUrl = mock.serverUrl + feedPath,
             dayjs = await getDayjs();

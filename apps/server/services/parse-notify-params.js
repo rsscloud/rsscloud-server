@@ -3,14 +3,14 @@ const appMessages = require('./app-messages'),
 
 function validProtocol(protocol) {
     switch (protocol) {
-        case 'http-post':
-        case 'https-post':
-        case 'xml-rpc':
-            return true;
-        default:
-            throw new ErrorResponse(
-                appMessages.error.subscription.invalidProtocol(protocol)
-            );
+    case 'http-post':
+    case 'https-post':
+    case 'xml-rpc':
+        return true;
+    default:
+        throw new ErrorResponse(
+            appMessages.error.subscription.invalidProtocol(protocol)
+        );
     }
 }
 

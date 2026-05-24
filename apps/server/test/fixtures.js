@@ -1,9 +1,9 @@
 const storeApi = require('./store-api');
 
-exports.mochaGlobalSetup = async function () {
+exports.mochaGlobalSetup = async function() {
     await storeApi.before();
 };
 
-exports.mochaGlobalTeardown = async function () {
+exports.mochaGlobalTeardown = async function() {
     await storeApi.after();
 };

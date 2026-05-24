@@ -26,7 +26,7 @@ function scheduleCleanupTasks() {
 
     // Run subscription cleanup every 24 hours
     setInterval(
-        async () => {
+        async() => {
             try {
                 console.log('Running scheduled subscription cleanup...');
                 await removeExpiredSubscriptions();
@@ -150,13 +150,13 @@ async function startServer() {
         })
         .on('error', error => {
             switch (error.code) {
-                case 'EADDRINUSE':
-                    console.log(
-                        `Error: Port ${config.port} is already in use.`
-                    );
-                    break;
-                default:
-                    console.log(error.code);
+            case 'EADDRINUSE':
+                console.log(
+                    `Error: Port ${config.port} is already in use.`
+                );
+                break;
+            default:
+                console.log(error.code);
             }
         });
 }

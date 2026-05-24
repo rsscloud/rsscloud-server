@@ -121,7 +121,7 @@ async function generateStats() {
 }
 
 function scheduleStatsGeneration() {
-    setInterval(async () => {
+    setInterval(async() => {
         try {
             await generateStats();
         } catch (error) {

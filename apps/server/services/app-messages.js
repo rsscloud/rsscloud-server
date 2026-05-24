@@ -26,7 +26,7 @@ module.exports = {
     },
     success: {
         subscription:
-            "Thanks for the registration. It worked. When the resource updates we'll notify you. Don't forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!",
+            'Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!',
         ping: 'Thanks for the ping.'
     }
 };

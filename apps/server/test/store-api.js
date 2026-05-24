@@ -30,26 +30,26 @@ async function setSubscriptions(resourceUrl, pleaseNotify) {
 }
 
 module.exports = {
-    addResource: async function (resourceUrl, resourceObj) {
+    addResource: async function(resourceUrl, resourceObj) {
         await postJson('/test/setResource', {
             feedUrl: resourceUrl,
             resource: resourceObj
         });
     },
-    findResource: async function (resourceUrl) {
+    findResource: async function(resourceUrl) {
         const { found, resource } = await postJson('/test/getResource', {
             feedUrl: resourceUrl
         });
         return found ? resource : null;
     },
-    findSubscription: async function (resourceUrl) {
+    findSubscription: async function(resourceUrl) {
         const { found, subscriptions } = await postJson(
             '/test/getSubscriptions',
             { feedUrl: resourceUrl }
         );
         return found ? subscriptions : null;
     },
-    addSubscription: async function (
+    addSubscription: async function(
         resourceUrl,
         notifyProcedure,
         apiurl,
@@ -75,7 +75,7 @@ module.exports = {
 
         throw Error(`Cannot find ${apiurl} subscription`);
     },
-    updateSubscription: async function (resourceUrl, subscription) {
+    updateSubscription: async function(resourceUrl, subscription) {
         const subscriptions = await fetchSubscriptions(resourceUrl),
             index = subscriptions.pleaseNotify.findIndex(match => {
                 return subscription.url === match.url;
@@ -90,18 +90,18 @@ module.exports = {
         throw Error(`Cannot find ${subscription.url} subscription`);
     },
     setSubscriptions,
-    getData: async function () {
+    getData: async function() {
         const { data } = await postJson('/test/getData', {});
         return data;
     },
-    removeExpired: async function () {
+    removeExpired: async function() {
         const { result } = await postJson('/test/removeExpired', {});
         return result;
     },
-    before: async function () {},
-    after: async function () {},
-    beforeEach: async function () {},
-    afterEach: async function () {
+    before: async function() {},
+    after: async function() {},
+    beforeEach: async function() {},
+    afterEach: async function() {
         await postJson('/test/clear', {});
     }
 };

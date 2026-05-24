@@ -49,26 +49,26 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                 continue;
             }
 
-            describe(`Ping ${pingProtocol} to ${protocol} returning ${returnFormat}`, function () {
-                before(async function () {
+            describe(`Ping ${pingProtocol} to ${protocol} returning ${returnFormat}`, function() {
+                before(async function() {
                     await mock.before();
                 });
 
-                after(async function () {
+                after(async function() {
                     await mock.after();
                 });
 
-                beforeEach(async function () {
+                beforeEach(async function() {
                     await storeApi.beforeEach();
                     await mock.beforeEach();
                 });
 
-                afterEach(async function () {
+                afterEach(async function() {
                     await storeApi.afterEach();
                     await mock.afterEach();
                 });
 
-                it('should accept a ping for new resource', async function () {
+                it('should accept a ping for new resource', async function() {
                     const feedPath = '/rss.xml',
                         pingPath = '/feedupdated',
                         resourceUrl = mock.serverUrl + feedPath;
@@ -156,7 +156,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
                 });
 
-                it('should ping multiple subscribers on same domain', async function () {
+                it('should ping multiple subscribers on same domain', async function() {
                     const feedPath = '/rss.xml',
                         pingPath1 = '/feedupdated1',
                         pingPath2 = '/feedupdated2',
@@ -273,7 +273,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     );
                 });
 
-                it('should reject a ping for bad resource', async function () {
+                it('should reject a ping for bad resource', async function() {
                     const feedPath = '/rss.xml',
                         pingPath = '/feedupdated',
                         resourceUrl = mock.serverUrl + feedPath;
@@ -345,7 +345,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
                 });
 
-                it('should reject a ping with a missing url', async function () {
+                it('should reject a ping with a missing url', async function() {
                     const feedPath = '/rss.xml',
                         pingPath = '/feedupdated',
                         resourceUrl = null;
@@ -411,7 +411,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
                 });
 
-                it('should accept a ping for unchanged resource', async function () {
+                it('should accept a ping for unchanged resource', async function() {
                     const feedPath = '/rss.xml',
                         pingPath = '/feedupdated',
                         resourceUrl = mock.serverUrl + feedPath;
@@ -502,7 +502,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
                 });
 
-                it('should accept a ping with slow subscribers', async function () {
+                it('should accept a ping with slow subscribers', async function() {
                     this.timeout(5000);
 
                     const feedPath = '/rss.xml',
@@ -521,8 +521,8 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
 
                     function slowPostResponse(_req) {
-                        return new Promise(function (resolve) {
-                            global.setTimeout(function () {
+                        return new Promise(function(resolve) {
+                            global.setTimeout(function() {
                                 resolve('Thanks for the update! :-)');
                             }, 1000);
                         });
@@ -613,7 +613,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
                 });
 
-                it('should not notify expired subscribers', async function () {
+                it('should not notify expired subscribers', async function() {
                     const feedPath = '/rss.xml',
                         pingPath = '/feedupdated',
                         resourceUrl = mock.serverUrl + feedPath;
@@ -694,7 +694,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
                 });
 
-                it('should not notify subscribers with excessive errors', async function () {
+                it('should not notify subscribers with excessive errors', async function() {
                     const feedPath = '/rss.xml',
                         pingPath = '/feedupdated',
                         resourceUrl = mock.serverUrl + feedPath;
@@ -772,7 +772,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
                 });
 
-                it('should consider a very slow subscription an error', async function () {
+                it('should consider a very slow subscription an error', async function() {
                     const feedPath = '/rss.xml',
                         pingPath = '/feedupdated',
                         resourceUrl = mock.serverUrl + feedPath;

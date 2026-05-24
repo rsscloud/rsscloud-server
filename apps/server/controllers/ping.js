@@ -10,16 +10,16 @@ const bodyParser = require('body-parser'),
 
 function processResponse(req, res, result) {
     switch (req.accepts('xml', 'json')) {
-        case 'xml':
-            res.set('Content-Type', 'text/xml');
-            res.send(restReturnSuccess(result.success, result.msg, 'result'));
-            break;
-        case 'json':
-            res.json(result);
-            break;
-        default:
-            res.status(406).send('Not Acceptable');
-            break;
+    case 'xml':
+        res.set('Content-Type', 'text/xml');
+        res.send(restReturnSuccess(result.success, result.msg, 'result'));
+        break;
+    case 'json':
+        res.json(result);
+        break;
+    default:
+        res.status(406).send('Not Acceptable');
+        break;
     }
 }
 
@@ -30,7 +30,7 @@ function handleError(req, res, err) {
     processResponse(req, res, errorResult(err.message));
 }
 
-router.post('/', urlencodedParser, async (req, res) => {
+router.post('/', urlencodedParser, async(req, res) => {
     try {
         const params = parsePingParams.rest(req);
         const result = await ping(params.url);

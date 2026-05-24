@@ -43,28 +43,28 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                 continue;
             }
 
-            describe(`PleaseNotify ${pingProtocol} to ${protocol} returning ${returnFormat}`, function () {
-                before(async function () {
+            describe(`PleaseNotify ${pingProtocol} to ${protocol} returning ${returnFormat}`, function() {
+                before(async function() {
                     await storeApi.before();
                     await mock.before();
                 });
 
-                after(async function () {
+                after(async function() {
                     await storeApi.after();
                     await mock.after();
                 });
 
-                beforeEach(async function () {
+                beforeEach(async function() {
                     await storeApi.beforeEach();
                     await mock.beforeEach();
                 });
 
-                afterEach(async function () {
+                afterEach(async function() {
                     await storeApi.afterEach();
                     await mock.afterEach();
                 });
 
-                it('should accept a pleaseNotify for new resource', async function () {
+                it('should accept a pleaseNotify for new resource', async function() {
                     const feedPath = '/rss.xml',
                         resourceUrl = mock.serverUrl + feedPath;
 
@@ -121,7 +121,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                         if ('JSON' === returnFormat) {
                             expect(res.body).deep.equal({
                                 success: true,
-                                msg: "Thanks for the registration. It worked. When the resource updates we'll notify you. Don't forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!"
+                                msg: 'Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!'
                             });
                         } else {
                             expect(res.text).xml.equal(
@@ -161,7 +161,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     expect(resDoc).to.have.property('lastSize');
                 });
 
-                it('should accept a pleaseNotify without domain for new resource', async function () {
+                it('should accept a pleaseNotify without domain for new resource', async function() {
                     const feedPath = '/rss.xml',
                         resourceUrl = mock.serverUrl + feedPath;
 
@@ -219,7 +219,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                         if ('JSON' === returnFormat) {
                             expect(res.body).deep.equal({
                                 success: true,
-                                msg: "Thanks for the registration. It worked. When the resource updates we'll notify you. Don't forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!"
+                                msg: 'Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!'
                             });
                         } else {
                             expect(res.text).xml.equal(
@@ -253,7 +253,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                     }
                 });
 
-                it('should reject a pleaseNotify for bad resource', async function () {
+                it('should reject a pleaseNotify for bad resource', async function() {
                     const feedPath = '/rss.xml',
                         resourceUrl = mock.serverUrl + feedPath;
 
@@ -349,28 +349,28 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                 continue;
             }
 
-            describe(`PleaseNotify ${pingProtocol} to ${protocol} via redirect returning ${returnFormat}`, function () {
-                before(async function () {
+            describe(`PleaseNotify ${pingProtocol} to ${protocol} via redirect returning ${returnFormat}`, function() {
+                before(async function() {
                     await storeApi.before();
                     await mock.before();
                 });
 
-                after(async function () {
+                after(async function() {
                     await storeApi.after();
                     await mock.after();
                 });
 
-                beforeEach(async function () {
+                beforeEach(async function() {
                     await storeApi.beforeEach();
                     await mock.beforeEach();
                 });
 
-                afterEach(async function () {
+                afterEach(async function() {
                     await storeApi.afterEach();
                     await mock.afterEach();
                 });
 
-                it('should accept a pleaseNotify for a redirected subscriber', async function () {
+                it('should accept a pleaseNotify for a redirected subscriber', async function() {
                     const feedPath = '/rss.xml',
                         resourceUrl = mock.serverUrl + feedPath;
 
@@ -425,7 +425,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                         if ('JSON' === returnFormat) {
                             expect(res.body).deep.equal({
                                 success: true,
-                                msg: "Thanks for the registration. It worked. When the resource updates we'll notify you. Don't forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!"
+                                msg: 'Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!'
                             });
                         } else {
                             expect(res.text).xml.equal(
@@ -442,7 +442,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                         .lengthOf(1, `Missing GET ${pingPath}`);
                 });
 
-                it('should accept a pleaseNotify without domain for a redirected subscriber', async function () {
+                it('should accept a pleaseNotify without domain for a redirected subscriber', async function() {
                     const feedPath = '/rss.xml',
                         resourceUrl = mock.serverUrl + feedPath;
 
@@ -498,7 +498,7 @@ for (const protocol of ['http-post', 'https-post', 'xml-rpc']) {
                         if ('JSON' === returnFormat) {
                             expect(res.body).deep.equal({
                                 success: true,
-                                msg: "Thanks for the registration. It worked. When the resource updates we'll notify you. Don't forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!"
+                                msg: 'Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!'
                             });
                         } else {
                             expect(res.text).xml.equal(
