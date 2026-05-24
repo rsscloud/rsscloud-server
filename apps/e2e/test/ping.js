@@ -1,15 +1,15 @@
 const chai = require('chai'),
     chaiHttp = require('chai-http'),
     chaiXml = require('chai-xml'),
-    config = require('../config'),
+    config = require('./helpers/config'),
     expect = chai.expect,
-    getDayjs = require('../services/dayjs-wrapper'),
+    getDayjs = require('./helpers/dayjs-wrapper'),
     SERVER_URL = process.env.APP_URL || 'http://localhost:5337',
     mock = require('./mock'),
     storeApi = require('./store-api'),
     xmlrpcBuilder = require('./xmlrpc-builder'),
-    rpcReturnSuccess = require('../services/rpc-return-success'),
-    rpcReturnFault = require('../services/rpc-return-fault');
+    rpcReturnSuccess = require('./helpers/rpc-return-success'),
+    rpcReturnFault = require('./helpers/rpc-return-fault');
 
 chai.use(chaiHttp);
 chai.use(chaiXml);

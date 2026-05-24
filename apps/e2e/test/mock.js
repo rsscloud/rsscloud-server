@@ -4,7 +4,7 @@ const https = require('https'),
     bodyParser = require('body-parser'),
     textParser = bodyParser.text({ type: '*/xml' }),
     urlencodedParser = bodyParser.urlencoded({ extended: false }),
-    parseRpcRequest = require('../services/parse-rpc-request'),
+    parseRpcRequest = require('./helpers/parse-rpc-request'),
     querystring = require('querystring'),
     MOCK_SERVER_DOMAIN = process.env.MOCK_SERVER_DOMAIN,
     MOCK_SERVER_PORT = process.env.MOCK_SERVER_PORT || 8002,
@@ -15,7 +15,7 @@ const https = require('https'),
     SECURE_MOCK_SERVER_URL =
         process.env.SECURE_MOCK_SERVER_URL ||
         `https://${MOCK_SERVER_DOMAIN}:${SECURE_MOCK_SERVER_PORT}`,
-    rpcReturnFault = require('../services/rpc-return-fault');
+    rpcReturnFault = require('./helpers/rpc-return-fault');
 
 async function restController(req, res) {
     const method = req.method,

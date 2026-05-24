@@ -1,4 +1,4 @@
-const initSubscription = require('../services/init-subscription');
+const initSubscription = require('./helpers/init-subscription');
 
 const SERVER_URL = process.env.APP_URL || 'http://localhost:5337';
 

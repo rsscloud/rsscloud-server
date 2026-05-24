@@ -1,7 +1,7 @@
 const chai = require('chai'),
-    config = require('../config'),
+    config = require('./helpers/config'),
     expect = chai.expect,
-    getDayjs = require('../services/dayjs-wrapper'),
+    getDayjs = require('./helpers/dayjs-wrapper'),
     mock = require('./mock'),
     storeApi = require('./store-api');
 

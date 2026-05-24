@@ -10,7 +10,7 @@
         "lint": "turbo run lint",
         "typecheck": "turbo run typecheck",
         "format": "prettier --write .",
-        "test": "docker-compose up --build --abort-on-container-exit --attach rsscloud-tests --no-log-prefix",
+        "test": "pnpm --filter @rsscloud/e2e run test:e2e",
         "test:unit": "turbo run test",
         "test:core": "turbo run test --filter=@rsscloud/core",
         "clean": "turbo run clean",
