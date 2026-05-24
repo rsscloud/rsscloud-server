@@ -1,3 +1,4 @@
 {
-    "apps/server": "4.0.0"
+    "apps/server": "4.0.0",
+    "packages/core": "0.0.0"
 }

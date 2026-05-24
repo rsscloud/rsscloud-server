@@ -5,6 +5,7 @@ package-lock.json
 # Build output
 dist/
 build/
+coverage/
 
 # Third-party libraries
 public/js/
