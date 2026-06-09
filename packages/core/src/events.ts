@@ -60,3 +60,38 @@ export interface EventBus {
 
 /** Signature of the default event-bus factory core will provide. */
 export type CreateEventBus = () => EventBus;
+
+/** Listener with its payload type erased, for heterogeneous storage. */
+type AnyListener = (payload: never) => void;
+
+/** A minimal, dependency-free {@link EventBus} over an in-memory listener map. */
+export const createEventBus: CreateEventBus = () => {
+    const listeners = new Map<keyof RssCloudEventMap, Set<AnyListener>>();
+
+    function on<K extends keyof RssCloudEventMap>(
+        event: K,
+        listener: (payload: RssCloudEventMap[K]) => void
+    ): () => void {
+        const set = listeners.get(event) ?? new Set<AnyListener>();
+        listeners.set(event, set);
+        set.add(listener as AnyListener);
+        return () => {
+            set.delete(listener as AnyListener);
+        };
+    }
+
+    function emit<K extends keyof RssCloudEventMap>(
+        event: K,
+        payload: RssCloudEventMap[K]
+    ): void {
+        const set = listeners.get(event);
+        if (set === undefined) {
+            return;
+        }
+        for (const listener of set) {
+            (listener as (payload: RssCloudEventMap[K]) => void)(payload);
+        }
+    }
+
+    return { on, emit };
+};
