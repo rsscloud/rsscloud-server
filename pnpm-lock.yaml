@@ -121,6 +121,10 @@ importers:
         version: 3.1.14
 
   packages/core:
+    dependencies:
+      xml2js:
+        specifier: ^0.6.2
+        version: 0.6.2
     devDependencies:
       '@eslint/js':
         specifier: ^9.18.0
@@ -128,6 +132,9 @@ importers:
       '@types/node':
         specifier: ^22.10.0
         version: 22.19.19
+      '@types/xml2js':
+        specifier: ^0.4.14
+        version: 0.4.14
       '@vitest/coverage-v8':
         specifier: ^3.2.4
         version: 3.2.4(vitest@3.2.4(@types/node@22.19.19)(esbuild@0.27.7)(jiti@2.6.1))
@@ -842,6 +849,9 @@ packages:
 
   '@types/superagent@4.1.13':
     resolution: {integrity: sha512-YIGelp3ZyMiH0/A09PMAORO0EBGlF5xIKfDpK74wdYvWUs2o96b5CItJcWPdH409b7SAXIIG6p8NdU/4U2Maww==}
+
+  '@types/xml2js@0.4.14':
+    resolution: {integrity: sha512-4YnrRemBShWRO2QjvUin8ESA41rH+9nQGLUGZV/1IDhi3SL9OhdpNC/MrulTWuptXKwhx/aDxE7toV0f/ypIXQ==}
 
   '@typescript-eslint/eslint-plugin@8.59.4':
     resolution: {integrity: sha512-PegsU+XfyJJNjd4+u/k6f9yTyp0lEXXiPopUNobZcIAUJFGICFLN+sP0Rb3JehVmiij1Ph0dFGYqODoRo/2+6A==}
@@ -3255,6 +3265,10 @@ snapshots:
   '@types/superagent@4.1.13':
     dependencies:
       '@types/cookiejar': 2.1.5
+      '@types/node': 22.19.19
+
+  '@types/xml2js@0.4.14':
+    dependencies:
       '@types/node': 22.19.19
 
   '@typescript-eslint/eslint-plugin@8.59.4(@typescript-eslint/parser@8.59.4(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)':

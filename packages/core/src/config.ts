@@ -26,3 +26,19 @@ export interface RssCloudConfig {
 export type ResolveConfig = (
     config?: Partial<RssCloudConfig>
 ) => RssCloudConfig;
+
+/** Built-in defaults, matching the historical @rsscloud/server values. */
+export const DEFAULT_CONFIG: RssCloudConfig = {
+    minSecsBetweenPings: 0,
+    ctSecsResourceExpire: 90000,
+    maxConsecutiveErrors: 3,
+    maxResourceSize: 256000,
+    requestTimeoutMs: 4000,
+    feedsChangedWindowDays: 7
+};
+
+/** Fill a partial config with {@link DEFAULT_CONFIG} values. */
+export const resolveConfig: ResolveConfig = config => ({
+    ...DEFAULT_CONFIG,
+    ...config
+});

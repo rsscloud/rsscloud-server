@@ -8,10 +8,16 @@ export type RssCloudErrorCode =
     | 'SUBSCRIPTION_VERIFICATION_FAILED';
 
 /**
- * Shape of the domain error core raises. The concrete class (with `instanceof`
- * support) lands in the implementation step; consumers match on `code` rather
- * than on message text.
+ * The domain error core raises. Consumers match on `code` rather than on
+ * message text; `instanceof RssCloudError` distinguishes it from incidental
+ * failures (network errors, bugs).
  */
-export interface RssCloudError extends Error {
-    code: RssCloudErrorCode;
+export class RssCloudError extends Error {
+    readonly code: RssCloudErrorCode;
+
+    constructor(code: RssCloudErrorCode, message: string) {
+        super(message);
+        this.name = 'RssCloudError';
+        this.code = code;
+    }
 }
