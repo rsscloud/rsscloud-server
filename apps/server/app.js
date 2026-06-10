@@ -5,12 +5,11 @@ const config = require('./config'),
     express = require('express'),
     exphbs = require('express-handlebars'),
     getDayjs = require('./services/dayjs-wrapper'),
-    jsonStore = require('./services/json-store'),
     stats = require('./services/stats'),
     morgan = require('morgan'),
     removeExpiredSubscriptions = require('./services/remove-expired-subscriptions'),
     websocket = require('./services/websocket'),
-    { events: coreEvents } = require('./core'),
+    { events: coreEvents, store } = require('./core'),
     bridgeCoreEvents = require('./services/core-event-bridge');
 
 let app, hbs, server, dayjs;
@@ -94,7 +93,7 @@ app.use(
 app.use(require('./controllers'));
 
 async function gracefulShutdown() {
-    jsonStore.shutdown();
+    await store.close();
     process.exit();
 }
 
@@ -107,8 +106,7 @@ process.on('uncaughtException', error => {
         'Uncaught exception, flushing data store before exit:',
         error
     );
-    jsonStore.shutdown();
-    process.exit(1);
+    store.close().finally(() => process.exit(1));
 });
 
 process.on('unhandledRejection', reason => {
@@ -116,14 +114,11 @@ process.on('unhandledRejection', reason => {
         'Unhandled promise rejection, flushing data store before exit:',
         reason
     );
-    jsonStore.shutdown();
-    process.exit(1);
+    store.close().finally(() => process.exit(1));
 });
 
 async function startServer() {
     await initializeDayjs();
-
-    jsonStore.initialize(config.dataFilePath);
 
     // Start cleanup scheduling
     scheduleCleanupTasks();

@@ -1,22 +1,15 @@
 // Composition root for @rsscloud/core. Builds the protocol-neutral engine the
-// server's front doors will run on, wiring server config + the REST/XML-RPC
-// delivery plugins to a Store.
-//
-// During the migration (PLAN: "Endpoint migration onto @rsscloud/express") the
-// Store is an adapter over the legacy synchronous json-store, so core and the
-// not-yet-migrated legacy services + /test/* API share one in-memory store.
-// At the end of the migration this becomes `await createFileStore({ filePath })`
-// and the adapter + json-store are deleted.
+// server's front doors run on, wiring server config + the REST/XML-RPC delivery
+// plugins to a file-backed Store.
 
 const {
     createRssCloudCore,
     createRestProtocolPlugin,
     createXmlRpcProtocolPlugin,
+    createFileStore,
     resolveConfig
 } = require('@rsscloud/core');
 const config = require('./config');
-const jsonStore = require('./services/json-store');
-const createJsonStoreAdapter = require('./services/core-store-adapter');
 
 const coreConfig = resolveConfig({
     minSecsBetweenPings: config.minSecsBetweenPings,
@@ -27,7 +20,41 @@ const coreConfig = resolveConfig({
     feedsChangedWindowDays: config.feedsChangedWindowDays
 });
 
-const store = createJsonStoreAdapter(jsonStore);
+// createFileStore is async, but core.js is required synchronously — the
+// @rsscloud/express middleware factories need a concrete `core` at mount time.
+// Kick off the file store and front it with a proxy whose every call awaits the
+// one-time load. The Store interface is already all-async, so this is
+// transparent to core and to every require('./core') consumer; the first
+// requests simply await initialization. flush()/close() are surfaced for the
+// graceful-shutdown hooks in app.js.
+const storeReady = createFileStore({ filePath: config.dataFilePath });
+
+const store = {
+    async getResource(feedUrl) {
+        return (await storeReady).getResource(feedUrl);
+    },
+    async putResource(feedUrl, resource) {
+        return (await storeReady).putResource(feedUrl, resource);
+    },
+    async getSubscriptions(feedUrl) {
+        return (await storeReady).getSubscriptions(feedUrl);
+    },
+    async putSubscriptions(feedUrl, subscriptions) {
+        return (await storeReady).putSubscriptions(feedUrl, subscriptions);
+    },
+    async list() {
+        return (await storeReady).list();
+    },
+    async remove(feedUrl) {
+        return (await storeReady).remove(feedUrl);
+    },
+    async flush() {
+        return (await storeReady).flush();
+    },
+    async close() {
+        return (await storeReady).close();
+    }
+};
 
 const plugins = [
     createRestProtocolPlugin({ requestTimeoutMs: config.requestTimeout }),
