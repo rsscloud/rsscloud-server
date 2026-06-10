@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { DeliveryContext, VerifyContext } from './plugin.js';
-import type { Resource } from './resource.js';
-import type { Subscription } from './subscription.js';
+import type { DeliveryContext, VerifyContext } from '../engine/plugin.js';
+import type { Resource } from '../engine/resource.js';
+import type { Subscription } from '../engine/subscription.js';
 import { parseMethodCall } from './xml-rpc-codec.js';
 import { createXmlRpcProtocolPlugin } from './xml-rpc-plugin.js';
 

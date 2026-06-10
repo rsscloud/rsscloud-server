@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createRssCloudCore } from './create-core.js';
-import { resolveConfig } from './config.js';
-import { createEventBus } from './events.js';
-import type { RssCloudEventMap } from './events.js';
-import { createInMemoryStore } from './memory-store.js';
+import { resolveConfig } from '../config.js';
+import { createEventBus } from '../events.js';
+import type { RssCloudEventMap } from '../events.js';
+import { createInMemoryStore } from '../store/memory-store.js';
 import type { ProtocolPlugin } from './plugin.js';
 import type { Resource } from './resource.js';
-import type { Store } from './store.js';
+import type { Store } from '../store/store.js';
 import type { Subscription } from './subscription.js';
 
 const FEED = 'https://feed.example/rss';

@@ -1,4 +1,4 @@
-import type { FeedMetadata } from './feed.js';
+import type { FeedMetadata } from '../feed/feed.js';
 
 /**
  * A feed the server tracks. Holds change-detection state plus the most recently

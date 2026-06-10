@@ -1,4 +1,4 @@
-import type { RssCloudConfig } from './config.js';
+import type { RssCloudConfig } from '../config.js';
 import type {
     PingRequest,
     PingResponse,
@@ -7,11 +7,11 @@ import type {
     UnsubscribeRequest,
     UnsubscribeResponse
 } from './dto.js';
-import type { EventBus } from './events.js';
-import type { FeedParser } from './feed.js';
+import type { EventBus } from '../events.js';
+import type { FeedParser } from '../feed/feed.js';
 import type { ProtocolPlugin } from './plugin.js';
 import type { MaintenanceResult, Stats } from './stats.js';
-import type { Store } from './store.js';
+import type { Store } from '../store/store.js';
 
 /**
  * Everything core needs, assembled by the host's composition root. The shared

@@ -1,6 +1,6 @@
-import type { Resource } from './resource.js';
+import type { Resource } from '../engine/resource.js';
 import type { FeedEntry, Store } from './store.js';
-import type { Subscription } from './subscription.js';
+import type { Subscription } from '../engine/subscription.js';
 
 interface Entry {
     resource: Resource | null;

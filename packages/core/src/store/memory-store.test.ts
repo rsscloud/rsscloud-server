@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createInMemoryStore } from './memory-store.js';
-import type { Resource } from './resource.js';
-import type { Subscription } from './subscription.js';
+import type { Resource } from '../engine/resource.js';
+import type { Subscription } from '../engine/subscription.js';
 
 function resource(url: string): Resource {
     return {

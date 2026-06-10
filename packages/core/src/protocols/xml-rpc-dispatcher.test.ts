@@ -5,7 +5,7 @@ import type {
     PingResponse,
     SubscribeRequest,
     SubscribeResponse
-} from './dto.js';
+} from '../engine/dto.js';
 import { createXmlRpcDispatcher } from './xml-rpc-dispatcher.js';
 
 interface FakeCore {
