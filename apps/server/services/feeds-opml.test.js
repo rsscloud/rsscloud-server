@@ -1,21 +1,49 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const xml2js = require('xml2js');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+// generateOpml reads the core store; point DATA_FILE_PATH at a throwaway temp
+// file (config snapshots env at require time) so the file store stays isolated
+// once it backs core.
+const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rsscloud-opml-'));
+process.env.DATA_FILE_PATH = path.join(tmpDir, 'subscriptions.json');
 
 const config = require('../config');
-const jsonStore = require('./json-store');
+const { store } = require('../core');
+const { toCoreResource, toCoreSubscription } = require('./legacy-store-shape');
 const { generateOpml } = require('./feeds-opml');
 
 async function parseOpml(xml) {
     return new xml2js.Parser().parseStringPromise(xml);
 }
 
-test.beforeEach(() => {
-    jsonStore.clear();
-});
+async function seedResource(feedUrl, resource) {
+    const core = toCoreResource(feedUrl, resource);
+    if (core === null) {
+        // No real resource fields: a subscriptions-only (never-pinged) entry.
+        await store.putSubscriptions(feedUrl, []);
+    } else {
+        await store.putResource(feedUrl, core);
+    }
+}
+
+async function seedSubscriptions(feedUrl, subscriptions) {
+    await store.putSubscriptions(feedUrl, subscriptions.map(toCoreSubscription));
+}
+
+async function clearStore() {
+    for (const { feedUrl } of await store.list()) {
+        await store.remove(feedUrl);
+    }
+}
+
+test.beforeEach(clearStore);
 
 test('generateOpml renders a feed with full metadata as an outline', async() => {
-    jsonStore.setResource('https://a.example.com/feed.xml', {
+    await seedResource('https://a.example.com/feed.xml', {
         feedType: 'atom',
         feedTitle: 'Alpha',
         feedDescription: 'The Alpha feed',
@@ -49,11 +77,11 @@ test('generateOpml renders a feed with full metadata as an outline', async() => 
 test('generateOpml sorts case-insensitively and falls back to the feed URL', async() => {
     // Untitled feed: text falls back to the URL, type defaults to rss, and no
     // title/description/htmlUrl/language attributes are emitted.
-    jsonStore.setResource('https://apple.example.com/feed.xml', {});
-    jsonStore.setResource('https://b.example.com/feed.xml', {
+    await seedResource('https://apple.example.com/feed.xml', {});
+    await seedResource('https://b.example.com/feed.xml', {
         feedTitle: 'banana'
     });
-    jsonStore.setResource('https://z.example.com/feed.xml', {
+    await seedResource('https://z.example.com/feed.xml', {
         feedTitle: 'Cherry'
     });
 
@@ -72,7 +100,7 @@ test('generateOpml sorts case-insensitively and falls back to the feed URL', asy
 });
 
 test('generateOpml lists a subscribed feed that was never pinged', async() => {
-    jsonStore.setSubscriptions('https://new.example.com/feed.xml', [
+    await seedSubscriptions('https://new.example.com/feed.xml', [
         {
             url: 'http://sub.example.com/notify',
             protocol: 'http-post',
