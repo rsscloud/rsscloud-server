@@ -1,5 +1,5 @@
-import type { Resource } from './resource.js';
-import type { Subscription } from './subscription.js';
+import type { Resource } from '../engine/resource.js';
+import type { Subscription } from '../engine/subscription.js';
 
 /** One feed's complete record: its resource state and its subscribers. */
 export interface FeedEntry {

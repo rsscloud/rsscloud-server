@@ -1,4 +1,4 @@
-import type { Protocol } from './protocol.js';
+import type { Protocol } from './engine/protocol.js';
 
 /**
  * Payloads for the observability bus. Core emits these as side effects of its

@@ -1,5 +1,5 @@
 import { Parser } from 'xml2js';
-import { DEFAULT_CONFIG } from './config.js';
+import { DEFAULT_CONFIG } from '../config.js';
 import type { FeedMetadata, FeedParser } from './feed.js';
 
 /** Construction-time options for the built-in feed parser. */

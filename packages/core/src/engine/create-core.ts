@@ -8,9 +8,9 @@ import type {
     UnsubscribeRequest,
     UnsubscribeResponse
 } from './dto.js';
-import { RssCloudError } from './errors.js';
-import { createEventBus } from './events.js';
-import { createDefaultFeedParser } from './feed-parser.js';
+import { RssCloudError } from '../errors.js';
+import { createEventBus } from '../events.js';
+import { createDefaultFeedParser } from '../feed/feed-parser.js';
 import type { ResourcePayload, ProtocolPlugin } from './plugin.js';
 import type { Protocol } from './protocol.js';
 import type { Resource } from './resource.js';

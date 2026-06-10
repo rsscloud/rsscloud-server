@@ -3,8 +3,8 @@ import type {
     DeliveryResult,
     ProtocolPlugin,
     VerifyContext
-} from './plugin.js';
-import type { Protocol } from './protocol.js';
+} from '../engine/plugin.js';
+import type { Protocol } from '../engine/protocol.js';
 
 /** Construction-time dependencies for the rssCloud REST protocol plugin. */
 export interface RestProtocolPluginOptions {

@@ -1,6 +1,6 @@
-import type { RssCloudCore } from './core.js';
-import type { PingRequest, SubscribeRequest } from './dto.js';
-import type { Protocol } from './protocol.js';
+import type { RssCloudCore } from '../engine/core.js';
+import type { PingRequest, SubscribeRequest } from '../engine/dto.js';
+import type { Protocol } from '../engine/protocol.js';
 import {
     parseMethodCall,
     serializeFault,

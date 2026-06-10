@@ -1,36 +1,36 @@
 export const version = '0.0.0';
 
 // Implementations
-export { createRssCloudCore } from './create-core.js';
+export { createRssCloudCore } from './engine/create-core.js';
 export { DEFAULT_CONFIG, resolveConfig } from './config.js';
 export { createEventBus } from './events.js';
 export { RssCloudError } from './errors.js';
 export {
     createRestProtocolPlugin,
     type RestProtocolPluginOptions
-} from './rest-plugin.js';
+} from './protocols/rest-plugin.js';
 export {
     createXmlRpcProtocolPlugin,
     type XmlRpcProtocolPluginOptions
-} from './xml-rpc-plugin.js';
+} from './protocols/xml-rpc-plugin.js';
 export {
     createXmlRpcDispatcher,
     type XmlRpcDispatcher,
     type XmlRpcDispatcherOptions,
     type XmlRpcDispatchContext
-} from './xml-rpc-dispatcher.js';
+} from './protocols/xml-rpc-dispatcher.js';
 export {
     createDefaultFeedParser,
     type DefaultFeedParserOptions
-} from './feed-parser.js';
-export { createInMemoryStore } from './memory-store.js';
+} from './feed/feed-parser.js';
+export { createInMemoryStore } from './store/memory-store.js';
 
 // Contracts
-export type { BuiltInProtocol, Protocol } from './protocol.js';
-export type { FeedMetadata, FeedParser } from './feed.js';
-export type { Resource } from './resource.js';
-export type { Subscription } from './subscription.js';
-export type { FeedEntry, Store } from './store.js';
+export type { BuiltInProtocol, Protocol } from './engine/protocol.js';
+export type { FeedMetadata, FeedParser } from './feed/feed.js';
+export type { Resource } from './engine/resource.js';
+export type { Subscription } from './engine/subscription.js';
+export type { FeedEntry, Store } from './store/store.js';
 export type {
     SubscribeRequest,
     SubscribeResult,
@@ -39,20 +39,20 @@ export type {
     UnsubscribeResponse,
     PingRequest,
     PingResponse
-} from './dto.js';
+} from './engine/dto.js';
 export type {
     ResourcePayload,
     DeliveryResult,
     VerifyContext,
     DeliveryContext,
     ProtocolPlugin
-} from './plugin.js';
+} from './engine/plugin.js';
 export type { RssCloudEventMap, EventBus, CreateEventBus } from './events.js';
 export type { RssCloudConfig, ResolveConfig } from './config.js';
 export type { RssCloudErrorCode } from './errors.js';
-export type { FeedStat, Stats, MaintenanceResult } from './stats.js';
+export type { FeedStat, Stats, MaintenanceResult } from './engine/stats.js';
 export type {
     RssCloudCoreOptions,
     RssCloudCore,
     CreateRssCloudCore
-} from './core.js';
+} from './engine/core.js';
