@@ -1,0 +1,79 @@
+{
+    "name": "@rsscloud/express",
+    "version": "0.0.0",
+    "description": "Express middleware for the rssCloud notification protocol — pleaseNotify, ping, and RPC2 front doors",
+    "license": "MIT",
+    "author": "Andrew Shell <andrew@andrewshell.org>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/rsscloud/rsscloud-server.git",
+        "directory": "packages/express"
+    },
+    "homepage": "https://github.com/rsscloud/rsscloud-server/tree/main/packages/express#readme",
+    "bugs": {
+        "url": "https://github.com/rsscloud/rsscloud-server/issues"
+    },
+    "type": "module",
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": {
+                "types": "./dist/index.d.ts",
+                "default": "./dist/index.js"
+            },
+            "require": {
+                "types": "./dist/index.d.cts",
+                "default": "./dist/index.cjs"
+            }
+        },
+        "./package.json": "./package.json"
+    },
+    "files": [
+        "dist",
+        "README.md",
+        "LICENSE.md",
+        "CHANGELOG.md"
+    ],
+    "publishConfig": {
+        "access": "public"
+    },
+    "engines": {
+        "node": ">=22"
+    },
+    "sideEffects": false,
+    "peerDependencies": {
+        "express": "^4.16.0 || ^5.0.0"
+    },
+    "dependencies": {
+        "@rsscloud/core": "workspace:*"
+    },
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "clean": "rm -rf dist coverage",
+        "lint": "eslint src",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "coverage": "vitest run --coverage",
+        "check": "pnpm run typecheck && pnpm run lint && pnpm run test",
+        "prepack": "pnpm run build",
+        "prepublishOnly": "pnpm run build"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.18.0",
+        "@types/express": "^4.17.21",
+        "@types/node": "^22.10.0",
+        "@types/supertest": "^6.0.2",
+        "@vitest/coverage-v8": "^3.2.4",
+        "eslint": "^9.18.0",
+        "express": "^4.22.2",
+        "supertest": "^7.0.0",
+        "tsup": "^8.3.5",
+        "typescript": "^5.7.2",
+        "typescript-eslint": "^8.20.0",
+        "vitest": "^3.2.4"
+    }
+}
