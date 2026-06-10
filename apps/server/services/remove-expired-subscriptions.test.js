@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+const config = require('../config');
 const jsonStore = require('./json-store');
 const removeExpiredSubscriptions = require('./remove-expired-subscriptions');
 
@@ -97,4 +98,39 @@ test('removes an orphaned resource with no subscriptions', async() => {
     await removeExpiredSubscriptions();
 
     assert.ok(!Object.prototype.hasOwnProperty.call(jsonStore.getData(), feed));
+});
+
+test('returns the core MaintenanceResult shape', async() => {
+    const feed = 'https://f.example.com/feed.xml';
+    jsonStore.setSubscriptions(feed, [
+        subscription({ whenExpires: expired() })
+    ]);
+
+    const result = await removeExpiredSubscriptions();
+
+    assert.deepEqual(result, {
+        subscriptionsRemoved: 1,
+        feedsProcessed: 1,
+        feedsDeleted: 1,
+        orphanedResourcesRemoved: 0
+    });
+});
+
+test('removes a subscription that has reached the consecutive-error limit', async() => {
+    const feed = 'https://g.example.com/feed.xml';
+    jsonStore.setResource(feed, {
+        feedTitle: 'Golf',
+        whenLastUpdate: withinWindow()
+    });
+    jsonStore.setSubscriptions(feed, [
+        subscription({
+            whenExpires: active(),
+            ctConsecutiveErrors: config.maxConsecutiveErrors
+        })
+    ]);
+
+    const result = await removeExpiredSubscriptions();
+
+    assert.equal(result.subscriptionsRemoved, 1);
+    assert.deepEqual(jsonStore.getData()[feed].subscribers, []);
 });
