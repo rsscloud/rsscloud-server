@@ -5,7 +5,16 @@ const express = require('express'),
     config = require('../config'),
     getDayjs = require('../services/dayjs-wrapper'),
     jsonStore = require('../services/json-store'),
+    { ping, pleaseNotify } = require('@rsscloud/express'),
+    { core } = require('../core'),
     router = new express.Router();
+
+// Core-backed protocol front doors (@rsscloud/express driving @rsscloud/core).
+// POST-bound (the package delegates method-binding to the consumer) so a GET to
+// either path still falls through to a 404, matching the legacy routers. XML-RPC
+// pleaseNotify still routes through the legacy /RPC2 controller (slice 4).
+router.post('/ping', ping({ core }));
+router.post('/pleaseNotify', pleaseNotify({ core }));
 
 router.use('/', require('./home'));
 router.use('/docs', require('./docs'));
