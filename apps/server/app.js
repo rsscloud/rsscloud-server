@@ -9,7 +9,9 @@ const config = require('./config'),
     stats = require('./services/stats'),
     morgan = require('morgan'),
     removeExpiredSubscriptions = require('./services/remove-expired-subscriptions'),
-    websocket = require('./services/websocket');
+    websocket = require('./services/websocket'),
+    { events: coreEvents } = require('./core'),
+    bridgeCoreEvents = require('./services/core-event-bridge');
 
 let app, hbs, server, dayjs;
 
@@ -143,6 +145,10 @@ async function startServer() {
 
             // Initialize WebSocket server for /wsLog
             websocket.initialize(server);
+
+            // Bridge core's events onto /wsLog so /viewLog keeps working as
+            // endpoints migrate onto @rsscloud/core.
+            bridgeCoreEvents(coreEvents, websocket);
 
             console.log(
                 `Listening at http://${app.locals.host}:${app.locals.port}`
