@@ -534,7 +534,7 @@ describe('createRssCloudCore subscribe', () => {
         expect(response.success).toBe(false);
         expect(response.results?.[0]).toMatchObject({
             success: false,
-            error: 'Subscription verification failed.'
+            errorCode: 'SUBSCRIPTION_VERIFICATION_FAILED'
         });
         expect(await store.getSubscriptions(FEED)).toHaveLength(0);
     });
@@ -554,7 +554,7 @@ describe('createRssCloudCore subscribe', () => {
         });
 
         expect(response.success).toBe(false);
-        expect(response.results?.[0]?.error).toContain('could not be read');
+        expect(response.results?.[0]?.errorCode).toBe('RESOURCE_READ_FAILED');
     });
 
     it('reports a failure when seeding the resource throws unexpectedly', async () => {

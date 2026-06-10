@@ -1,3 +1,4 @@
+import type { RssCloudErrorCode } from '../errors.js';
 import type { Protocol } from './protocol.js';
 
 /**
@@ -29,7 +30,12 @@ export interface SubscribeRequest {
 export interface SubscribeResult {
     resourceUrl: string;
     success: boolean;
-    error?: string;
+    /**
+     * Machine-readable cause of a per-resource failure. Adapters map this to
+     * the wire wording (which differs by front door), so the engine never
+     * bakes a user-facing string here.
+     */
+    errorCode?: RssCloudErrorCode;
 }
 
 export interface SubscribeResponse {

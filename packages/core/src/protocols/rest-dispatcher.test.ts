@@ -6,6 +6,7 @@ import type {
     SubscribeRequest,
     SubscribeResponse
 } from '../engine/dto.js';
+import { RssCloudError } from '../errors.js';
 import { createRestDispatcher } from './rest-dispatcher.js';
 
 interface FakeCore {
@@ -103,10 +104,11 @@ describe('createRestDispatcher ping', () => {
         expect(core.pingCalls).toHaveLength(0);
     });
 
-    it('relays a core ping failure as success:false (REST surfaces failures)', async () => {
+    it('renders the ping read-failure wording when core reports the resource is unreadable', async () => {
         const core = fakeCore({
             async ping() {
-                throw new Error(
+                throw new RssCloudError(
+                    'RESOURCE_READ_FAILED',
                     'The resource at http://feed.example/rss could not be read.'
                 );
             }
@@ -120,7 +122,26 @@ describe('createRestDispatcher ping', () => {
 
         expect(JSON.parse(res.body)).toEqual({
             success: false,
-            msg: 'The resource at http://feed.example/rss could not be read.'
+            msg: 'The ping was cancelled because there was an error reading the resource at URL http://feed.example/rss.'
+        });
+    });
+
+    it('relays an unexpected core ping error as success:false using its message', async () => {
+        const core = fakeCore({
+            async ping() {
+                throw new Error('socket hang up');
+            }
+        });
+        const dispatcher = createRestDispatcher({ core });
+
+        const res = await dispatcher.ping(
+            { url: 'http://feed.example/rss' },
+            { clientAddress: '203.0.113.5', format: 'json' }
+        );
+
+        expect(JSON.parse(res.body)).toEqual({
+            success: false,
+            msg: 'socket hang up'
         });
     });
 
@@ -161,7 +182,7 @@ describe('createRestDispatcher pleaseNotify', () => {
         expect(res.contentType).toBe('application/json');
         expect(JSON.parse(res.body)).toEqual({
             success: true,
-            msg: 'Subscription confirmed.'
+            msg: 'Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!'
         });
         expect(core.subscribeCalls).toEqual([
             {
@@ -193,7 +214,7 @@ describe('createRestDispatcher pleaseNotify', () => {
         const parsed = await new Parser().parseStringPromise(res.body);
         expect(parsed.notifyResult.$).toEqual({
             success: 'true',
-            msg: 'Subscription confirmed.'
+            msg: 'Thanks for the registration. It worked. When the resource updates we\'ll notify you. Don\'t forget to re-register after 24 hours, your subscription will expire in 25. Keep on truckin!'
         });
         expect(core.subscribeCalls).toEqual([
             {
@@ -288,7 +309,7 @@ describe('createRestDispatcher pleaseNotify', () => {
         expect(core.subscribeCalls).toHaveLength(0);
     });
 
-    it('surfaces the first failed resource error when the subscribe fails', async () => {
+    it('surfaces the subscription read-failure message when the subscribe fails', async () => {
         const core = fakeCore({
             async subscribe() {
                 return {
@@ -298,7 +319,7 @@ describe('createRestDispatcher pleaseNotify', () => {
                         {
                             resourceUrl: 'http://feed.example/rss',
                             success: false,
-                            error: 'The resource at http://feed.example/rss could not be read.'
+                            errorCode: 'RESOURCE_READ_FAILED'
                         }
                     ]
                 };
@@ -318,7 +339,41 @@ describe('createRestDispatcher pleaseNotify', () => {
 
         expect(JSON.parse(res.body)).toEqual({
             success: false,
-            msg: 'The resource at http://feed.example/rss could not be read.'
+            msg: 'The subscription was cancelled because there was an error reading the resource at URL http://feed.example/rss.'
+        });
+    });
+
+    it('surfaces the handler-test message when verification fails', async () => {
+        const core = fakeCore({
+            async subscribe() {
+                return {
+                    success: false,
+                    message: 'Subscription could not be confirmed for any resource.',
+                    results: [
+                        {
+                            resourceUrl: 'http://feed.example/rss',
+                            success: false,
+                            errorCode: 'SUBSCRIPTION_VERIFICATION_FAILED'
+                        }
+                    ]
+                };
+            }
+        });
+        const dispatcher = createRestDispatcher({ core });
+
+        const res = await dispatcher.pleaseNotify(
+            {
+                port: '80',
+                path: '/cb',
+                protocol: 'http-post',
+                url1: 'http://feed.example/rss'
+            },
+            { clientAddress: '203.0.113.5', format: 'json' }
+        );
+
+        expect(JSON.parse(res.body)).toEqual({
+            success: false,
+            msg: 'The subscription was cancelled because the call failed when we tested the handler.'
         });
     });
 
@@ -376,6 +431,28 @@ describe('createRestDispatcher pleaseNotify', () => {
         expect(JSON.parse(res.body)).toEqual({
             success: false,
             msg: 'Nothing worked.'
+        });
+    });
+
+    it('renders the no-resources message when the request carries none', async () => {
+        const core = fakeCore({
+            async subscribe() {
+                throw new RssCloudError(
+                    'NO_RESOURCES',
+                    'No resources were supplied to subscribe to.'
+                );
+            }
+        });
+        const dispatcher = createRestDispatcher({ core });
+
+        const res = await dispatcher.pleaseNotify(
+            { port: '80', path: '/cb', protocol: 'http-post' },
+            { clientAddress: '203.0.113.5', format: 'json' }
+        );
+
+        expect(JSON.parse(res.body)).toEqual({
+            success: false,
+            msg: 'No resources specified.'
         });
     });
 
