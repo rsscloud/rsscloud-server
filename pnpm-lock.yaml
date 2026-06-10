@@ -76,6 +76,12 @@ importers:
 
   apps/server:
     dependencies:
+      '@rsscloud/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@rsscloud/express':
+        specifier: workspace:*
+        version: link:../../packages/express
       body-parser:
         specifier: ^2.2.2
         version: 2.2.2
