@@ -5,16 +5,18 @@ const express = require('express'),
     config = require('../config'),
     getDayjs = require('../services/dayjs-wrapper'),
     jsonStore = require('../services/json-store'),
-    { ping, pleaseNotify } = require('@rsscloud/express'),
+    { ping, pleaseNotify, rpc2 } = require('@rsscloud/express'),
     { core } = require('../core'),
     router = new express.Router();
 
 // Core-backed protocol front doors (@rsscloud/express driving @rsscloud/core).
 // POST-bound (the package delegates method-binding to the consumer) so a GET to
-// either path still falls through to a 404, matching the legacy routers. XML-RPC
-// pleaseNotify still routes through the legacy /RPC2 controller (slice 4).
+// any of these paths still falls through to a 404, matching the legacy routers.
+// /RPC2 handles rssCloud.hello/pleaseNotify/ping; the dispatcher never throws,
+// faulting in-response on malformed or unknown calls.
 router.post('/ping', ping({ core }));
 router.post('/pleaseNotify', pleaseNotify({ core }));
+router.post('/RPC2', rpc2({ core }));
 
 router.use('/', require('./home'));
 router.use('/docs', require('./docs'));
@@ -37,7 +39,6 @@ router.get('/LICENSE.md', (req, res) => {
 router.use('/pleaseNotifyForm', require('./please-notify-form'));
 router.use('/pingForm', require('./ping-form'));
 router.use('/viewLog', require('./view-log'));
-router.use('/RPC2', require('./rpc2'));
 router.use('/stats', require('./stats'));
 
 router.get('/stats.json', (req, res) => {
