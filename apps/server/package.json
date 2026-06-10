@@ -7,6 +7,7 @@
         "start": "node --use_strict app.js",
         "dev": "nodemon --use_strict --ignore data/ ./app.js",
         "client": "nodemon --use_strict --ignore data/ ./client.js",
+        "test": "node --test services/*.test.js",
         "lint": "eslint --fix controllers/ services/ *.js"
     },
     "engines": {
