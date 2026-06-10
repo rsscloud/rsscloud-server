@@ -10,6 +10,16 @@ export {
     type RestProtocolPluginOptions
 } from './rest-plugin.js';
 export {
+    createXmlRpcProtocolPlugin,
+    type XmlRpcProtocolPluginOptions
+} from './xml-rpc-plugin.js';
+export {
+    createXmlRpcDispatcher,
+    type XmlRpcDispatcher,
+    type XmlRpcDispatcherOptions,
+    type XmlRpcDispatchContext
+} from './xml-rpc-dispatcher.js';
+export {
     createDefaultFeedParser,
     type DefaultFeedParserOptions
 } from './feed-parser.js';
