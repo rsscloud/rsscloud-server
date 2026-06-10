@@ -9,3 +9,4 @@ xunit/
 .turbo/
 Procfile
 tunnel.sh
+*.local.*
