@@ -6,6 +6,7 @@ import type {
     SubscribeRequest,
     SubscribeResponse
 } from '../engine/dto.js';
+import { RssCloudError } from '../errors.js';
 import { createXmlRpcDispatcher } from './xml-rpc-dispatcher.js';
 
 interface FakeCore {
@@ -218,10 +219,21 @@ describe('createXmlRpcDispatcher pleaseNotify', () => {
         ]);
     });
 
-    it('relays a subscribe failure as boolean false', async () => {
+    it('faults with the subscription read-failure message when subscribe fails', async () => {
         const core = fakeCore({
             async subscribe() {
-                return { success: false, message: 'no' };
+                return {
+                    success: false,
+                    message:
+                        'Subscription could not be confirmed for any resource.',
+                    results: [
+                        {
+                            resourceUrl: 'http://feed.example/rss',
+                            success: false,
+                            errorCode: 'RESOURCE_READ_FAILED'
+                        }
+                    ]
+                };
             }
         });
         const dispatcher = createXmlRpcDispatcher({ core });
@@ -237,7 +249,44 @@ describe('createXmlRpcDispatcher pleaseNotify', () => {
             { clientAddress: '203.0.113.5' }
         );
 
-        expect(isSuccess(await parseResponse(out))).toBe(false);
+        expect(faultString(await parseResponse(out))).toBe(
+            'The subscription was cancelled because there was an error reading the resource at URL http://feed.example/rss.'
+        );
+    });
+
+    it('faults with the handler-test message when verification fails', async () => {
+        const core = fakeCore({
+            async subscribe() {
+                return {
+                    success: false,
+                    message:
+                        'Subscription could not be confirmed for any resource.',
+                    results: [
+                        {
+                            resourceUrl: 'http://feed.example/rss',
+                            success: false,
+                            errorCode: 'SUBSCRIPTION_VERIFICATION_FAILED'
+                        }
+                    ]
+                };
+            }
+        });
+        const dispatcher = createXmlRpcDispatcher({ core });
+
+        const out = await dispatcher.dispatch(
+            methodCall('rssCloud.pleaseNotify', [
+                '',
+                '80',
+                '/cb',
+                'http-post',
+                'http://feed.example/rss'
+            ]),
+            { clientAddress: '203.0.113.5' }
+        );
+
+        expect(faultString(await parseResponse(out))).toBe(
+            'The subscription was cancelled because the call failed when we tested the handler.'
+        );
     });
 
     it('faults when there are too few params', async () => {
@@ -290,6 +339,33 @@ describe('createXmlRpcDispatcher pleaseNotify', () => {
 
         expect(faultString(await parseResponse(out))).toBe(
             'Can\'t accept the subscription because the protocol, <i>ftp</i>, is unsupported.'
+        );
+    });
+
+    it('faults with the no-resources message when the request carries none', async () => {
+        const core = fakeCore({
+            async subscribe() {
+                throw new RssCloudError(
+                    'NO_RESOURCES',
+                    'No resources were supplied to subscribe to.'
+                );
+            }
+        });
+        const dispatcher = createXmlRpcDispatcher({ core });
+
+        const out = await dispatcher.dispatch(
+            methodCall('rssCloud.pleaseNotify', [
+                '',
+                '80',
+                '/cb',
+                'http-post',
+                'http://feed.example/rss'
+            ]),
+            { clientAddress: '203.0.113.5' }
+        );
+
+        expect(faultString(await parseResponse(out))).toBe(
+            'No resources specified.'
         );
     });
 

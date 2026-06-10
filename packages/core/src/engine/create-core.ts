@@ -308,7 +308,7 @@ export function createRssCloudCore(
                 return {
                     resourceUrl,
                     success: false,
-                    error: `The resource at ${resourceUrl} could not be read.`
+                    errorCode: 'RESOURCE_READ_FAILED'
                 };
             }
         }
@@ -324,7 +324,7 @@ export function createRssCloudCore(
             return {
                 resourceUrl,
                 success: false,
-                error: 'Subscription verification failed.'
+                errorCode: 'SUBSCRIPTION_VERIFICATION_FAILED'
             };
         }
 

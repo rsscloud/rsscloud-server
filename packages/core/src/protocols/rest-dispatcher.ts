@@ -1,11 +1,14 @@
 import { Builder } from 'xml2js';
 import type { RssCloudCore } from '../engine/core.js';
-import type {
-    PingRequest,
-    SubscribeRequest,
-    SubscribeResponse
-} from '../engine/dto.js';
+import type { PingRequest, SubscribeRequest } from '../engine/dto.js';
 import type { Protocol } from '../engine/protocol.js';
+import { RssCloudError } from '../errors.js';
+import {
+    appMessages,
+    errorMessage,
+    subscriptionFailureMessage,
+    subscriptionRequestErrorMessage
+} from './app-messages.js';
 
 /** Negotiated response format the adapter resolved from the `Accept` header. */
 export type RestResponseFormat = 'xml' | 'json' | null;
@@ -48,30 +51,24 @@ interface RestResult {
     message: string;
 }
 
-/** The message thrown when required body params are absent. */
-function missingParams(names: string): string {
-    return `The following parameters were missing from the request body: ${names}.`;
-}
-
-/** Extract a message from any thrown value. */
-function errorMessage(err: unknown): string {
-    return err instanceof Error ? err.message : String(err);
-}
-
 /**
- * The message for a failed subscribe: prefer the first failed resource's
- * specific error, falling back to the response's summary message.
+ * The wire message for a failed ping: a coded unreadable-resource error gets the
+ * ping-specific wording; anything else (e.g. a missing url) keeps its message.
  */
-function failureMessage(response: SubscribeResponse): string {
-    const results = response.results ?? [];
-    const failed = results.find((result) => result.error !== undefined);
-    return failed?.error ?? response.message;
+function pingFailureMessage(
+    err: unknown,
+    body: Record<string, unknown>
+): string {
+    if (err instanceof RssCloudError && err.code === 'RESOURCE_READ_FAILED') {
+        return appMessages.error.ping.readResource(String(body['url']));
+    }
+    return errorMessage(err);
 }
 
 /** Map the REST ping body into a `PingRequest`. Throws (→ failure) on a missing url. */
 function mapPing(body: Record<string, unknown>): PingRequest {
     if (body['url'] === undefined) {
-        throw new Error(missingParams('url'));
+        throw new Error(appMessages.error.subscription.missingParams('url'));
     }
     return { resourceUrl: String(body['url']) };
 }
@@ -129,13 +126,15 @@ function mapPleaseNotify(
         missing.push('protocol');
     }
     if (missing.length > 0) {
-        throw new Error(missingParams(missing.join(', ')));
+        throw new Error(
+            appMessages.error.subscription.missingParams(missing.join(', '))
+        );
     }
 
     const protocol = String(body['protocol']);
     if (!VALID_PROTOCOLS.includes(protocol)) {
         throw new Error(
-            `Can't accept the subscription because the protocol, <i>${protocol}</i>, is unsupported.`
+            appMessages.error.subscription.invalidProtocol(protocol)
         );
     }
 
@@ -226,11 +225,17 @@ export function createRestDispatcher(
             result = {
                 success: response.success,
                 message: response.success
-                    ? response.message
-                    : failureMessage(response)
+                    ? appMessages.success.subscription
+                    : subscriptionFailureMessage(
+                          response.results,
+                          response.message
+                      )
             };
         } catch (err) {
-            result = { success: false, message: errorMessage(err) };
+            result = {
+                success: false,
+                message: subscriptionRequestErrorMessage(err)
+            };
         }
         return render(ctx.format, 'notifyResult', result);
     }
@@ -247,7 +252,7 @@ export function createRestDispatcher(
                 message: response.message
             };
         } catch (err) {
-            result = { success: false, message: errorMessage(err) };
+            result = { success: false, message: pingFailureMessage(err, body) };
         }
         return render(ctx.format, 'result', result);
     }

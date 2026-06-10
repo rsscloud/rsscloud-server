@@ -2,6 +2,12 @@ import type { RssCloudCore } from '../engine/core.js';
 import type { PingRequest, SubscribeRequest } from '../engine/dto.js';
 import type { Protocol } from '../engine/protocol.js';
 import {
+    appMessages,
+    errorMessage,
+    subscriptionFailureMessage,
+    subscriptionRequestErrorMessage
+} from './app-messages.js';
+import {
     parseMethodCall,
     serializeFault,
     serializeSuccess
@@ -58,20 +64,16 @@ function mapPleaseNotify(
     clientAddress: string
 ): SubscribeRequest {
     if (params.length < 5) {
-        throw new Error(
-            'Can\'t call "pleaseNotify" because there aren\'t enough parameters.'
-        );
+        throw new Error(appMessages.error.rpc.notEnoughParams('pleaseNotify'));
     }
     if (params.length > 6) {
-        throw new Error(
-            'Can\'t call "pleaseNotify" because there are too many parameters.'
-        );
+        throw new Error(appMessages.error.rpc.tooManyParams('pleaseNotify'));
     }
 
     const protocol = String(params[3]);
     if (!VALID_PROTOCOLS.includes(protocol)) {
         throw new Error(
-            `Can't accept the subscription because the protocol, <i>${protocol}</i>, is unsupported.`
+            appMessages.error.subscription.invalidProtocol(protocol)
         );
     }
 
@@ -114,14 +116,10 @@ function mapPleaseNotify(
 /** Map the single `ping` param into a `PingRequest`. Throws (→ fault) on bad arity. */
 function mapPing(params: unknown[]): PingRequest {
     if (params.length < 1) {
-        throw new Error(
-            'Can\'t call "ping" because there aren\'t enough parameters.'
-        );
+        throw new Error(appMessages.error.rpc.notEnoughParams('ping'));
     }
     if (params.length > 1) {
-        throw new Error(
-            'Can\'t call "ping" because there are too many parameters.'
-        );
+        throw new Error(appMessages.error.rpc.tooManyParams('ping'));
     }
 
     return { resourceUrl: String(params[0]) };
@@ -146,9 +144,18 @@ export function createXmlRpcDispatcher(
             const result = await core.subscribe(
                 mapPleaseNotify(params, clientAddress)
             );
-            return serializeSuccess(result.success);
+            if (!result.success) {
+                return serializeFault(
+                    FAULT_CODE,
+                    subscriptionFailureMessage(result.results, result.message)
+                );
+            }
+            return serializeSuccess(true);
         } catch (err) {
-            return serializeFault(FAULT_CODE, errorMessage(err));
+            return serializeFault(
+                FAULT_CODE,
+                subscriptionRequestErrorMessage(err)
+            );
         }
     }
 
@@ -201,9 +208,4 @@ export function createXmlRpcDispatcher(
     }
 
     return { dispatch };
-}
-
-/** Extract a message from any thrown value. */
-function errorMessage(err: unknown): string {
-    return err instanceof Error ? err.message : String(err);
 }
