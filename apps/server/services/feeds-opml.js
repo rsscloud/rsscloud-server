@@ -1,30 +1,32 @@
 const builder = require('xmlbuilder');
 const config = require('../config');
 const getDayjs = require('./dayjs-wrapper');
-const jsonStore = require('./json-store');
+const { store } = require('../core');
 
 // Builds the `/feeds.opml` document: every tracked feed as an <outline>,
 // sorted case-insensitively by display text. The controller owns the HTTP
 // response (Content-Type + error forwarding); this returns the XML string.
+// Reads the core store, whose `resource.feed` metadata is null/absent for a
+// feed that has never been pinged (so text falls back to the feed URL).
 async function generateOpml() {
     const dayjs = await getDayjs();
     const nowIso = dayjs().utc().format();
 
-    const data = jsonStore.getData();
+    const entries = await store.list();
     const outlines = [];
 
-    for (const [feedUrl, entry] of Object.entries(data)) {
-        const r = entry.resource || {};
-        const text = r.feedTitle || feedUrl;
+    for (const { feedUrl, resource } of entries) {
+        const feed = (resource && resource.feed) || {};
+        const text = feed.title || feedUrl;
         const outline = {
-            type: r.feedType || 'rss',
+            type: feed.type || 'rss',
             text,
             xmlUrl: feedUrl
         };
-        if (r.feedTitle) outline.title = r.feedTitle;
-        if (r.feedDescription) outline.description = r.feedDescription;
-        if (r.feedHtmlUrl) outline.htmlUrl = r.feedHtmlUrl;
-        if (r.feedLanguage) outline.language = r.feedLanguage;
+        if (feed.title) outline.title = feed.title;
+        if (feed.description) outline.description = feed.description;
+        if (feed.htmlUrl) outline.htmlUrl = feed.htmlUrl;
+        if (feed.language) outline.language = feed.language;
         outlines.push(outline);
     }
 
