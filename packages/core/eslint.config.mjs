@@ -8,7 +8,10 @@ export default tseslint.config(
     {
         languageOptions: {
             ecmaVersion: 2023,
-            sourceType: 'module'
+            sourceType: 'module',
+            parserOptions: {
+                tsconfigRootDir: import.meta.dirname
+            }
         }
     }
 );
