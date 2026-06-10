@@ -165,6 +165,9 @@ importers:
       '@rsscloud/core':
         specifier: workspace:*
         version: link:../core
+      express:
+        specifier: ^4.22.2
+        version: 4.22.2
     devDependencies:
       '@eslint/js':
         specifier: ^9.18.0
@@ -184,9 +187,6 @@ importers:
       eslint:
         specifier: ^9.18.0
         version: 9.39.4(jiti@2.6.1)
-      express:
-        specifier: ^4.22.2
-        version: 4.22.2
       supertest:
         specifier: ^7.0.0
         version: 7.2.2

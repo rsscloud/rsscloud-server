@@ -47,7 +47,8 @@
         "express": "^4.16.0 || ^5.0.0"
     },
     "dependencies": {
-        "@rsscloud/core": "workspace:*"
+        "@rsscloud/core": "workspace:*",
+        "express": "^4.22.2"
     },
     "scripts": {
         "build": "tsup",
@@ -69,7 +70,6 @@
         "@types/supertest": "^6.0.2",
         "@vitest/coverage-v8": "^3.2.4",
         "eslint": "^9.18.0",
-        "express": "^4.22.2",
         "supertest": "^7.0.0",
         "tsup": "^8.3.5",
         "typescript": "^5.7.2",
