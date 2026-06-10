@@ -1,10 +1,10 @@
 const express = require('express'),
     fs = require('fs'),
     md = require('markdown-it')(),
-    jsonStore = require('../services/json-store'),
     { generateOpml } = require('../services/feeds-opml'),
+    { toLegacyData } = require('../services/legacy-store-shape'),
     { ping, pleaseNotify, rpc2 } = require('@rsscloud/express'),
-    { core } = require('../core'),
+    { core, store } = require('../core'),
     router = new express.Router();
 
 // Core-backed protocol front doors (@rsscloud/express driving @rsscloud/core).
@@ -45,9 +45,13 @@ router.get('/stats.json', (req, res) => {
     res.send(JSON.stringify(getStats(), null, 2));
 });
 
-router.get('/subscriptions.json', (req, res) => {
-    res.set('Content-Type', 'application/json');
-    res.send(JSON.stringify(jsonStore.getData(), null, 2));
+router.get('/subscriptions.json', async(req, res, next) => {
+    try {
+        res.set('Content-Type', 'application/json');
+        res.send(JSON.stringify(toLegacyData(await store.list()), null, 2));
+    } catch (err) {
+        next(err);
+    }
 });
 
 router.get('/feeds.opml', async(req, res, next) => {
