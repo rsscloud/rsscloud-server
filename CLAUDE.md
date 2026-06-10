@@ -6,6 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 An [rssCloud](http://rsscloud.org/) notification protocol server. Subscribers register a callback URL via `/pleaseNotify`; publishers `/ping` when feeds update; the server fans notifications out to subscribers. Implementation lives in `apps/server/`.
 
+## Development workflow
+
+Build features and fix bugs with the **`tdd` skill** — strict red-green-refactor, one vertical slice at a time. Write a failing test, make it pass, refactor; don't batch all the tests and all the code together.
+
+Packages under `packages/` (e.g. `@rsscloud/core`) are held to **100% code coverage**. Keep them there — every branch and line exercised by a test. If something genuinely can't or shouldn't be covered, justify it with an explicit ignore rather than letting coverage slip.
+
 ## Data storage
 
 State (resources and subscriptions) is held in memory and persisted atomically to a JSON file (default `./data/subscriptions.json`, configurable via `DATA_FILE_PATH`). The flush happens on an interval, at shutdown, and on unexpected exit. There is no external database.
