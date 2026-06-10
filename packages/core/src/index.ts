@@ -32,6 +32,11 @@ export {
     type DefaultFeedParserOptions
 } from './feed/feed-parser.js';
 export { createInMemoryStore } from './store/memory-store.js';
+export {
+    createFileStore,
+    type FileStore,
+    type FileStoreOptions
+} from './store/file-store.js';
 
 // Contracts
 export type { BuiltInProtocol, Protocol } from './engine/protocol.js';
