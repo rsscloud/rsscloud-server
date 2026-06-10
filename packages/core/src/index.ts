@@ -20,6 +20,14 @@ export {
     type XmlRpcDispatchContext
 } from './protocols/xml-rpc-dispatcher.js';
 export {
+    createRestDispatcher,
+    type RestDispatcher,
+    type RestDispatcherOptions,
+    type RestDispatchContext,
+    type RestResponse,
+    type RestResponseFormat
+} from './protocols/rest-dispatcher.js';
+export {
     createDefaultFeedParser,
     type DefaultFeedParserOptions
 } from './feed/feed-parser.js';
