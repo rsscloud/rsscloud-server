@@ -1,5 +1,12 @@
 const express = require('express'),
-    jsonStore = require('../services/json-store'),
+    { store } = require('../core'),
+    {
+        toCoreResource,
+        toLegacyResource,
+        toCoreSubscription,
+        toLegacySubscription,
+        toLegacyData
+    } = require('../services/legacy-store-shape'),
     removeExpiredSubscriptions = require('../services/remove-expired-subscriptions'),
     router = new express.Router();
 
@@ -9,62 +16,74 @@ console.warn(
 
 router.use(express.json());
 
-router.post('/clear', (req, res) => {
+router.post('/clear', async(req, res) => {
     try {
-        jsonStore.clear();
+        for (const { feedUrl } of await store.list()) {
+            await store.remove(feedUrl);
+        }
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-router.post('/setResource', (req, res) => {
+router.post('/setResource', async(req, res) => {
     try {
         const { feedUrl, resource } = req.body;
-        jsonStore.setResource(feedUrl, resource);
+        await store.putResource(feedUrl, toCoreResource(feedUrl, resource));
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-router.post('/getResource', (req, res) => {
+router.post('/getResource', async(req, res) => {
     try {
         const { feedUrl } = req.body;
-        const resource = jsonStore.getResource(feedUrl);
-        res.json({ success: true, found: resource !== null, resource });
+        const resource = await store.getResource(feedUrl);
+        res.json({
+            success: true,
+            found: resource !== null,
+            resource:
+                resource !== null
+                    ? { _id: feedUrl, ...toLegacyResource(resource) }
+                    : null
+        });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-router.post('/setSubscriptions', (req, res) => {
+router.post('/setSubscriptions', async(req, res) => {
     try {
         const { feedUrl, pleaseNotify } = req.body;
-        jsonStore.setSubscriptions(feedUrl, pleaseNotify);
+        await store.putSubscriptions(feedUrl, pleaseNotify.map(toCoreSubscription));
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-router.post('/getSubscriptions', (req, res) => {
+router.post('/getSubscriptions', async(req, res) => {
     try {
         const { feedUrl } = req.body;
-        const data = jsonStore.getData();
-        const found =
-            Object.prototype.hasOwnProperty.call(data, feedUrl) &&
-            Array.isArray(data[feedUrl].subscribers);
-        const subscriptions = jsonStore.getSubscriptions(feedUrl);
-        res.json({ success: true, found, subscriptions });
+        const entry = (await store.list()).find(e => e.feedUrl === feedUrl);
+        const pleaseNotify = entry
+            ? entry.subscriptions.map(toLegacySubscription)
+            : [];
+        res.json({
+            success: true,
+            found: entry !== undefined,
+            subscriptions: { _id: feedUrl, pleaseNotify }
+        });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-router.post('/getData', (req, res) => {
+router.post('/getData', async(req, res) => {
     try {
-        res.json({ success: true, data: jsonStore.getData() });
+        res.json({ success: true, data: toLegacyData(await store.list()) });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
