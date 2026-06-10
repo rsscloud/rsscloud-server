@@ -4,17 +4,34 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-// stats.js reads config.statsFilePath, and config snapshots process.env at
-// require time, so point it at a throwaway temp file before requiring anything.
+// stats.js reads config.statsFilePath and core reads DATA_FILE_PATH; config
+// snapshots process.env at require time, so point both at throwaway temp files
+// before requiring anything.
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rsscloud-stats-'));
 process.env.STATS_FILE_PATH = path.join(tmpDir, 'stats.json');
+process.env.DATA_FILE_PATH = path.join(tmpDir, 'subscriptions.json');
 
 const config = require('../config');
-const jsonStore = require('./json-store');
+const { store } = require('../core');
+const { toCoreResource, toCoreSubscription } = require('./legacy-store-shape');
 const stats = require('./stats');
 
-test.beforeEach(() => {
-    jsonStore.clear();
+async function seedResource(feedUrl, resource) {
+    await store.putResource(feedUrl, toCoreResource(feedUrl, resource));
+}
+
+async function seedSubscriptions(feedUrl, subscriptions) {
+    await store.putSubscriptions(feedUrl, subscriptions.map(toCoreSubscription));
+}
+
+async function clearStore() {
+    for (const { feedUrl } of await store.list()) {
+        await store.remove(feedUrl);
+    }
+}
+
+test.beforeEach(async() => {
+    await clearStore();
     fs.rmSync(config.statsFilePath, { force: true });
 });
 
@@ -59,21 +76,21 @@ test('generateStats aggregates active subscriptions into the legacy shape', asyn
     const future = new Date(Date.now() + DAY_MS).toISOString();
     const past = new Date(Date.now() - DAY_MS).toISOString();
 
-    jsonStore.setResource('https://a.example.com/feed.xml', {
+    await seedResource('https://a.example.com/feed.xml', {
         feedTitle: 'Alpha',
         whenLastUpdate: recent
     });
-    jsonStore.setSubscriptions('https://a.example.com/feed.xml', [
+    await seedSubscriptions('https://a.example.com/feed.xml', [
         { url: 'http://sub1.example.com/notify', protocol: 'http-post', whenExpires: future },
         { url: 'http://sub2.example.com/notify', protocol: 'http-post', whenExpires: future },
         { url: 'http://gone.example.com/notify', protocol: 'http-post', whenExpires: past }
     ]);
 
-    jsonStore.setResource('https://b.example.com/feed.xml', {
+    await seedResource('https://b.example.com/feed.xml', {
         feedTitle: 'Bravo',
         whenLastUpdate: recent
     });
-    jsonStore.setSubscriptions('https://b.example.com/feed.xml', [
+    await seedSubscriptions('https://b.example.com/feed.xml', [
         { url: 'http://sub1.example.com/notify', protocol: 'http-post', whenExpires: future }
     ]);
 
@@ -110,11 +127,11 @@ test('generateStats aggregates active subscriptions into the legacy shape', asyn
 test('generateStats omits feeds whose subscriptions have all expired', async() => {
     const past = new Date(Date.now() - DAY_MS).toISOString();
 
-    jsonStore.setResource('https://stale.example.com/feed.xml', {
+    await seedResource('https://stale.example.com/feed.xml', {
         feedTitle: 'Stale',
         whenLastUpdate: new Date(Date.now() - DAY_MS).toISOString()
     });
-    jsonStore.setSubscriptions('https://stale.example.com/feed.xml', [
+    await seedSubscriptions('https://stale.example.com/feed.xml', [
         { url: 'http://gone.example.com/notify', protocol: 'http-post', whenExpires: past }
     ]);
 

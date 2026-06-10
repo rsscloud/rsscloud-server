@@ -1,8 +1,19 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+// The store is the core singleton (json-store-backed via the adapter today,
+// createFileStore tomorrow). Point DATA_FILE_PATH at a throwaway temp file so
+// the file store stays isolated once it backs core — config snapshots env at
+// require time, so set it before requiring anything.
+const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rsscloud-rmexp-'));
+process.env.DATA_FILE_PATH = path.join(tmpDir, 'subscriptions.json');
 
 const config = require('../config');
-const jsonStore = require('./json-store');
+const { store } = require('../core');
+const { toCoreResource, toCoreSubscription } = require('./legacy-store-shape');
 const removeExpiredSubscriptions = require('./remove-expired-subscriptions');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -23,88 +34,96 @@ function subscription(overrides = {}) {
     };
 }
 
-test.beforeEach(() => {
-    jsonStore.clear();
-});
+async function seedResource(feedUrl, resource) {
+    await store.putResource(feedUrl, toCoreResource(feedUrl, resource));
+}
+
+async function seedSubscriptions(feedUrl, subscriptions) {
+    await store.putSubscriptions(feedUrl, subscriptions.map(toCoreSubscription));
+}
+
+async function clearStore() {
+    for (const { feedUrl } of await store.list()) {
+        await store.remove(feedUrl);
+    }
+}
+
+async function entryFor(feedUrl) {
+    return (await store.list()).find(e => e.feedUrl === feedUrl);
+}
+
+test.beforeEach(clearStore);
 
 test('removes an expired subscription and prunes the now-empty feed', async() => {
     const feed = 'https://a.example.com/feed.xml';
-    jsonStore.setSubscriptions(feed, [
-        subscription({ whenExpires: expired() })
-    ]);
+    await seedSubscriptions(feed, [subscription({ whenExpires: expired() })]);
 
     const result = await removeExpiredSubscriptions();
 
     assert.equal(result.subscriptionsRemoved, 1);
-    assert.ok(!Object.prototype.hasOwnProperty.call(jsonStore.getData(), feed));
+    assert.equal(await entryFor(feed), undefined);
 });
 
 test('clears an expired subscription but retains a recently-updated feed', async() => {
     const feed = 'https://b.example.com/feed.xml';
-    jsonStore.setResource(feed, {
+    await seedResource(feed, {
         feedTitle: 'Bravo',
         whenLastUpdate: withinWindow()
     });
-    jsonStore.setSubscriptions(feed, [
-        subscription({ whenExpires: expired() })
-    ]);
+    await seedSubscriptions(feed, [subscription({ whenExpires: expired() })]);
 
     const result = await removeExpiredSubscriptions();
 
     assert.equal(result.subscriptionsRemoved, 1);
-    const data = jsonStore.getData();
-    assert.ok(Object.prototype.hasOwnProperty.call(data, feed));
-    assert.deepEqual(data[feed].subscribers, []);
+    const entry = await entryFor(feed);
+    assert.ok(entry);
+    assert.deepEqual(entry.subscriptions, []);
 });
 
 test('removes a feed whose resource is older than the retention window', async() => {
     const feed = 'https://c.example.com/feed.xml';
-    jsonStore.setResource(feed, {
+    await seedResource(feed, {
         feedTitle: 'Charlie',
         whenLastUpdate: beyondWindow()
     });
-    jsonStore.setSubscriptions(feed, [
-        subscription({ whenExpires: expired() })
-    ]);
+    await seedSubscriptions(feed, [subscription({ whenExpires: expired() })]);
 
     await removeExpiredSubscriptions();
 
-    assert.ok(!Object.prototype.hasOwnProperty.call(jsonStore.getData(), feed));
+    assert.equal(await entryFor(feed), undefined);
 });
 
 test('leaves active subscriptions untouched', async() => {
     const feed = 'https://d.example.com/feed.xml';
-    jsonStore.setResource(feed, {
+    await seedResource(feed, {
         feedTitle: 'Delta',
         whenLastUpdate: withinWindow()
     });
-    jsonStore.setSubscriptions(feed, [subscription({ whenExpires: active() })]);
+    await seedSubscriptions(feed, [subscription({ whenExpires: active() })]);
 
     const result = await removeExpiredSubscriptions();
 
     assert.equal(result.subscriptionsRemoved, 0);
-    const data = jsonStore.getData();
-    assert.ok(Object.prototype.hasOwnProperty.call(data, feed));
-    assert.equal(data[feed].subscribers.length, 1);
+    const entry = await entryFor(feed);
+    assert.ok(entry);
+    assert.equal(entry.subscriptions.length, 1);
 });
 
 test('removes an orphaned resource with no subscriptions', async() => {
     const feed = 'https://e.example.com/feed.xml';
-    jsonStore.setResource(feed, {
+    await seedResource(feed, {
         feedTitle: 'Echo',
         whenLastUpdate: beyondWindow()
     });
 
     await removeExpiredSubscriptions();
 
-    assert.ok(!Object.prototype.hasOwnProperty.call(jsonStore.getData(), feed));
+    assert.equal(await entryFor(feed), undefined);
 });
 
 test('returns the core MaintenanceResult shape', async() => {
     const feed = 'https://f.example.com/feed.xml';
-    jsonStore.setSubscriptions(feed, [
-        subscription({ whenExpires: expired() })
-    ]);
+    await seedSubscriptions(feed, [subscription({ whenExpires: expired() })]);
 
     const result = await removeExpiredSubscriptions();
 
@@ -118,11 +137,11 @@ test('returns the core MaintenanceResult shape', async() => {
 
 test('removes a subscription that has reached the consecutive-error limit', async() => {
     const feed = 'https://g.example.com/feed.xml';
-    jsonStore.setResource(feed, {
+    await seedResource(feed, {
         feedTitle: 'Golf',
         whenLastUpdate: withinWindow()
     });
-    jsonStore.setSubscriptions(feed, [
+    await seedSubscriptions(feed, [
         subscription({
             whenExpires: active(),
             ctConsecutiveErrors: config.maxConsecutiveErrors
@@ -132,5 +151,6 @@ test('removes a subscription that has reached the consecutive-error limit', asyn
     const result = await removeExpiredSubscriptions();
 
     assert.equal(result.subscriptionsRemoved, 1);
-    assert.deepEqual(jsonStore.getData()[feed].subscribers, []);
+    const entry = await entryFor(feed);
+    assert.deepEqual(entry.subscriptions, []);
 });
