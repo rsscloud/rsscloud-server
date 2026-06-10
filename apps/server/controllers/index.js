@@ -25,7 +25,6 @@ router.get('/LICENSE.md', (req, res) => {
         res.status(500).send('Internal Server Error');
     }
 });
-router.use('/pleaseNotify', require('./please-notify'));
 router.use('/pleaseNotifyForm', require('./please-notify-form'));
 router.use('/pingForm', require('./ping-form'));
 router.use('/viewLog', require('./view-log'));

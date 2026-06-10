@@ -10,7 +10,7 @@ const config = require('./config'),
     morgan = require('morgan'),
     removeExpiredSubscriptions = require('./services/remove-expired-subscriptions'),
     websocket = require('./services/websocket'),
-    { ping } = require('@rsscloud/express'),
+    { ping, pleaseNotify } = require('@rsscloud/express'),
     { core, events: coreEvents } = require('./core'),
     bridgeCoreEvents = require('./services/core-event-bridge');
 
@@ -96,6 +96,12 @@ app.use(
 // POST-bound (the package delegates method-binding to the consumer) so a
 // GET /ping still falls through to a 404, matching the legacy router.
 app.post('/ping', ping({ core }));
+
+// Serve /pleaseNotify via @rsscloud/express (driving @rsscloud/core) ahead of
+// the legacy controllers, mirroring /ping. POST-bound so a GET /pleaseNotify
+// still falls through to a 404, matching the legacy router. XML-RPC
+// pleaseNotify still routes through the legacy /RPC2 controller (slice 4).
+app.post('/pleaseNotify', pleaseNotify({ core }));
 
 // Load controllers
 app.use(require('./controllers'));
