@@ -10,7 +10,8 @@ const config = require('./config'),
     morgan = require('morgan'),
     removeExpiredSubscriptions = require('./services/remove-expired-subscriptions'),
     websocket = require('./services/websocket'),
-    { events: coreEvents } = require('./core'),
+    { ping } = require('@rsscloud/express'),
+    { core, events: coreEvents } = require('./core'),
     bridgeCoreEvents = require('./services/core-event-bridge');
 
 let app, hbs, server, dayjs;
@@ -89,6 +90,12 @@ app.use(
         maxAge: '1d'
     })
 );
+
+// Serve /ping via @rsscloud/express (driving @rsscloud/core) ahead of the
+// legacy controllers — first live exercise of core on a request path.
+// POST-bound (the package delegates method-binding to the consumer) so a
+// GET /ping still falls through to a 404, matching the legacy router.
+app.post('/ping', ping({ core }));
 
 // Load controllers
 app.use(require('./controllers'));
