@@ -1,9 +1,11 @@
 const fs = require('fs');
 const path = require('path');
-const { URL } = require('url');
 const config = require('../config');
-const getDayjs = require('./dayjs-wrapper');
-const jsonStore = require('./json-store');
+const { core } = require('../core');
+
+// Protocols the legacy stats shape always reports, even at zero. core only
+// includes protocols it actually saw, so we seed these and merge core's counts.
+const KNOWN_PROTOCOLS = ['http-post', 'https-post', 'xml-rpc'];
 
 function getStatsFilePath() {
     return config.statsFilePath;
@@ -27,86 +29,29 @@ function getStats() {
     }
 }
 
-async function generateStats() {
-    const dayjs = await getDayjs();
-    const now = dayjs().utc().format();
-    const cutoff = dayjs()
-        .utc()
-        .subtract(config.feedsChangedWindowDays, 'days')
-        .toDate();
-
-    const data = jsonStore.getData();
-
-    let feedsChangedLast7Days = 0;
-    let totalActiveSubscriptions = 0;
-    const hostnames = new Set();
-    const protocolBreakdown = { 'http-post': 0, 'https-post': 0, 'xml-rpc': 0 };
-    const feedCounts = [];
-
-    for (const [feedUrl, entry] of Object.entries(data)) {
-        let lastUpdate = null;
-        if (entry.resource?.whenLastUpdate) {
-            lastUpdate = new Date(entry.resource.whenLastUpdate);
-            if (lastUpdate >= cutoff) {
-                feedsChangedLast7Days++;
-            }
-        }
-
-        // Process active subscribers
-        let activeCount = 0;
-        for (const sub of entry.subscribers || []) {
-            if (sub.whenExpires > now) {
-                activeCount++;
-                totalActiveSubscriptions++;
-
-                // Collect unique hostnames
-                try {
-                    hostnames.add(new URL(sub.url).hostname);
-                } catch {
-                    // skip invalid URLs
-                }
-
-                // Protocol breakdown
-                if (sub.protocol in protocolBreakdown) {
-                    protocolBreakdown[sub.protocol]++;
-                }
-            }
-        }
-
-        if (activeCount > 0) {
-            const whenLastUpdate =
-                lastUpdate && lastUpdate.getTime() > 0
-                    ? lastUpdate.toISOString()
-                    : null;
-            const feedTitle = entry.resource?.feedTitle || null;
-            feedCounts.push({
-                url: feedUrl,
-                subscriberCount: activeCount,
-                whenLastUpdate,
-                feedTitle
-            });
-        }
+// Map core's Stats onto the legacy wire shape the view + /stats.json expose:
+// rename feedsChangedLastWindow, and report exactly the three known protocols
+// (seeded at 0, dropping any core might include outside that set).
+function toLegacyStats(coreStats) {
+    const protocolBreakdown = {};
+    for (const protocol of KNOWN_PROTOCOLS) {
+        protocolBreakdown[protocol] =
+            coreStats.protocolBreakdown[protocol] ?? 0;
     }
-
-    // Top most subscribed feeds (include all ties at the boundary)
-    feedCounts.sort((a, b) => b.subscriberCount - a.subscriberCount);
-    let topFeeds = feedCounts.slice(0, 10);
-    if (topFeeds.length === 10) {
-        const threshold = topFeeds[9].subscriberCount;
-        topFeeds = feedCounts.filter(f => f.subscriberCount >= threshold);
-    }
-    const moreFeeds = feedCounts.slice(topFeeds.length);
-
-    const stats = {
-        generatedAt: dayjs().utc().format(),
-        feedsChangedLast7Days,
-        feedsWithSubscribers: feedCounts.length,
-        uniqueAggregators: hostnames.size,
-        totalActiveSubscriptions,
-        topFeeds,
-        moreFeeds,
+    return {
+        generatedAt: coreStats.generatedAt,
+        feedsChangedLast7Days: coreStats.feedsChangedLastWindow,
+        feedsWithSubscribers: coreStats.feedsWithSubscribers,
+        uniqueAggregators: coreStats.uniqueAggregators,
+        totalActiveSubscriptions: coreStats.totalActiveSubscriptions,
+        topFeeds: coreStats.topFeeds,
+        moreFeeds: coreStats.moreFeeds,
         protocolBreakdown
     };
+}
+
+async function generateStats() {
+    const stats = toLegacyStats(await core.generateStats());
 
     // Write atomically
     const filePath = getStatsFilePath();
