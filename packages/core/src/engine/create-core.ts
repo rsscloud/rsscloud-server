@@ -16,6 +16,7 @@ import type { Protocol } from './protocol.js';
 import type { Resource } from './resource.js';
 import type { FeedStat, MaintenanceResult, Stats } from './stats.js';
 import type { Subscription } from './subscription.js';
+import type { Store } from '../store/store.js';
 import type {
     RssCloudCore,
     RssCloudCoreOptions
@@ -27,6 +28,15 @@ function md5(value: string): string {
     return createHash('md5').update(value).digest('hex');
 }
 
+/** Teardown a Store may optionally implement (e.g. a file-backed store). */
+interface ClosableStore {
+    close(): Promise<void>;
+}
+
+function isClosable(store: Store): store is Store & ClosableStore {
+    return typeof (store as Partial<ClosableStore>).close === 'function';
+}
+
 /**
  * The protocol-neutral rssCloud engine. Owns change detection and fan-out and
  * exposes the housekeeping jobs the host schedules; transports are supplied as
@@ -35,7 +45,23 @@ function md5(value: string): string {
 export function createRssCloudCore(
     options: RssCloudCoreOptions
 ): RssCloudCore {
-    const { store, plugins, config } = options;
+    const { plugins, config } = options;
+    // Construction may be async (e.g. a file- or DB-backed store): normalize the
+    // injected store to a resolve-once promise and front it with a Store facade
+    // whose every call awaits that one-time load. The host gets a concrete `core`
+    // synchronously; the first operations simply await initialization.
+    const storeReady = Promise.resolve(options.store);
+    const store: Store = {
+        getResource: feedUrl => storeReady.then(s => s.getResource(feedUrl)),
+        putResource: (feedUrl, resource) =>
+            storeReady.then(s => s.putResource(feedUrl, resource)),
+        getSubscriptions: feedUrl =>
+            storeReady.then(s => s.getSubscriptions(feedUrl)),
+        putSubscriptions: (feedUrl, subscriptions) =>
+            storeReady.then(s => s.putSubscriptions(feedUrl, subscriptions)),
+        list: () => storeReady.then(s => s.list()),
+        remove: feedUrl => storeReady.then(s => s.remove(feedUrl))
+    };
     const events = options.events ?? createEventBus();
     const doFetch = options.fetch ?? fetch;
     const now = options.now ?? (() => new Date());
@@ -539,11 +565,20 @@ export function createRssCloudCore(
         };
     }
 
+    async function close(): Promise<void> {
+        const resolved = await storeReady;
+        if (isClosable(resolved)) {
+            await resolved.close();
+        }
+    }
+
     return {
         subscribe,
         unsubscribe,
         ping,
         events,
+        store,
+        close,
         removeExpired,
         generateStats
     };

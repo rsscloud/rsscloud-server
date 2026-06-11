@@ -40,17 +40,6 @@ vocabulary in `CONTEXT.md`.
       that take an injected core — built with `createInMemoryStore` in tests. Likely
       folds into the unify work (touches the same tests).
 
-- [ ] **Let core own async store construction** (drop the server-side proxy).
-      `core.js` wraps `createFileStore(...)`'s promise in a hand-rolled deferred-store
-      proxy because `createRssCloudCore` needs a concrete `store` at sync `require`
-      time (express mounts need a concrete `core`). Instead, have `createRssCloudCore`
-      accept `Store | Promise<Store>` and own the resolve-once internally (expose a
-      ready `core.store`), so the server is just
-      `createRssCloudCore({ store: createFileStore({ filePath }) })`. **Keep
-      construction async on purpose** (decided 2026-06-11): a future MySQL/DB store
-      needs async init, so the async factory contract stays and core becomes the one
-      reusable home for the deferral. Pairs with the unify work (both core changes).
-
 ## WebSub hub support (bigger — spans core + express)
 
 Make the server act as a [WebSub](https://www.w3.org/TR/websub/) **hub** (the W3C

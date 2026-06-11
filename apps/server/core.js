@@ -20,47 +20,21 @@ const coreConfig = resolveConfig({
     feedsChangedWindowDays: config.feedsChangedWindowDays
 });
 
-// createFileStore is async, but core.js is required synchronously — the
-// @rsscloud/express middleware factories need a concrete `core` at mount time.
-// Kick off the file store and front it with a proxy whose every call awaits the
-// one-time load. The Store interface is already all-async, so this is
-// transparent to core and to every require('./core') consumer; the first
-// requests simply await initialization. flush()/close() are surfaced for the
-// graceful-shutdown hooks in app.js.
-const storeReady = createFileStore({ filePath: config.dataFilePath });
-
-const store = {
-    async getResource(feedUrl) {
-        return (await storeReady).getResource(feedUrl);
-    },
-    async putResource(feedUrl, resource) {
-        return (await storeReady).putResource(feedUrl, resource);
-    },
-    async getSubscriptions(feedUrl) {
-        return (await storeReady).getSubscriptions(feedUrl);
-    },
-    async putSubscriptions(feedUrl, subscriptions) {
-        return (await storeReady).putSubscriptions(feedUrl, subscriptions);
-    },
-    async list() {
-        return (await storeReady).list();
-    },
-    async remove(feedUrl) {
-        return (await storeReady).remove(feedUrl);
-    },
-    async flush() {
-        return (await storeReady).flush();
-    },
-    async close() {
-        return (await storeReady).close();
-    }
-};
-
 const plugins = [
     createRestProtocolPlugin({ requestTimeoutMs: config.requestTimeout }),
     createXmlRpcProtocolPlugin({ requestTimeoutMs: config.requestTimeout })
 ];
 
-const core = createRssCloudCore({ store, plugins, config: coreConfig });
+// createFileStore is async, but core.js is required synchronously — the
+// @rsscloud/express middleware factories need a concrete `core` at mount time.
+// core takes the store promise, resolves it once, and defers every operation
+// until the load completes, so the host gets a concrete `core` immediately.
+// `core.store` is the ready store the read-side controllers use; `core.close()`
+// flushes + closes it for the graceful-shutdown hooks in app.js.
+const core = createRssCloudCore({
+    store: createFileStore({ filePath: config.dataFilePath }),
+    plugins,
+    config: coreConfig
+});
 
-module.exports = { core, events: core.events, store };
+module.exports = { core, events: core.events, store: core.store };
