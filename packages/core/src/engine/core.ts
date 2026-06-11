@@ -20,7 +20,12 @@ import type { Store } from '../store/store.js';
  * for each.
  */
 export interface RssCloudCoreOptions {
-    store: Store;
+    /**
+     * Persistence port. May be a concrete {@link Store} or a `Promise` of one,
+     * letting backends that need async init (file, database) be passed straight
+     * in — core resolves it once and defers operations until it is ready.
+     */
+    store: Store | Promise<Store>;
     /** The plugin stack, already constructed and ready to use. */
     plugins: ProtocolPlugin[];
     /** Fully-resolved config (see `ResolveConfig` for defaults). */
@@ -53,6 +58,18 @@ export interface RssCloudCore {
 
     /** The observability bus (same instance passed in options, if any). */
     readonly events: EventBus;
+
+    /**
+     * The persistence store, ready to use. When constructed from a
+     * `Promise<Store>`, this facade defers each call until the load resolves.
+     */
+    readonly store: Store;
+
+    /**
+     * Await async store construction and tear the store down (flush + close).
+     * A no-op for stores without a `close` lifecycle. Call on host shutdown.
+     */
+    close(): Promise<void>;
 
     /** Drop expired/errored subscriptions and prune empty feeds. */
     removeExpired(): Promise<MaintenanceResult>;

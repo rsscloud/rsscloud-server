@@ -9,7 +9,7 @@ const config = require('./config'),
     morgan = require('morgan'),
     removeExpiredSubscriptions = require('./services/remove-expired-subscriptions'),
     websocket = require('./services/websocket'),
-    { events: coreEvents, store } = require('./core'),
+    { core, events: coreEvents } = require('./core'),
     bridgeCoreEvents = require('./services/core-event-bridge');
 
 let app, hbs, server, dayjs;
@@ -93,7 +93,7 @@ app.use(
 app.use(require('./controllers'));
 
 async function gracefulShutdown() {
-    await store.close();
+    await core.close();
     process.exit();
 }
 
@@ -106,7 +106,7 @@ process.on('uncaughtException', error => {
         'Uncaught exception, flushing data store before exit:',
         error
     );
-    store.close().finally(() => process.exit(1));
+    core.close().finally(() => process.exit(1));
 });
 
 process.on('unhandledRejection', reason => {
@@ -114,7 +114,7 @@ process.on('unhandledRejection', reason => {
         'Unhandled promise rejection, flushing data store before exit:',
         reason
     );
-    store.close().finally(() => process.exit(1));
+    core.close().finally(() => process.exit(1));
 });
 
 async function startServer() {

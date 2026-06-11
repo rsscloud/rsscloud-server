@@ -1034,3 +1034,62 @@ describe('createRssCloudCore removeExpired', () => {
         expect(await store.list()).toHaveLength(0);
     });
 });
+
+describe('createRssCloudCore async store construction', () => {
+    it('accepts a Promise<Store>, resolving it once for operations', async () => {
+        const store = createInMemoryStore();
+
+        const core = createRssCloudCore({
+            store: Promise.resolve(store),
+            plugins: [],
+            config: resolveConfig(),
+            fetch: fetchReturning(RSS)
+        });
+
+        const result = await core.ping({ resourceUrl: FEED });
+
+        expect(result.success).toBe(true);
+        expect((await store.getResource(FEED))?.ctChecks).toBe(1);
+    });
+
+    it('exposes core.store as a Store backed by the resolved store', async () => {
+        const inner = createInMemoryStore();
+
+        const core = createRssCloudCore({
+            store: Promise.resolve(inner),
+            plugins: [],
+            config: resolveConfig(),
+            fetch: fetchReturning(RSS)
+        });
+
+        await core.ping({ resourceUrl: FEED });
+
+        const entries = await core.store.list();
+        expect(entries.map(e => e.feedUrl)).toContain(FEED);
+    });
+
+    it('close() awaits construction and closes a store that can close', async () => {
+        const close = vi.fn(async () => undefined);
+        const inner = { ...createInMemoryStore(), close };
+
+        const core = createRssCloudCore({
+            store: Promise.resolve(inner),
+            plugins: [],
+            config: resolveConfig()
+        });
+
+        await core.close();
+
+        expect(close).toHaveBeenCalledOnce();
+    });
+
+    it('close() is a no-op when the store has no close lifecycle', async () => {
+        const core = createRssCloudCore({
+            store: createInMemoryStore(),
+            plugins: [],
+            config: resolveConfig()
+        });
+
+        await expect(core.close()).resolves.toBeUndefined();
+    });
+});
