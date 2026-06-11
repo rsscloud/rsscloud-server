@@ -1,5 +1,6 @@
 {
     "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+    "plugins": ["node-workspace"],
     "packages": {
         "apps/server": {
             "release-type": "node",
@@ -11,6 +12,12 @@
             "component": "core",
             "changelog-path": "CHANGELOG.md",
             "package-name": "@rsscloud/core"
+        },
+        "packages/express": {
+            "release-type": "node",
+            "component": "express",
+            "changelog-path": "CHANGELOG.md",
+            "package-name": "@rsscloud/express"
         }
     }
 }
