@@ -252,26 +252,6 @@ describe('createRestDispatcher pleaseNotify', () => {
         ]);
     });
 
-    it('infers https from port 443 and brackets a bare IPv6 domain', async () => {
-        const core = fakeCore();
-        const dispatcher = createRestDispatcher({ core });
-
-        await dispatcher.pleaseNotify(
-            {
-                domain: '::1',
-                port: '443',
-                path: '/cb',
-                protocol: 'http-post',
-                url1: 'http://feed.example/rss'
-            },
-            { clientAddress: '203.0.113.5', format: 'json' }
-        );
-
-        expect(core.subscribeCalls[0]?.callbackUrl).toBe(
-            'https://[::1]:443/cb'
-        );
-    });
-
     it('renders success:false listing every missing required param', async () => {
         const core = fakeCore();
         const dispatcher = createRestDispatcher({ core });

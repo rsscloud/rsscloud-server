@@ -1,7 +1,6 @@
 import { Builder } from 'xml2js';
 import type { RssCloudCore } from '../engine/core.js';
 import type { PingRequest, SubscribeRequest } from '../engine/dto.js';
-import type { Protocol } from '../engine/protocol.js';
 import { RssCloudError } from '../errors.js';
 import {
     appMessages,
@@ -9,6 +8,10 @@ import {
     subscriptionFailureMessage,
     subscriptionRequestErrorMessage
 } from './app-messages.js';
+import {
+    buildSubscribeRequest,
+    type SubscribeParams
+} from './subscribe-request.js';
 
 /** Negotiated response format the adapter resolved from the `Accept` header. */
 export type RestResponseFormat = 'xml' | 'json' | null;
@@ -73,9 +76,6 @@ function mapPing(body: Record<string, unknown>): PingRequest {
     return { resourceUrl: String(body['url']) };
 }
 
-/** Protocols a subscriber may register under. */
-const VALID_PROTOCOLS = ['http-post', 'https-post', 'xml-rpc'];
-
 /** Collect every `url*` body key (any case) into a resource list. */
 function parseUrlList(body: Record<string, unknown>): string[] {
     const urls: string[] = [];
@@ -87,29 +87,13 @@ function parseUrlList(body: Record<string, unknown>): string[] {
     return urls;
 }
 
-/** Assemble a callback URL from its parts the way the legacy `glueUrlParts` did. */
-function glueUrlParts(
-    scheme: string,
-    client: string,
-    port: string,
-    path: string
-): string {
-    let host = client;
-    if (host.startsWith('::ffff:')) {
-        host = host.slice(7);
-    }
-    if (host.includes(':')) {
-        host = `[${host}]`;
-    }
-
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    return `${scheme}://${host}:${port}${normalizedPath}`;
-}
-
 /**
  * Map the REST `pleaseNotify` body (`port`, `path`, `protocol`, any `url*`,
- * optional `domain`/`notifyProcedure`) into a `SubscribeRequest`. Throws
- * (→ failure) on missing required params or an unsupported protocol.
+ * optional `domain`/`notifyProcedure`) into a `SubscribeRequest`. Owns only the
+ * form-wire extraction and the missing-param check; the callback-URL assembly,
+ * protocol validation, and `diffDomain`/scheme rules live in
+ * {@link buildSubscribeRequest}. Throws (→ failure) on a missing required param
+ * or an unsupported protocol.
  */
 function mapPleaseNotify(
     body: Record<string, unknown>,
@@ -131,42 +115,22 @@ function mapPleaseNotify(
         );
     }
 
-    const protocol = String(body['protocol']);
-    if (!VALID_PROTOCOLS.includes(protocol)) {
-        throw new Error(
-            appMessages.error.subscription.invalidProtocol(protocol)
-        );
-    }
-
-    const port = String(body['port']);
-    const path = String(body['path']);
-    const domain = body['domain'];
-
-    let client: string;
-    let diffDomain: boolean;
-    if (domain === undefined || domain === null || domain === '') {
-        client = clientAddress;
-        diffDomain = false;
-    } else {
-        client = String(domain);
-        diffDomain = true;
-    }
-
-    const scheme =
-        protocol === 'https-post' || port === '443' ? 'https' : 'http';
-
-    const request: SubscribeRequest = {
+    const params: SubscribeParams = {
         resourceUrls: parseUrlList(body),
-        callbackUrl: glueUrlParts(scheme, client, port, path),
-        protocol: protocol as Protocol,
-        diffDomain
+        port: String(body['port']),
+        path: String(body['path']),
+        protocol: String(body['protocol']),
+        clientAddress
     };
 
-    if (body['notifyProcedure'] && protocol === 'xml-rpc') {
-        request.notifyProcedure = String(body['notifyProcedure']);
+    if (body['domain'] !== undefined) {
+        params.domain = String(body['domain']);
+    }
+    if (body['notifyProcedure']) {
+        params.notifyProcedure = String(body['notifyProcedure']);
     }
 
-    return request;
+    return buildSubscribeRequest(params);
 }
 
 /** Serialize a result as a `<element success msg/>` document. */

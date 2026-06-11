@@ -1,12 +1,15 @@
 import type { RssCloudCore } from '../engine/core.js';
 import type { PingRequest, SubscribeRequest } from '../engine/dto.js';
-import type { Protocol } from '../engine/protocol.js';
 import {
     appMessages,
     errorMessage,
     subscriptionFailureMessage,
     subscriptionRequestErrorMessage
 } from './app-messages.js';
+import {
+    buildSubscribeRequest,
+    type SubscribeParams
+} from './subscribe-request.js';
 import {
     parseMethodCall,
     serializeFault,
@@ -32,32 +35,13 @@ export interface XmlRpcDispatcher {
 /** rssCloud faults are always faultCode 4. */
 const FAULT_CODE = 4;
 
-/** Protocols a subscriber may register under. */
-const VALID_PROTOCOLS = ['http-post', 'https-post', 'xml-rpc'];
-
-/** Assemble a callback URL from its parts the way the legacy `glueUrlParts` did. */
-function glueUrlParts(
-    scheme: string,
-    client: string,
-    port: string,
-    path: string
-): string {
-    let host = client;
-    if (host.startsWith('::ffff:')) {
-        host = host.slice(7);
-    }
-    if (host.includes(':')) {
-        host = `[${host}]`;
-    }
-
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    return `${scheme}://${host}:${port}${normalizedPath}`;
-}
-
 /**
  * Map `pleaseNotify` positional params
  * (`notifyProcedure, port, path, protocol, urlList[, domain]`) into a
- * `SubscribeRequest`. Throws (→ fault) on bad arity or an unsupported protocol.
+ * `SubscribeRequest`. Owns only the positional-wire extraction and the arity
+ * check; the callback-URL assembly, protocol validation, and `diffDomain`/scheme
+ * rules live in {@link buildSubscribeRequest}. Throws (→ fault) on bad arity or
+ * an unsupported protocol.
  */
 function mapPleaseNotify(
     params: unknown[],
@@ -70,47 +54,25 @@ function mapPleaseNotify(
         throw new Error(appMessages.error.rpc.tooManyParams('pleaseNotify'));
     }
 
-    const protocol = String(params[3]);
-    if (!VALID_PROTOCOLS.includes(protocol)) {
-        throw new Error(
-            appMessages.error.subscription.invalidProtocol(protocol)
-        );
-    }
-
-    const port = String(params[1]);
-    const path = String(params[2]);
     const urlList = params[4];
-    const domain = params[5];
-
-    const resourceUrls = Array.isArray(urlList)
-        ? urlList.map((url) => String(url))
-        : [String(urlList)];
-
-    let client: string;
-    let diffDomain: boolean;
-    if (domain === undefined) {
-        client = clientAddress;
-        diffDomain = false;
-    } else {
-        client = String(domain);
-        diffDomain = true;
-    }
-
-    const scheme =
-        protocol === 'https-post' || port === '443' ? 'https' : 'http';
-
-    const request: SubscribeRequest = {
-        resourceUrls,
-        callbackUrl: glueUrlParts(scheme, client, port, path),
-        protocol: protocol as Protocol,
-        diffDomain
+    const subscribeParams: SubscribeParams = {
+        resourceUrls: Array.isArray(urlList)
+            ? urlList.map((url) => String(url))
+            : [String(urlList)],
+        port: String(params[1]),
+        path: String(params[2]),
+        protocol: String(params[3]),
+        clientAddress
     };
 
-    if (protocol === 'xml-rpc' && params[0]) {
-        request.notifyProcedure = String(params[0]);
+    if (params[5] !== undefined) {
+        subscribeParams.domain = String(params[5]);
+    }
+    if (params[0]) {
+        subscribeParams.notifyProcedure = String(params[0]);
     }
 
-    return request;
+    return buildSubscribeRequest(subscribeParams);
 }
 
 /** Map the single `ping` param into a `PingRequest`. Throws (→ fault) on bad arity. */
