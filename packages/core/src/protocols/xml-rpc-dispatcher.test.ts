@@ -173,24 +173,33 @@ describe('createXmlRpcDispatcher pleaseNotify', () => {
         ]);
     });
 
-    it('infers https from port 443 and strips a ::ffff: client prefix', async () => {
+    it('treats an empty-string domain as absent: client address, not diffDomain (ADR-0001)', async () => {
+        // Deliberate parity deviation: the legacy server took an empty-string
+        // domain down the explicit-domain branch (http://:5337/RPC2,
+        // diffDomain:true). The shared builder unifies empty with absent.
         const core = fakeCore();
         const dispatcher = createXmlRpcDispatcher({ core });
 
         await dispatcher.dispatch(
             methodCall('rssCloud.pleaseNotify', [
                 '',
-                '443',
-                '/cb',
+                '5337',
+                '/RPC2',
                 'http-post',
-                'http://feed.example/rss'
+                'http://feed.example/rss',
+                ''
             ]),
-            { clientAddress: '::ffff:198.51.100.7' }
+            { clientAddress: '203.0.113.5' }
         );
 
-        expect(core.subscribeCalls[0]?.callbackUrl).toBe(
-            'https://198.51.100.7:443/cb'
-        );
+        expect(core.subscribeCalls).toEqual([
+            {
+                resourceUrls: ['http://feed.example/rss'],
+                callbackUrl: 'http://203.0.113.5:5337/RPC2',
+                protocol: 'http-post',
+                diffDomain: false
+            }
+        ]);
     });
 
     it('brackets a bare IPv6 domain, coerces an array urlList, omits a blank xml-rpc procedure', async () => {

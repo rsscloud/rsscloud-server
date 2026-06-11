@@ -3,7 +3,8 @@
 Outstanding + future work only. The `apps/server` → `@rsscloud/core` migration is
 done; its history lives in git (`refactor(server):` commits), not here. Per
 CLAUDE.md: build with the `tdd` skill (red-green vertical slices); Conventional
-Commits enforced.
+Commits enforced. Architecture decisions are recorded in `docs/adr/`; domain
+vocabulary in `CONTEXT.md`.
 
 ## Small follow-ups (optional, none blocking)
 
@@ -73,7 +74,10 @@ the notification plugins don't cover. Sketch, not a spec.
 `Subscription` fields `secret` / `leaseSeconds` / `callback`+`topic` / mode; likely a
 `websub` protocol value); a `websub({ core })` express factory branching on
 `hub.mode`; mount the hub at a stable URL (publishers reference it via
-`<link rel="hub">` in their own feeds — the hub doesn't host the source).
+`<link rel="hub">` in their own feeds — the hub doesn't host the source). The
+REST/XML-RPC subscribe parsing now shares `buildSubscribeRequest(SubscribeParams)` in
+core (one callback-assembly seam); a WebSub `hub.*` parser can build a `SubscribeRequest`
+through it rather than re-deriving callback/scheme/`diffDomain` logic.
 
 *Open questions:* sync vs async intent verification (spec prefers async `202`); which
 HMAC algos to require; content source on publish (fetch vs publisher-pushed). The new
