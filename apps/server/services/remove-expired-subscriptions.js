@@ -12,10 +12,12 @@
 //   - treats ctConsecutiveErrors >= maxConsecutiveErrors as exhausted (was a
 //     strict >), matching core's delivery filter.
 
-const { core } = require('../core');
-
-function removeExpiredSubscriptions() {
-    return core.removeExpired();
+// Built with an injected core so callers (production wiring, the /test/* API)
+// supply the singleton while tests supply an in-memory core.
+function createRemoveExpiredSubscriptions({ core }) {
+    return function removeExpiredSubscriptions() {
+        return core.removeExpired();
+    };
 }
 
-module.exports = removeExpiredSubscriptions;
+module.exports = createRemoveExpiredSubscriptions;

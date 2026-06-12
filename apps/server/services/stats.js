@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const config = require('../config');
-const { core } = require('../core');
 
 // Protocols the legacy stats shape always reports, even at zero. core only
 // includes protocols it actually saw, so we seed these and merge core's counts.
@@ -50,29 +49,36 @@ function toLegacyStats(coreStats) {
     };
 }
 
-async function generateStats() {
-    const stats = toLegacyStats(await core.generateStats());
+// Built with an injected core so callers (production wiring) supply the
+// singleton while tests supply an in-memory core. getStats/scheduleStatsGeneration
+// touch only the stats file (a host concern) and so don't depend on the store.
+function createStats({ core }) {
+    async function generateStats() {
+        const stats = toLegacyStats(await core.generateStats());
 
-    // Write atomically
-    const filePath = getStatsFilePath();
-    const dir = path.dirname(filePath);
-    fs.mkdirSync(dir, { recursive: true });
-    const tmpPath = filePath + '.tmp';
-    fs.writeFileSync(tmpPath, JSON.stringify(stats, null, 2));
-    fs.renameSync(tmpPath, filePath);
+        // Write atomically
+        const filePath = getStatsFilePath();
+        const dir = path.dirname(filePath);
+        fs.mkdirSync(dir, { recursive: true });
+        const tmpPath = filePath + '.tmp';
+        fs.writeFileSync(tmpPath, JSON.stringify(stats, null, 2));
+        fs.renameSync(tmpPath, filePath);
 
-    console.log('Stats generated successfully');
-    return stats;
+        console.log('Stats generated successfully');
+        return stats;
+    }
+
+    function scheduleStatsGeneration() {
+        setInterval(async() => {
+            try {
+                await generateStats();
+            } catch (error) {
+                console.error('Error generating stats:', error);
+            }
+        }, config.statsIntervalMs);
+    }
+
+    return { generateStats, getStats, scheduleStatsGeneration };
 }
 
-function scheduleStatsGeneration() {
-    setInterval(async() => {
-        try {
-            await generateStats();
-        } catch (error) {
-            console.error('Error generating stats:', error);
-        }
-    }, config.statsIntervalMs);
-}
-
-module.exports = { generateStats, getStats, scheduleStatsGeneration };
+module.exports = { createStats };
