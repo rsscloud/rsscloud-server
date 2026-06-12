@@ -7,6 +7,72 @@ lives in git (`feat(core):` / `refactor(server):` commits), not here. Per CLAUDE
 build with the `tdd` skill (red-green vertical slices); Conventional Commits enforced.
 Architecture decisions are recorded in `docs/adr/`; domain vocabulary in `CONTEXT.md`.
 
+## Architecture cleanup (deepening opportunities)
+
+From an architecture review (2026-06-12). Ordered by payoff. Vocabulary: a
+**shallow** module's interface is nearly as complex as its implementation; a
+**deep** one hides a lot of behaviour behind a small interface; a **seam** is a
+place behaviour can be swapped without editing in place; **leakage** is one
+module's internals crossing a seam into another. File/line refs will drift —
+trust the names over the numbers.
+
+### 1. Seal the `core.store` port (the keystone)
+
+`Store` is injected *into* the engine, then re-exposed *out* of it
+(`core/engine/core.ts` `readonly store`, re-exported by `apps/server/core.js`).
+That leak lets the read side reach past the engine to touch state directly:
+`controllers/index.js` (`/subscriptions.json`), `services/feeds-json.js`,
+`services/feeds-opml.js`, the whole `/test/*` API in `controllers/test.js`, and
+even core's own tests (`core.store.list()`).
+
+*Fix:* give `RssCloudCore` a narrow read seam — `listFeeds()` snapshot plus a
+`seedResource()` for the test API — and drop `readonly store` from the
+interface. Concentrates all state access in one module. Unblocks #2 (the
+injectable in-memory core).
+
+### 2. Open a test seam at the HTTP edge
+
+Controllers `require('../core')` at module load, so importing any one boots a
+real `FileStore` — no controller has a test. Four (`home`, `ping-form`,
+`please-notify-form`, `docs`) are near-identical `res.render` shells, and the
+`/LICENSE.md` route re-inlines what `docs.js` already does.
+
+*Fix:* a `createControllers({ core })` factory mirroring the testable services
+(`feeds-opml`, `stats`, etc.), plus a table-driven mount for the render-only
+routes. Two adapters justify the seam: prod core and an in-memory core in tests.
+
+### 3. Lift the maintenance jobs out of `create-core.ts`
+
+`removeExpired` and `generateStats` (~130 lines inside the 585-line factory) are
+read-only jobs needing only `store` + a clock, but are exercisable only by
+building a full core with fetch + plugin mocks they never use.
+
+*Fix:* extract as functions over `(store, config, now)`; core delegates. Narrows
+the test surface; shrinks the factory. (Coverage stays 100% per CLAUDE.md.)
+
+### 4. One `fetchWithTimeout`, not three copies
+
+The abort-controller + `clearTimeout` pattern is written verbatim in
+`engine/create-core.ts`, `protocols/rest-plugin.ts`, and
+`protocols/xml-rpc-plugin.ts`; only the timeout source differs.
+
+*Fix:* a shared `fetchWithTimeout(doFetch, ms, url, init)` core util. A bug in
+the abort dance then has one place to live, and one place to test.
+
+### 5. `feedsChangedLast7Days` label can silently lie
+
+The window is a config value upstream (`feedsChangedWindowDays`) but a baked-in
+literal `7` downstream: the wire field name in `services/stats.js`
+(`toLegacyStats`) and the wording in `views/stats.handlebars`. Change the config
+and the label keeps claiming "7 days".
+
+*Fix:* carry the window count through the projection (`feedsChangedLastWindow` +
+`windowDays`) and let the template interpolate it.
+
+> The review's sixth item — extracting the hand-rolled wire builders out of
+> `apps/server/client.js` — is already the "Client app + `@rsscloud/client`
+> package" work below. Not duplicated here.
+
 ## WebSub hub support (bigger — spans core + express)
 
 Make the server act as a [WebSub](https://www.w3.org/TR/websub/) **hub** (the W3C
