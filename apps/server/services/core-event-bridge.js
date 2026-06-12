@@ -1,5 +1,5 @@
 // Bridges core's observability events onto the /wsLog websocket so /viewLog keeps
-// working once endpoints run through @rsscloud/core. Per PLAN #4 we render core's
+// working once endpoints run through @rsscloud/core. By design we render core's
 // events as-is: no enrichment, request headers dropped, and per-event timing taken
 // from core's `durationMs` where it carries one (only `ping` does today).
 
