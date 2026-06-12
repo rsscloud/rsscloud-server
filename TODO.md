@@ -18,6 +18,11 @@ vocabulary in `CONTEXT.md`.
       `getResource()` (in-memory becomes the core model directly). `file-store.ts` is
       left doing only date (de)serialization + a one-way legacy importer.
 
+      The three service unit tests (`stats` / `feeds-opml` / `remove-expired`) already
+      build injected in-memory cores and seed the core model directly, so
+      `controllers/index.js` (`/subscriptions.json`) and `controllers/test.js`
+      (`/test/*`) are now the only remaining `legacy-store-shape.js` consumers.
+
       *Migration flow (self-completing, no manual step):*
       - Load precedence: `subscriptions.v2.json` → `subscriptions.v1.json` /
         `subscriptions.json` (legacy, **converted** on load) → empty.
@@ -33,12 +38,6 @@ vocabulary in `CONTEXT.md`.
       *Caveat:* forward-only — once v2 runs, the legacy file goes stale, so rolling
       back to old code loses post-migration writes. If both exist, v2 wins (document
       it).
-
-- [ ] **Injectable core for the service unit tests.** `stats` / `feeds-opml` /
-      `remove-expired` reach the production `core`/`store` singleton (tests isolate
-      via a temp `DATA_FILE_PATH`). If finer isolation is wanted, make them factories
-      that take an injected core — built with `createInMemoryStore` in tests. Likely
-      folds into the unify work (touches the same tests).
 
 ## WebSub hub support (bigger — spans core + express)
 
