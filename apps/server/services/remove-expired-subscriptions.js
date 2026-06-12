@@ -2,9 +2,9 @@
 // logic lives in @rsscloud/core; this is a thin adapter over core.removeExpired()
 // that the server schedules (app.js) and the /test/* API drives. Callers own
 // their own error handling, and core reads/writes the shared store, so the
-// effects land in the same json-store the legacy /test/getData reads.
+// effects land in the same store the /test/getData view reads.
 //
-// Differs from the retired hand-rolled sweep by design (see PLAN slice E):
+// Differs from the retired hand-rolled sweep by design:
 //   - returns core's MaintenanceResult (feedsProcessed/feedsDeleted) instead of
 //     the legacy documentsProcessed/documentsDeleted/urlsFixed shape;
 //   - drops the IPv4-mapped-IPv6 callback rewrite (new subs are normalized at
