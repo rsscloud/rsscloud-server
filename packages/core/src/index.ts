@@ -37,6 +37,14 @@ export {
     type FileStore,
     type FileStoreOptions
 } from './store/file-store.js';
+export {
+    resourceToJson,
+    resourceFromJson,
+    subscriptionToJson,
+    subscriptionFromJson,
+    type JsonResource,
+    type JsonSubscription
+} from './store/store-codec.js';
 
 // Contracts
 export type { BuiltInProtocol, Protocol } from './engine/protocol.js';

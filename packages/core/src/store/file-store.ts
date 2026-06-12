@@ -5,15 +5,39 @@ import type { Protocol } from '../engine/protocol.js';
 import type { Resource } from '../engine/resource.js';
 import type { Subscription } from '../engine/subscription.js';
 import type { FeedEntry, Store } from './store.js';
+import {
+    resourceFromJson,
+    resourceToJson,
+    subscriptionFromJson,
+    subscriptionToJson,
+    type JsonResource,
+    type JsonSubscription
+} from './store-codec.js';
+
+/** Reported once when a pre-v2 (legacy) file is imported, for host logging. */
+export interface MigrationInfo {
+    /** The legacy file the data was imported from. */
+    from: string;
+    /** The v2 file all future writes target. */
+    to: string;
+    /** Number of feeds imported. */
+    feedCount: number;
+}
 
 /** Options for {@link createFileStore}. */
 export interface FileStoreOptions {
-    /** Path to the JSON file the store loads from and flushes to. */
+    /**
+     * Path to the legacy/bare data file. The v2 file written and preferred on
+     * load is the sibling `.v2.json`; a `.v1.json` legacy file is also
+     * honoured on import. Defaults derive from this single path.
+     */
     filePath: string;
     /** Quiet-gap delay before a coalesced flush. Defaults to 1000ms. */
     debounceMs?: number;
     /** Hard ceiling between flushes under sustained churn. Defaults to 60000ms. */
     maxWaitMs?: number;
+    /** Invoked once after a legacy file is imported (no-op if absent). */
+    onMigrate?: (info: MigrationInfo) => void;
 }
 
 /** A file-backed {@link Store} with durable-flush controls. */
@@ -24,7 +48,30 @@ export interface FileStore extends Store {
     close(): Promise<void>;
 }
 
-/** One feed's on-disk record: flat resource fields plus its subscribers. */
+/** One feed in memory: the core model directly (no per-call mapping). */
+interface Entry {
+    resource: Resource | null;
+    subscriptions: Subscription[];
+}
+
+// ---- v2 on-disk envelope ----
+
+interface V2Entry {
+    resource: JsonResource | null;
+    subscriptions: JsonSubscription[];
+}
+
+interface V2Doc {
+    version: 2;
+    feeds: Record<string, V2Entry>;
+}
+
+function isV2(doc: unknown): doc is V2Doc {
+    return (doc as { version?: unknown } | null | undefined)?.version === 2;
+}
+
+// ---- legacy (pre-v2) on-disk shape + one-way importer ----
+
 interface DiskResource {
     lastSize?: number;
     lastHash?: string;
@@ -60,40 +107,15 @@ interface DiskEntry {
 
 type DiskData = Record<string, DiskEntry>;
 
-const EPOCH_ISO = new Date(0).toISOString();
-
-/** Epoch (`new Date(0)`) marks "never happened" on disk. */
+/** Epoch (`new Date(0)`) marks "never happened" in the legacy file. */
 function readWhen(value: string | undefined): Date {
     return new Date(value ?? 0);
 }
 
-/** Epoch on disk maps to `null` ("never") in the core model. */
+/** Epoch in the legacy file maps to `null` ("never") in the core model. */
 function readNullableWhen(value: string | undefined): Date | null {
     const date = new Date(value ?? 0);
     return date.getTime() === 0 ? null : date;
-}
-
-function readSubscription(raw: DiskSubscriber): Subscription {
-    const whenExpires = readWhen(raw.whenExpires);
-    const subscription: Subscription = {
-        url: raw.url,
-        protocol: raw.protocol,
-        ctUpdates: raw.ctUpdates ?? 0,
-        ctErrors: raw.ctErrors ?? 0,
-        ctConsecutiveErrors: raw.ctConsecutiveErrors ?? 0,
-        // Legacy records carry no creation time; synthesize from expiry.
-        whenCreated: raw.whenCreated != null ? readWhen(raw.whenCreated) : whenExpires,
-        whenLastUpdate: readNullableWhen(raw.whenLastUpdate),
-        whenLastError: readNullableWhen(raw.whenLastError),
-        whenExpires
-    };
-    if (typeof raw.notifyProcedure === 'string') {
-        subscription.notifyProcedure = raw.notifyProcedure;
-    }
-    if (raw.details !== undefined) {
-        subscription.details = raw.details;
-    }
-    return subscription;
 }
 
 function readFeed(raw: DiskResource): FeedMetadata | undefined {
@@ -126,91 +148,164 @@ function readResource(
     return resource;
 }
 
-function writeResource(resource: Resource): DiskResource {
-    const out: DiskResource = {
-        lastSize: resource.lastSize,
-        lastHash: resource.lastHash,
-        ctChecks: resource.ctChecks,
-        whenLastCheck: resource.whenLastCheck.toISOString(),
-        ctUpdates: resource.ctUpdates,
-        whenLastUpdate: resource.whenLastUpdate.toISOString()
+function readSubscription(raw: DiskSubscriber): Subscription {
+    const whenExpires = readWhen(raw.whenExpires);
+    const subscription: Subscription = {
+        url: raw.url,
+        protocol: raw.protocol,
+        ctUpdates: raw.ctUpdates ?? 0,
+        ctErrors: raw.ctErrors ?? 0,
+        ctConsecutiveErrors: raw.ctConsecutiveErrors ?? 0,
+        // Legacy records carry no creation time; synthesize from expiry.
+        whenCreated: raw.whenCreated != null ? readWhen(raw.whenCreated) : whenExpires,
+        whenLastUpdate: readNullableWhen(raw.whenLastUpdate),
+        whenLastError: readNullableWhen(raw.whenLastError),
+        whenExpires
     };
-    const feed = resource.feed;
-    if (feed !== undefined) {
-        if (feed.type != null) out.feedType = feed.type;
-        if (feed.title != null) out.feedTitle = feed.title;
-        if (feed.description != null) out.feedDescription = feed.description;
-        if (feed.htmlUrl != null) out.feedHtmlUrl = feed.htmlUrl;
-        if (feed.language != null) out.feedLanguage = feed.language;
+    if (typeof raw.notifyProcedure === 'string') {
+        subscription.notifyProcedure = raw.notifyProcedure;
     }
-    return out;
+    if (raw.details !== undefined) {
+        subscription.details = raw.details;
+    }
+    return subscription;
 }
 
-/** `null` ("never") serializes back to the epoch string the legacy reader uses. */
-function writeWhen(value: Date | null): string {
-    return value === null ? EPOCH_ISO : value.toISOString();
+function importLegacy(data: DiskData): Map<string, Entry> {
+    const feeds = new Map<string, Entry>();
+    for (const [feedUrl, entry] of Object.entries(data)) {
+        feeds.set(feedUrl, {
+            resource: readResource(feedUrl, entry.resource),
+            subscriptions: (entry.subscribers ?? []).map(readSubscription)
+        });
+    }
+    return feeds;
 }
 
-function writeSubscription(subscription: Subscription): DiskSubscriber {
-    const out: DiskSubscriber = {
-        ctUpdates: subscription.ctUpdates,
-        whenLastUpdate: writeWhen(subscription.whenLastUpdate),
-        ctErrors: subscription.ctErrors,
-        ctConsecutiveErrors: subscription.ctConsecutiveErrors,
-        whenLastError: writeWhen(subscription.whenLastError),
-        whenExpires: subscription.whenExpires.toISOString(),
-        url: subscription.url,
-        // REST subs carry no procedure; the legacy shape records that as `false`.
-        notifyProcedure: subscription.notifyProcedure ?? false,
-        protocol: subscription.protocol
+function loadV2(doc: V2Doc): Map<string, Entry> {
+    const feeds = new Map<string, Entry>();
+    for (const [feedUrl, entry] of Object.entries(doc.feeds)) {
+        feeds.set(feedUrl, {
+            resource:
+                entry.resource === null
+                    ? null
+                    : resourceFromJson(entry.resource),
+            subscriptions: entry.subscriptions.map(subscriptionFromJson)
+        });
+    }
+    return feeds;
+}
+
+// ---- path derivation + raw reads ----
+
+function derivePaths(filePath: string): {
+    v2Path: string;
+    v1Path: string;
+    legacyPath: string;
+} {
+    const base = filePath.replace(/\.json$/, '');
+    return {
+        v2Path: `${base}.v2.json`,
+        v1Path: `${base}.v1.json`,
+        legacyPath: filePath
     };
-    if (subscription.details !== undefined) {
-        out.details = subscription.details;
-    }
-    return out;
 }
 
-async function loadDisk(filePath: string): Promise<DiskData> {
+async function readJson(path: string): Promise<unknown> {
     try {
-        return JSON.parse(await readFile(filePath, 'utf8')) as DiskData;
+        return JSON.parse(await readFile(path, 'utf8')) as unknown;
     } catch {
-        return {};
+        return undefined;
     }
+}
+
+interface LoadResult {
+    feeds: Map<string, Entry>;
+    migratedFrom: string | null;
 }
 
 /**
- * A file-backed {@link Store}. Loads on init, maps the legacy on-disk shape
- * (keyed by feed URL, flat feed fields, string dates) to and from core's model.
+ * Load with v2 precedence: the `.v2.json` file if present, else a converted
+ * legacy file (`.v1.json` then the bare name), else empty. The legacy file is
+ * read-only on this path — writes always target v2.
+ */
+async function load(paths: ReturnType<typeof derivePaths>): Promise<LoadResult> {
+    const v2 = await readJson(paths.v2Path);
+    if (isV2(v2)) {
+        return { feeds: loadV2(v2), migratedFrom: null };
+    }
+
+    const fromV1 = await readJson(paths.v1Path);
+    if (fromV1 !== undefined) {
+        return { feeds: importLegacy(fromV1 as DiskData), migratedFrom: paths.v1Path };
+    }
+
+    const fromLegacy = await readJson(paths.legacyPath);
+    if (fromLegacy !== undefined) {
+        return {
+            feeds: importLegacy(fromLegacy as DiskData),
+            migratedFrom: paths.legacyPath
+        };
+    }
+
+    return { feeds: new Map(), migratedFrom: null };
+}
+
+/**
+ * A file-backed {@link Store}. Holds the core model in memory and persists it
+ * as the versioned v2 envelope; a pre-v2 file is imported (one-way) on first
+ * boot, then left untouched as a backup while writes move to `.v2.json`.
  */
 export async function createFileStore(
     options: FileStoreOptions
 ): Promise<FileStore> {
-    const { filePath } = options;
     const debounceMs = options.debounceMs ?? 1000;
     const maxWaitMs = options.maxWaitMs ?? 60000;
-    const disk = await loadDisk(filePath);
+    const paths = derivePaths(options.filePath);
+
+    const { feeds, migratedFrom } = await load(paths);
+    if (migratedFrom !== null) {
+        options.onMigrate?.({
+            from: migratedFrom,
+            to: paths.v2Path,
+            feedCount: feeds.size
+        });
+    }
 
     let dirty = false;
     let firstDirtyAt: number | null = null;
     let flushTimer: ReturnType<typeof setTimeout> | null = null;
     let inFlight: Promise<void> | null = null;
 
-    function entryFor(feedUrl: string): DiskEntry {
-        const existing = disk[feedUrl];
+    function entryFor(feedUrl: string): Entry {
+        const existing = feeds.get(feedUrl);
         if (existing !== undefined) return existing;
-        // Mirror the legacy shape: every entry has a resource and subscribers.
-        const created: DiskEntry = { resource: {}, subscribers: [] };
-        disk[feedUrl] = created;
+        const created: Entry = { resource: null, subscriptions: [] };
+        feeds.set(feedUrl, created);
         return created;
     }
 
+    function snapshot(): string {
+        const doc: V2Doc = { version: 2, feeds: {} };
+        for (const [feedUrl, entry] of feeds) {
+            doc.feeds[feedUrl] = {
+                resource:
+                    entry.resource === null
+                        ? null
+                        : resourceToJson(entry.resource),
+                subscriptions: entry.subscriptions.map(subscriptionToJson)
+            };
+        }
+        return JSON.stringify(doc, null, 2);
+    }
+
     async function writeToDisk(): Promise<void> {
-        await mkdir(dirname(filePath), { recursive: true });
+        await mkdir(dirname(paths.v2Path), { recursive: true });
         // Snapshot synchronously so an in-flight write can't tear.
-        const snapshot = JSON.stringify(disk, null, 2);
-        const tmp = `${filePath}.tmp`;
-        await writeFile(tmp, snapshot);
-        await rename(tmp, filePath);
+        const data = snapshot();
+        const tmp = `${paths.v2Path}.tmp`;
+        await writeFile(tmp, data);
+        await rename(tmp, paths.v2Path);
     }
 
     function clearFlushTimer(): void {
@@ -262,40 +357,36 @@ export async function createFileStore(
 
     return {
         async getResource(feedUrl: string): Promise<Resource | null> {
-            return readResource(feedUrl, disk[feedUrl]?.resource);
+            return feeds.get(feedUrl)?.resource ?? null;
         },
 
-        async putResource(
-            feedUrl: string,
-            resource: Resource
-        ): Promise<void> {
-            entryFor(feedUrl).resource = writeResource(resource);
+        async putResource(feedUrl: string, resource: Resource): Promise<void> {
+            entryFor(feedUrl).resource = resource;
             markDirty();
         },
 
         async getSubscriptions(feedUrl: string): Promise<Subscription[]> {
-            const subscribers = disk[feedUrl]?.subscribers ?? [];
-            return subscribers.map(readSubscription);
+            return feeds.get(feedUrl)?.subscriptions ?? [];
         },
 
         async putSubscriptions(
             feedUrl: string,
             subscriptions: Subscription[]
         ): Promise<void> {
-            entryFor(feedUrl).subscribers = subscriptions.map(writeSubscription);
+            entryFor(feedUrl).subscriptions = subscriptions;
             markDirty();
         },
 
         async list(): Promise<FeedEntry[]> {
-            return Object.entries(disk).map(([feedUrl, entry]) => ({
+            return Array.from(feeds, ([feedUrl, entry]) => ({
                 feedUrl,
-                resource: readResource(feedUrl, entry.resource),
-                subscriptions: (entry.subscribers ?? []).map(readSubscription)
+                resource: entry.resource,
+                subscriptions: entry.subscriptions
             }));
         },
 
         async remove(feedUrl: string): Promise<void> {
-            delete disk[feedUrl];
+            feeds.delete(feedUrl);
             markDirty();
         },
 

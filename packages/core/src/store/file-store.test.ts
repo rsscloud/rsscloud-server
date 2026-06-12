@@ -9,6 +9,8 @@ import type { Subscription } from '../engine/subscription.js';
 
 let dir: string;
 let filePath: string;
+let v2Path: string;
+let v1Path: string;
 let stores: FileStore[];
 
 beforeEach(async () => {
@@ -16,6 +18,8 @@ beforeEach(async () => {
     stores = [];
     dir = await mkdtemp(join(tmpdir(), 'rsscloud-file-store-'));
     filePath = join(dir, 'subscriptions.json');
+    v2Path = join(dir, 'subscriptions.v2.json');
+    v1Path = join(dir, 'subscriptions.v1.json');
 });
 
 afterEach(async () => {
@@ -36,13 +40,14 @@ async function makeStore(
 
 const LEGACY_FEED = 'http://scripting.com/rss.xml';
 const NEW_FEED = 'https://feed.example/rss';
+const SUBS_ONLY_FEED = 'https://subsonly.example/rss';
 
-async function readDisk(): Promise<unknown> {
-    return JSON.parse(await readFile(filePath, 'utf8'));
+async function readV2(): Promise<unknown> {
+    return JSON.parse(await readFile(v2Path, 'utf8'));
 }
 
-function fileExists(): Promise<boolean> {
-    return readFile(filePath, 'utf8').then(
+function v2Exists(): Promise<boolean> {
+    return readFile(v2Path, 'utf8').then(
         () => true,
         () => false
     );
@@ -60,6 +65,19 @@ function coreResource(): Resource {
     };
 }
 
+function coreResourceWithFeed(): Resource {
+    return {
+        ...coreResource(),
+        feed: {
+            type: 'rss',
+            title: 'New',
+            description: 'D',
+            htmlUrl: 'http://x/',
+            language: 'en'
+        }
+    };
+}
+
 function coreSubscription(): Subscription {
     return {
         url: 'http://sub.example/notify',
@@ -73,6 +91,8 @@ function coreSubscription(): Subscription {
         whenExpires: new Date('2099-01-01T00:00:00.000Z')
     };
 }
+
+// ---- the legacy (pre-v2) on-disk shape used only on the import path ----
 
 const LEGACY_FILE = {
     [LEGACY_FEED]: {
@@ -105,13 +125,164 @@ const LEGACY_FILE = {
     }
 };
 
-async function writeLegacy(): Promise<void> {
-    await writeFile(filePath, JSON.stringify(LEGACY_FILE, null, 2));
+async function writeLegacyAt(path: string): Promise<void> {
+    await writeFile(path, JSON.stringify(LEGACY_FILE, null, 2));
 }
 
-describe('createFileStore', () => {
-    it('loads a legacy file and exposes the resource in core shape', async () => {
-        await writeLegacy();
+describe('createFileStore — v2 persistence', () => {
+    it('writes the v2 envelope to subscriptions.v2.json', async () => {
+        const store = await makeStore();
+
+        await store.putResource(NEW_FEED, coreResourceWithFeed());
+        await store.putSubscriptions(NEW_FEED, [coreSubscription()]);
+        await store.flush();
+
+        expect(await readV2()).toEqual({
+            version: 2,
+            feeds: {
+                [NEW_FEED]: {
+                    resource: {
+                        url: NEW_FEED,
+                        lastHash: 'abc',
+                        lastSize: 100,
+                        ctChecks: 5,
+                        whenLastCheck: '2026-01-02T03:04:05.000Z',
+                        ctUpdates: 2,
+                        whenLastUpdate: '2026-01-02T03:04:05.000Z',
+                        feed: {
+                            type: 'rss',
+                            title: 'New',
+                            description: 'D',
+                            htmlUrl: 'http://x/',
+                            language: 'en'
+                        }
+                    },
+                    subscriptions: [
+                        {
+                            url: 'http://sub.example/notify',
+                            protocol: 'http-post',
+                            ctUpdates: 0,
+                            ctErrors: 0,
+                            ctConsecutiveErrors: 0,
+                            whenCreated: '2026-01-01T00:00:00.000Z',
+                            whenLastUpdate: null,
+                            whenLastError: null,
+                            whenExpires: '2099-01-01T00:00:00.000Z'
+                        }
+                    ]
+                }
+            }
+        });
+    });
+
+    it('persists a subscriptions-only feed with a null resource', async () => {
+        const store = await makeStore();
+
+        await store.putSubscriptions(SUBS_ONLY_FEED, [coreSubscription()]);
+        await store.flush();
+
+        const onDisk = (await readV2()) as {
+            feeds: Record<string, { resource: unknown }>;
+        };
+        expect(onDisk.feeds[SUBS_ONLY_FEED]?.resource).toBeNull();
+        expect(await store.getResource(SUBS_ONLY_FEED)).toBeNull();
+    });
+
+    it('round-trips the core model through put, close, and reload', async () => {
+        const a = await makeStore();
+        await a.putResource(NEW_FEED, coreResourceWithFeed());
+        await a.putSubscriptions(NEW_FEED, [coreSubscription()]);
+        await a.close();
+
+        const b = await makeStore();
+
+        // whenCreated is now persisted, so the subscription returns verbatim.
+        expect(await b.getResource(NEW_FEED)).toEqual(coreResourceWithFeed());
+        expect(await b.getSubscriptions(NEW_FEED)).toEqual([coreSubscription()]);
+        expect(await b.list()).toEqual([
+            {
+                feedUrl: NEW_FEED,
+                resource: coreResourceWithFeed(),
+                subscriptions: [coreSubscription()]
+            }
+        ]);
+    });
+
+    it('loads a hand-written v2 file natively', async () => {
+        await writeFile(
+            v2Path,
+            JSON.stringify({
+                version: 2,
+                feeds: {
+                    [NEW_FEED]: {
+                        resource: {
+                            url: NEW_FEED,
+                            lastHash: 'abc',
+                            lastSize: 100,
+                            ctChecks: 5,
+                            whenLastCheck: '2026-01-02T03:04:05.000Z',
+                            ctUpdates: 2,
+                            whenLastUpdate: '2026-01-02T03:04:05.000Z',
+                            feed: { type: 'rss', title: 'New' }
+                        },
+                        subscriptions: [
+                            {
+                                url: 'http://sub.example/notify',
+                                protocol: 'http-post',
+                                ctUpdates: 0,
+                                ctErrors: 0,
+                                ctConsecutiveErrors: 0,
+                                whenCreated: '2026-01-01T00:00:00.000Z',
+                                whenLastUpdate: null,
+                                whenLastError: null,
+                                whenExpires: '2099-01-01T00:00:00.000Z'
+                            }
+                        ]
+                    },
+                    [SUBS_ONLY_FEED]: { resource: null, subscriptions: [] }
+                }
+            })
+        );
+
+        const store = await makeStore();
+
+        expect(await store.getResource(NEW_FEED)).toEqual({
+            ...coreResource(),
+            feed: { type: 'rss', title: 'New' }
+        });
+        expect(await store.getSubscriptions(NEW_FEED)).toEqual([
+            coreSubscription()
+        ]);
+        expect(await store.getResource(SUBS_ONLY_FEED)).toBeNull();
+    });
+
+    it('removes a feed entirely', async () => {
+        const store = await makeStore();
+        await store.putResource(NEW_FEED, coreResource());
+        await store.remove(NEW_FEED);
+
+        expect(await store.getResource(NEW_FEED)).toBeNull();
+        expect(await store.getSubscriptions(NEW_FEED)).toEqual([]);
+        expect(await store.list()).toEqual([]);
+    });
+
+    it('starts empty when no file exists', async () => {
+        const store = await makeStore();
+        expect(await store.list()).toEqual([]);
+    });
+
+    it('starts empty when the v2 file is corrupt and there is no legacy file', async () => {
+        await writeFile(v2Path, 'not json at all');
+
+        const store = await makeStore();
+
+        expect(await store.list()).toEqual([]);
+    });
+});
+
+describe('createFileStore — legacy (v1) import', () => {
+    it('imports the legacy bare-name file into core shape when no v2 exists', async () => {
+        await writeLegacyAt(filePath);
 
         const store = await makeStore();
 
@@ -131,13 +302,6 @@ describe('createFileStore', () => {
                 language: 'en-us'
             }
         });
-    });
-
-    it('maps legacy subscribers to core subscriptions', async () => {
-        await writeLegacy();
-
-        const store = await makeStore();
-
         expect(await store.getSubscriptions(LEGACY_FEED)).toEqual([
             {
                 url: 'http://157.230.11.43:1414/feedping',
@@ -153,218 +317,75 @@ describe('createFileStore', () => {
         ]);
     });
 
-    it('lists every tracked feed with its mapped resource and subscriptions', async () => {
-        await writeLegacy();
+    it('imports the legacy .v1.json file when present', async () => {
+        await writeLegacyAt(v1Path);
 
         const store = await makeStore();
 
-        expect(await store.list()).toEqual([
-            {
-                feedUrl: LEGACY_FEED,
-                resource: await store.getResource(LEGACY_FEED),
-                subscriptions: await store.getSubscriptions(LEGACY_FEED)
-            }
-        ]);
+        expect((await store.list())[0]?.feedUrl).toBe(LEGACY_FEED);
     });
 
-    it('removes a feed entirely', async () => {
-        await writeLegacy();
+    it('migrates legacy data to v2 on first write, leaving the legacy file intact', async () => {
+        await writeLegacyAt(filePath);
+        const legacyBefore = await readFile(filePath, 'utf8');
 
         const store = await makeStore();
-        await store.remove(LEGACY_FEED);
+        await store.putResource(NEW_FEED, coreResource());
+        await store.flush();
 
+        // The legacy file is untouched; the new v2 file holds both feeds.
+        expect(await readFile(filePath, 'utf8')).toBe(legacyBefore);
+        const onDisk = (await readV2()) as { feeds: Record<string, unknown> };
+        expect(Object.keys(onDisk.feeds).sort()).toEqual(
+            [LEGACY_FEED, NEW_FEED].sort()
+        );
+    });
+
+    it('lets v2 win when both a v2 and a legacy file exist', async () => {
+        await writeLegacyAt(filePath);
+        await writeFile(
+            v2Path,
+            JSON.stringify({
+                version: 2,
+                feeds: {
+                    [NEW_FEED]: { resource: null, subscriptions: [] }
+                }
+            })
+        );
+
+        const store = await makeStore();
+
+        expect((await store.list()).map(e => e.feedUrl)).toEqual([NEW_FEED]);
         expect(await store.getResource(LEGACY_FEED)).toBeNull();
-        expect(await store.getSubscriptions(LEGACY_FEED)).toEqual([]);
-        expect(await store.list()).toEqual([]);
     });
 
-    it('flushes putResource as a faithful flat resource shape', async () => {
-        const store = await makeStore();
+    it('calls onMigrate once after importing a legacy file', async () => {
+        await writeLegacyAt(filePath);
+        const onMigrate = vi.fn();
 
-        await store.putResource(NEW_FEED, {
-            url: NEW_FEED,
-            lastHash: 'abc',
-            lastSize: 100,
-            ctChecks: 5,
-            whenLastCheck: new Date('2026-01-02T03:04:05.000Z'),
-            ctUpdates: 2,
-            whenLastUpdate: new Date('2026-01-02T03:04:05.000Z'),
-            feed: {
-                type: 'rss',
-                title: 'New',
-                description: 'D',
-                htmlUrl: 'http://x/',
-                language: 'en'
-            }
-        });
-        await store.flush();
+        await makeStore({ onMigrate });
 
-        expect(await readDisk()).toEqual({
-            [NEW_FEED]: {
-                resource: {
-                    lastSize: 100,
-                    lastHash: 'abc',
-                    ctChecks: 5,
-                    whenLastCheck: '2026-01-02T03:04:05.000Z',
-                    ctUpdates: 2,
-                    whenLastUpdate: '2026-01-02T03:04:05.000Z',
-                    feedType: 'rss',
-                    feedTitle: 'New',
-                    feedDescription: 'D',
-                    feedHtmlUrl: 'http://x/',
-                    feedLanguage: 'en'
-                },
-                subscribers: []
-            }
+        expect(onMigrate).toHaveBeenCalledTimes(1);
+        expect(onMigrate).toHaveBeenCalledWith({
+            from: filePath,
+            to: v2Path,
+            feedCount: 1
         });
     });
 
-    it('flushes putSubscriptions as faithful subscriber records', async () => {
-        const store = await makeStore();
+    it('does not call onMigrate when loading a v2 file', async () => {
+        await writeFile(
+            v2Path,
+            JSON.stringify({ version: 2, feeds: {} })
+        );
+        const onMigrate = vi.fn();
 
-        await store.putSubscriptions(NEW_FEED, [
-            {
-                url: 'http://sub.example/notify',
-                protocol: 'http-post',
-                ctUpdates: 0,
-                ctErrors: 0,
-                ctConsecutiveErrors: 0,
-                whenCreated: new Date('2026-01-01T00:00:00.000Z'),
-                whenLastUpdate: null,
-                whenLastError: null,
-                whenExpires: new Date('2099-01-01T00:00:00.000Z')
-            },
-            {
-                url: 'http://sub.example/rpc',
-                protocol: 'xml-rpc',
-                notifyProcedure: 'river.feedUpdated',
-                ctUpdates: 3,
-                ctErrors: 1,
-                ctConsecutiveErrors: 0,
-                whenCreated: new Date('2026-01-01T00:00:00.000Z'),
-                whenLastUpdate: new Date('2026-02-01T00:00:00.000Z'),
-                whenLastError: new Date('2025-12-01T00:00:00.000Z'),
-                whenExpires: new Date('2099-01-01T00:00:00.000Z'),
-                details: { secret: 's3cr3t' }
-            }
-        ]);
-        await store.flush();
+        await makeStore({ onMigrate });
 
-        expect(await readDisk()).toEqual({
-            [NEW_FEED]: {
-                resource: {},
-                subscribers: [
-                    {
-                        ctUpdates: 0,
-                        whenLastUpdate: '1970-01-01T00:00:00.000Z',
-                        ctErrors: 0,
-                        ctConsecutiveErrors: 0,
-                        whenLastError: '1970-01-01T00:00:00.000Z',
-                        whenExpires: '2099-01-01T00:00:00.000Z',
-                        url: 'http://sub.example/notify',
-                        notifyProcedure: false,
-                        protocol: 'http-post'
-                    },
-                    {
-                        ctUpdates: 3,
-                        whenLastUpdate: '2026-02-01T00:00:00.000Z',
-                        ctErrors: 1,
-                        ctConsecutiveErrors: 0,
-                        whenLastError: '2025-12-01T00:00:00.000Z',
-                        whenExpires: '2099-01-01T00:00:00.000Z',
-                        url: 'http://sub.example/rpc',
-                        notifyProcedure: 'river.feedUpdated',
-                        protocol: 'xml-rpc',
-                        details: { secret: 's3cr3t' }
-                    }
-                ]
-            }
-        });
-
-        // An entry created via subscriptions only has no real resource.
-        expect(await store.getResource(NEW_FEED)).toBeNull();
+        expect(onMigrate).not.toHaveBeenCalled();
     });
 
-    it('round-trips subscriptions through put and get', async () => {
-        const store = await makeStore();
-
-        await store.putSubscriptions(NEW_FEED, [coreSubscription()]);
-
-        // whenCreated is not persisted; it is re-derived from whenExpires.
-        expect(await store.getSubscriptions(NEW_FEED)).toEqual([
-            {
-                ...coreSubscription(),
-                whenCreated: new Date('2099-01-01T00:00:00.000Z')
-            }
-        ]);
-    });
-
-    it('coalesces a burst of puts into a single scheduled flush', async () => {
-        const store = await makeStore({ debounceMs: 1000 });
-
-        for (let i = 0; i < 5; i += 1) {
-            await store.putResource(`${NEW_FEED}/${i}`, coreResource());
-        }
-        // Each put re-arms one timer rather than queuing five.
-        expect(vi.getTimerCount()).toBe(1);
-
-        await vi.advanceTimersByTimeAsync(1000);
-        await store.flush();
-
-        // The single flush captured every feed from the burst.
-        expect(Object.keys((await readDisk()) as object)).toHaveLength(5);
-    });
-
-    it('flushes by maxWaitMs even when churn keeps re-arming the debounce', async () => {
-        const store = await makeStore({ debounceMs: 1000, maxWaitMs: 3000 });
-
-        await store.putResource(NEW_FEED, coreResource());
-
-        // Churn every 900ms so the 1000ms debounce never settles on its own.
-        for (let t = 900; t <= 2700; t += 900) {
-            await vi.advanceTimersByTimeAsync(900);
-            expect(await fileExists()).toBe(false);
-            await store.putResource(`${NEW_FEED}/${t}`, coreResource());
-        }
-
-        // At t=3000 the maxWait ceiling forces a flush a debounce-only
-        // scheduler would have pushed out to t=3700.
-        await vi.advanceTimersByTimeAsync(300);
-        await store.flush();
-        expect(await fileExists()).toBe(true);
-    });
-
-    it('does not write until the debounce interval elapses', async () => {
-        const store = await makeStore({ debounceMs: 1000 });
-
-        await store.putResource(NEW_FEED, coreResource());
-
-        await vi.advanceTimersByTimeAsync(999);
-        expect(await fileExists()).toBe(false);
-
-        await vi.advanceTimersByTimeAsync(1);
-        // The debounce timer has fired; join its write to settle it.
-        await store.flush();
-        expect(await fileExists()).toBe(true);
-        expect(Object.keys((await readDisk()) as object)).toEqual([NEW_FEED]);
-    });
-
-    it('keeps resource and subscriptions together for one feed', async () => {
-        const store = await makeStore();
-
-        await store.putResource(NEW_FEED, coreResource());
-        await store.putSubscriptions(NEW_FEED, [coreSubscription()]);
-        await store.flush();
-
-        const onDisk = (await readDisk()) as Record<
-            string,
-            { resource: unknown; subscribers: unknown[] }
-        >;
-        expect(onDisk[NEW_FEED]?.resource).not.toEqual({});
-        expect(onDisk[NEW_FEED]?.subscribers).toHaveLength(1);
-    });
-
-    it('reads sparse, hand-written entries with core defaults', async () => {
+    it('reads sparse, hand-written legacy entries with core defaults', async () => {
         const SPARSE_FEED = 'https://sparse.example/feed';
         const NOSUB_FEED = 'https://nosub.example/feed';
         await writeFile(
@@ -421,14 +442,87 @@ describe('createFileStore', () => {
         expect(await store.getSubscriptions(NOSUB_FEED)).toEqual([]);
         const nosub = (await store.list()).find(e => e.feedUrl === NOSUB_FEED);
         expect(nosub?.subscriptions).toEqual([]);
+        expect(nosub?.resource).not.toBeNull();
     });
 
-    it('starts empty when the file is corrupt', async () => {
-        await writeFile(filePath, 'not json at all');
+    it('treats a legacy entry with an empty resource as subscriptions-only', async () => {
+        await writeFile(
+            filePath,
+            JSON.stringify({
+                [SUBS_ONLY_FEED]: {
+                    resource: {},
+                    subscribers: []
+                }
+            })
+        );
 
         const store = await makeStore();
 
-        expect(await store.list()).toEqual([]);
+        expect(await store.getResource(SUBS_ONLY_FEED)).toBeNull();
+    });
+});
+
+describe('createFileStore — flush scheduling', () => {
+    it('round-trips subscriptions through put and get in-memory', async () => {
+        const store = await makeStore();
+
+        await store.putSubscriptions(NEW_FEED, [coreSubscription()]);
+
+        expect(await store.getSubscriptions(NEW_FEED)).toEqual([
+            coreSubscription()
+        ]);
+    });
+
+    it('coalesces a burst of puts into a single scheduled flush', async () => {
+        const store = await makeStore({ debounceMs: 1000 });
+
+        for (let i = 0; i < 5; i += 1) {
+            await store.putResource(`${NEW_FEED}/${i}`, coreResource());
+        }
+        // Each put re-arms one timer rather than queuing five.
+        expect(vi.getTimerCount()).toBe(1);
+
+        await vi.advanceTimersByTimeAsync(1000);
+        await store.flush();
+
+        // The single flush captured every feed from the burst.
+        const onDisk = (await readV2()) as { feeds: object };
+        expect(Object.keys(onDisk.feeds)).toHaveLength(5);
+    });
+
+    it('flushes by maxWaitMs even when churn keeps re-arming the debounce', async () => {
+        const store = await makeStore({ debounceMs: 1000, maxWaitMs: 3000 });
+
+        await store.putResource(NEW_FEED, coreResource());
+
+        // Churn every 900ms so the 1000ms debounce never settles on its own.
+        for (let t = 900; t <= 2700; t += 900) {
+            await vi.advanceTimersByTimeAsync(900);
+            expect(await v2Exists()).toBe(false);
+            await store.putResource(`${NEW_FEED}/${t}`, coreResource());
+        }
+
+        // At t=3000 the maxWait ceiling forces a flush a debounce-only
+        // scheduler would have pushed out to t=3700.
+        await vi.advanceTimersByTimeAsync(300);
+        await store.flush();
+        expect(await v2Exists()).toBe(true);
+    });
+
+    it('does not write until the debounce interval elapses', async () => {
+        const store = await makeStore({ debounceMs: 1000 });
+
+        await store.putResource(NEW_FEED, coreResource());
+
+        await vi.advanceTimersByTimeAsync(999);
+        expect(await v2Exists()).toBe(false);
+
+        await vi.advanceTimersByTimeAsync(1);
+        // The debounce timer has fired; join its write to settle it.
+        await store.flush();
+        expect(await v2Exists()).toBe(true);
+        const onDisk = (await readV2()) as { feeds: object };
+        expect(Object.keys(onDisk.feeds)).toEqual([NEW_FEED]);
     });
 
     it('keeps data in memory when a write fails, without throwing', async () => {
@@ -450,7 +544,7 @@ describe('createFileStore', () => {
 
         await store.flush();
 
-        expect(await fileExists()).toBe(false);
+        expect(await v2Exists()).toBe(false);
     });
 
     it('close performs a final flush and stops the timer', async () => {
@@ -461,7 +555,7 @@ describe('createFileStore', () => {
 
         await store.close();
 
-        expect(await fileExists()).toBe(true);
+        expect(await v2Exists()).toBe(true);
         expect(vi.getTimerCount()).toBe(0);
     });
 });
