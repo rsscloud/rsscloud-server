@@ -22,10 +22,10 @@ async function fetchSubscriptions(resourceUrl) {
     return subscriptions;
 }
 
-async function setSubscriptions(resourceUrl, pleaseNotify) {
+async function setSubscriptions(resourceUrl, subscriptions) {
     await postJson('/test/setSubscriptions', {
         feedUrl: resourceUrl,
-        pleaseNotify
+        subscriptions
     });
 }
 
@@ -63,28 +63,28 @@ module.exports = {
             apiurl,
             protocol
         );
-        await setSubscriptions(resourceUrl, subscriptions.pleaseNotify);
+        await setSubscriptions(resourceUrl, subscriptions);
 
-        const index = subscriptions.pleaseNotify.findIndex(subscription => {
+        const index = subscriptions.findIndex(subscription => {
             return subscription.url === apiurl;
         });
 
         if (-1 !== index) {
-            return subscriptions.pleaseNotify[index];
+            return subscriptions[index];
         }
 
         throw Error(`Cannot find ${apiurl} subscription`);
     },
     updateSubscription: async function(resourceUrl, subscription) {
         const subscriptions = await fetchSubscriptions(resourceUrl),
-            index = subscriptions.pleaseNotify.findIndex(match => {
+            index = subscriptions.findIndex(match => {
                 return subscription.url === match.url;
             });
 
         if (-1 !== index) {
-            subscriptions.pleaseNotify[index] = subscription;
-            await setSubscriptions(resourceUrl, subscriptions.pleaseNotify);
-            return subscriptions.pleaseNotify[index];
+            subscriptions[index] = subscription;
+            await setSubscriptions(resourceUrl, subscriptions);
+            return subscriptions[index];
         }
 
         throw Error(`Cannot find ${subscription.url} subscription`);

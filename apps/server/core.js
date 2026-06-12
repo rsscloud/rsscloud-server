@@ -32,7 +32,13 @@ const plugins = [
 // `core.store` is the ready store the read-side controllers use; `core.close()`
 // flushes + closes it for the graceful-shutdown hooks in app.js.
 const core = createRssCloudCore({
-    store: createFileStore({ filePath: config.dataFilePath }),
+    store: createFileStore({
+        filePath: config.dataFilePath,
+        onMigrate: ({ from, to, feedCount }) =>
+            console.log(
+                `[file-store] migrated ${feedCount} feed(s) from legacy file ${from}; writes now target ${to}`
+            )
+    }),
     plugins,
     config: coreConfig
 });

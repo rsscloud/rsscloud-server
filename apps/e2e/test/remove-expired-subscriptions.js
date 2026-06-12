@@ -162,10 +162,10 @@ describe('RemoveExpiredSubscriptions', function() {
         const resDoc = await storeApi.findResource(resourceUrl);
         expect(resDoc).to.not.be.null;
 
-        // JSON store entry should still exist with empty subscribers
+        // JSON store entry should still exist with empty subscriptions
         const storeData = await storeApi.getData();
         expect(storeData).to.have.property(resourceUrl);
-        expect(storeData[resourceUrl].subscribers).to.deep.equal([]);
+        expect(storeData[resourceUrl].subscriptions).to.deep.equal([]);
     });
 
     it('should remove empty-subscribers entry when whenLastUpdate is beyond retention window', async function() {
@@ -233,19 +233,19 @@ describe('RemoveExpiredSubscriptions', function() {
 
         await storeApi.removeExpired();
 
-        // Subscription document should still exist with empty pleaseNotify
+        // Subscription document should still exist with empty subscriptions
         const subDoc = await storeApi.findSubscription(resourceUrl);
         expect(subDoc).to.not.be.null;
-        expect(subDoc.pleaseNotify).to.deep.equal([]);
+        expect(subDoc).to.deep.equal([]);
 
         // Resource document should still exist
         const resDoc = await storeApi.findResource(resourceUrl);
         expect(resDoc).to.not.be.null;
 
-        // JSON store entry should still exist with empty subscribers
+        // JSON store entry should still exist with empty subscriptions
         const storeData = await storeApi.getData();
         expect(storeData).to.have.property(resourceUrl);
-        expect(storeData[resourceUrl].subscribers).to.deep.equal([]);
+        expect(storeData[resourceUrl].subscriptions).to.deep.equal([]);
     });
 
     it('should not remove resource when valid subscriptions remain', async function() {
@@ -290,8 +290,8 @@ describe('RemoveExpiredSubscriptions', function() {
         // Subscription document should still exist with valid subscription
         const subDoc = await storeApi.findSubscription(resourceUrl);
         expect(subDoc).to.not.be.null;
-        expect(subDoc.pleaseNotify).to.have.lengthOf(1);
-        expect(subDoc.pleaseNotify[0].url).to.equal(apiurl2);
+        expect(subDoc).to.have.lengthOf(1);
+        expect(subDoc[0].url).to.equal(apiurl2);
 
         // Resource document should still exist
         const resDoc = await storeApi.findResource(resourceUrl);

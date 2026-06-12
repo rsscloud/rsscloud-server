@@ -3,7 +3,7 @@ const express = require('express'),
     md = require('markdown-it')(),
     { createFeedsOpml } = require('../services/feeds-opml'),
     { createStats } = require('../services/stats'),
-    { toLegacyData } = require('../services/legacy-store-shape'),
+    { toFeedsJson } = require('../services/feeds-json'),
     { ping, pleaseNotify, rpc2 } = require('@rsscloud/express'),
     { core, store } = require('../core'),
     { generateOpml } = createFeedsOpml({ core }),
@@ -49,8 +49,9 @@ router.get('/stats.json', (req, res) => {
 
 router.get('/subscriptions.json', async(req, res, next) => {
     try {
+        const feeds = toFeedsJson(await store.list());
         res.set('Content-Type', 'application/json');
-        res.send(JSON.stringify(toLegacyData(await store.list()), null, 2));
+        res.send(JSON.stringify({ version: 2, feeds }, null, 2));
     } catch (err) {
         next(err);
     }
