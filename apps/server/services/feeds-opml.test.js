@@ -1,55 +1,66 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const xml2js = require('xml2js');
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
-
-// generateOpml reads the core store; point DATA_FILE_PATH at a throwaway temp
-// file (config snapshots env at require time) so the file store stays isolated
-// once it backs core.
-const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rsscloud-opml-'));
-process.env.DATA_FILE_PATH = path.join(tmpDir, 'subscriptions.json');
-
+const {
+    createRssCloudCore,
+    createInMemoryStore,
+    resolveConfig
+} = require('@rsscloud/core');
 const config = require('../config');
-const { store } = require('../core');
-const { toCoreResource, toCoreSubscription } = require('./legacy-store-shape');
-const { generateOpml } = require('./feeds-opml');
+const { createFeedsOpml } = require('./feeds-opml');
+
+// A fresh in-memory-backed core + the service under it, isolated per test.
+function setup() {
+    const core = createRssCloudCore({
+        store: createInMemoryStore(),
+        plugins: [],
+        config: resolveConfig({})
+    });
+    return { core, ...createFeedsOpml({ core }) };
+}
+
+function makeResource(feedUrl, feed) {
+    const resource = {
+        url: feedUrl,
+        lastHash: '',
+        lastSize: 0,
+        ctChecks: 0,
+        whenLastCheck: new Date(0),
+        ctUpdates: 0,
+        whenLastUpdate: new Date(0)
+    };
+    if (feed) resource.feed = feed;
+    return resource;
+}
+
+function makeSubscription(overrides = {}) {
+    return {
+        url: 'http://sub.example.com/notify',
+        protocol: 'http-post',
+        ctUpdates: 0,
+        ctErrors: 0,
+        ctConsecutiveErrors: 0,
+        whenCreated: new Date(),
+        whenLastUpdate: null,
+        whenLastError: null,
+        whenExpires: new Date(Date.now() + 86400000),
+        ...overrides
+    };
+}
 
 async function parseOpml(xml) {
     return new xml2js.Parser().parseStringPromise(xml);
 }
 
-async function seedResource(feedUrl, resource) {
-    const core = toCoreResource(feedUrl, resource);
-    if (core === null) {
-        // No real resource fields: a subscriptions-only (never-pinged) entry.
-        await store.putSubscriptions(feedUrl, []);
-    } else {
-        await store.putResource(feedUrl, core);
-    }
-}
-
-async function seedSubscriptions(feedUrl, subscriptions) {
-    await store.putSubscriptions(feedUrl, subscriptions.map(toCoreSubscription));
-}
-
-async function clearStore() {
-    for (const { feedUrl } of await store.list()) {
-        await store.remove(feedUrl);
-    }
-}
-
-test.beforeEach(clearStore);
-
 test('generateOpml renders a feed with full metadata as an outline', async() => {
-    await seedResource('https://a.example.com/feed.xml', {
-        feedType: 'atom',
-        feedTitle: 'Alpha',
-        feedDescription: 'The Alpha feed',
-        feedHtmlUrl: 'https://a.example.com/',
-        feedLanguage: 'en-us'
-    });
+    const { core, generateOpml } = setup();
+    await core.store.putResource('https://a.example.com/feed.xml', makeResource('https://a.example.com/feed.xml', {
+        type: 'atom',
+        title: 'Alpha',
+        description: 'The Alpha feed',
+        htmlUrl: 'https://a.example.com/',
+        language: 'en-us'
+    }));
 
     const result = await parseOpml(await generateOpml());
 
@@ -75,15 +86,12 @@ test('generateOpml renders a feed with full metadata as an outline', async() => 
 });
 
 test('generateOpml sorts case-insensitively and falls back to the feed URL', async() => {
+    const { core, generateOpml } = setup();
     // Untitled feed: text falls back to the URL, type defaults to rss, and no
     // title/description/htmlUrl/language attributes are emitted.
-    await seedResource('https://apple.example.com/feed.xml', {});
-    await seedResource('https://b.example.com/feed.xml', {
-        feedTitle: 'banana'
-    });
-    await seedResource('https://z.example.com/feed.xml', {
-        feedTitle: 'Cherry'
-    });
+    await core.store.putResource('https://apple.example.com/feed.xml', makeResource('https://apple.example.com/feed.xml'));
+    await core.store.putResource('https://b.example.com/feed.xml', makeResource('https://b.example.com/feed.xml', { title: 'banana' }));
+    await core.store.putResource('https://z.example.com/feed.xml', makeResource('https://z.example.com/feed.xml', { title: 'Cherry' }));
 
     const result = await parseOpml(await generateOpml());
     const outlines = result.opml.body[0].outline;
@@ -100,13 +108,8 @@ test('generateOpml sorts case-insensitively and falls back to the feed URL', asy
 });
 
 test('generateOpml lists a subscribed feed that was never pinged', async() => {
-    await seedSubscriptions('https://new.example.com/feed.xml', [
-        {
-            url: 'http://sub.example.com/notify',
-            protocol: 'http-post',
-            whenExpires: new Date(Date.now() + 86400000).toISOString()
-        }
-    ]);
+    const { core, generateOpml } = setup();
+    await core.store.putSubscriptions('https://new.example.com/feed.xml', [makeSubscription()]);
 
     const result = await parseOpml(await generateOpml());
     const outlines = result.opml.body[0].outline;

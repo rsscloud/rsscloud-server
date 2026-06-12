@@ -1,5 +1,7 @@
 const express = require('express'),
-    { getStats } = require('../services/stats'),
+    { createStats } = require('../services/stats'),
+    { core } = require('../core'),
+    { getStats } = createStats({ core }),
     router = new express.Router();
 
 router.get('/', function(req, res) {

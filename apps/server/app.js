@@ -5,12 +5,15 @@ const config = require('./config'),
     express = require('express'),
     exphbs = require('express-handlebars'),
     getDayjs = require('./services/dayjs-wrapper'),
-    stats = require('./services/stats'),
+    { createStats } = require('./services/stats'),
     morgan = require('morgan'),
-    removeExpiredSubscriptions = require('./services/remove-expired-subscriptions'),
+    createRemoveExpiredSubscriptions = require('./services/remove-expired-subscriptions'),
     websocket = require('./services/websocket'),
     { core, events: coreEvents } = require('./core'),
     bridgeCoreEvents = require('./services/core-event-bridge');
+
+const stats = createStats({ core });
+const removeExpiredSubscriptions = createRemoveExpiredSubscriptions({ core });
 
 let app, hbs, server, dayjs;
 

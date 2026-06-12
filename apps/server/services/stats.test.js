@@ -3,98 +3,118 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const {
+    createRssCloudCore,
+    createInMemoryStore,
+    resolveConfig
+} = require('@rsscloud/core');
 
-// stats.js reads config.statsFilePath and core reads DATA_FILE_PATH; config
-// snapshots process.env at require time, so point both at throwaway temp files
-// before requiring anything.
+// generateStats/getStats persist to config.statsFilePath (a host concern, not
+// the core store), so still point STATS_FILE_PATH at a throwaway temp file —
+// config snapshots env at require time. The store, by contrast, is now an
+// injected in-memory core, so no DATA_FILE_PATH dance is needed.
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rsscloud-stats-'));
 process.env.STATS_FILE_PATH = path.join(tmpDir, 'stats.json');
-process.env.DATA_FILE_PATH = path.join(tmpDir, 'subscriptions.json');
 
 const config = require('../config');
-const { store } = require('../core');
-const { toCoreResource, toCoreSubscription } = require('./legacy-store-shape');
-const stats = require('./stats');
+const { createStats } = require('./stats');
 
-async function seedResource(feedUrl, resource) {
-    await store.putResource(feedUrl, toCoreResource(feedUrl, resource));
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// A fresh in-memory-backed core + the service under it, isolated per test.
+function setup() {
+    const core = createRssCloudCore({
+        store: createInMemoryStore(),
+        plugins: [],
+        config: resolveConfig({})
+    });
+    return { core, ...createStats({ core }) };
 }
 
-async function seedSubscriptions(feedUrl, subscriptions) {
-    await store.putSubscriptions(feedUrl, subscriptions.map(toCoreSubscription));
+function makeResource(feedUrl, { title, whenLastUpdate = new Date(0) } = {}) {
+    const resource = {
+        url: feedUrl,
+        lastHash: '',
+        lastSize: 0,
+        ctChecks: 0,
+        whenLastCheck: new Date(0),
+        ctUpdates: 0,
+        whenLastUpdate
+    };
+    if (title) resource.feed = { title };
+    return resource;
 }
 
-async function clearStore() {
-    for (const { feedUrl } of await store.list()) {
-        await store.remove(feedUrl);
-    }
+function makeSubscription(overrides = {}) {
+    return {
+        url: 'http://sub.example.com/notify',
+        protocol: 'http-post',
+        ctUpdates: 0,
+        ctErrors: 0,
+        ctConsecutiveErrors: 0,
+        whenCreated: new Date(),
+        whenLastUpdate: null,
+        whenLastError: null,
+        whenExpires: new Date(Date.now() + DAY_MS),
+        ...overrides
+    };
 }
 
-test.beforeEach(async() => {
-    await clearStore();
+const EMPTY_STATS = {
+    generatedAt: null,
+    feedsChangedLast7Days: 0,
+    feedsWithSubscribers: 0,
+    uniqueAggregators: 0,
+    totalActiveSubscriptions: 0,
+    topFeeds: [],
+    moreFeeds: [],
+    protocolBreakdown: { 'http-post': 0, 'https-post': 0, 'xml-rpc': 0 }
+};
+
+test.beforeEach(() => {
     fs.rmSync(config.statsFilePath, { force: true });
 });
 
 test('getStats returns the default shape when no stats file exists', () => {
-    assert.deepEqual(stats.getStats(), {
-        generatedAt: null,
-        feedsChangedLast7Days: 0,
-        feedsWithSubscribers: 0,
-        uniqueAggregators: 0,
-        totalActiveSubscriptions: 0,
-        topFeeds: [],
-        moreFeeds: [],
-        protocolBreakdown: { 'http-post': 0, 'https-post': 0, 'xml-rpc': 0 }
-    });
+    const { getStats } = setup();
+    assert.deepEqual(getStats(), EMPTY_STATS);
 });
 
 test('generateStats persists an empty snapshot getStats reads back', async() => {
-    const generated = await stats.generateStats();
+    const { generateStats, getStats } = setup();
+    const generated = await generateStats();
 
     assert.equal(typeof generated.generatedAt, 'string');
     assert.ok(!Number.isNaN(Date.parse(generated.generatedAt)));
-    assert.deepEqual(
-        { ...generated, generatedAt: null },
-        {
-            generatedAt: null,
-            feedsChangedLast7Days: 0,
-            feedsWithSubscribers: 0,
-            uniqueAggregators: 0,
-            totalActiveSubscriptions: 0,
-            topFeeds: [],
-            moreFeeds: [],
-            protocolBreakdown: { 'http-post': 0, 'https-post': 0, 'xml-rpc': 0 }
-        }
-    );
-    assert.deepEqual(stats.getStats(), generated);
+    assert.deepEqual({ ...generated, generatedAt: null }, EMPTY_STATS);
+    assert.deepEqual(getStats(), generated);
 });
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 test('generateStats aggregates active subscriptions into the legacy shape', async() => {
-    const recent = new Date(Date.now() - DAY_MS).toISOString();
-    const future = new Date(Date.now() + DAY_MS).toISOString();
-    const past = new Date(Date.now() - DAY_MS).toISOString();
+    const { core, generateStats } = setup();
+    const recent = new Date(Date.now() - DAY_MS);
+    const future = new Date(Date.now() + DAY_MS);
+    const past = new Date(Date.now() - DAY_MS);
 
-    await seedResource('https://a.example.com/feed.xml', {
-        feedTitle: 'Alpha',
+    await core.store.putResource('https://a.example.com/feed.xml', makeResource('https://a.example.com/feed.xml', {
+        title: 'Alpha',
         whenLastUpdate: recent
-    });
-    await seedSubscriptions('https://a.example.com/feed.xml', [
-        { url: 'http://sub1.example.com/notify', protocol: 'http-post', whenExpires: future },
-        { url: 'http://sub2.example.com/notify', protocol: 'http-post', whenExpires: future },
-        { url: 'http://gone.example.com/notify', protocol: 'http-post', whenExpires: past }
+    }));
+    await core.store.putSubscriptions('https://a.example.com/feed.xml', [
+        makeSubscription({ url: 'http://sub1.example.com/notify', whenExpires: future }),
+        makeSubscription({ url: 'http://sub2.example.com/notify', whenExpires: future }),
+        makeSubscription({ url: 'http://gone.example.com/notify', whenExpires: past })
     ]);
 
-    await seedResource('https://b.example.com/feed.xml', {
-        feedTitle: 'Bravo',
+    await core.store.putResource('https://b.example.com/feed.xml', makeResource('https://b.example.com/feed.xml', {
+        title: 'Bravo',
         whenLastUpdate: recent
-    });
-    await seedSubscriptions('https://b.example.com/feed.xml', [
-        { url: 'http://sub1.example.com/notify', protocol: 'http-post', whenExpires: future }
+    }));
+    await core.store.putSubscriptions('https://b.example.com/feed.xml', [
+        makeSubscription({ url: 'http://sub1.example.com/notify', whenExpires: future })
     ]);
 
-    const generated = await stats.generateStats();
+    const generated = await generateStats();
 
     assert.equal(generated.feedsChangedLast7Days, 2);
     assert.equal(generated.feedsWithSubscribers, 2);
@@ -111,13 +131,13 @@ test('generateStats aggregates active subscriptions into the legacy shape', asyn
         {
             url: 'https://a.example.com/feed.xml',
             subscriberCount: 2,
-            whenLastUpdate: new Date(recent).toISOString(),
+            whenLastUpdate: recent.toISOString(),
             feedTitle: 'Alpha'
         },
         {
             url: 'https://b.example.com/feed.xml',
             subscriberCount: 1,
-            whenLastUpdate: new Date(recent).toISOString(),
+            whenLastUpdate: recent.toISOString(),
             feedTitle: 'Bravo'
         }
     ]);
@@ -125,17 +145,18 @@ test('generateStats aggregates active subscriptions into the legacy shape', asyn
 });
 
 test('generateStats omits feeds whose subscriptions have all expired', async() => {
-    const past = new Date(Date.now() - DAY_MS).toISOString();
+    const { core, generateStats } = setup();
+    const past = new Date(Date.now() - DAY_MS);
 
-    await seedResource('https://stale.example.com/feed.xml', {
-        feedTitle: 'Stale',
-        whenLastUpdate: new Date(Date.now() - DAY_MS).toISOString()
-    });
-    await seedSubscriptions('https://stale.example.com/feed.xml', [
-        { url: 'http://gone.example.com/notify', protocol: 'http-post', whenExpires: past }
+    await core.store.putResource('https://stale.example.com/feed.xml', makeResource('https://stale.example.com/feed.xml', {
+        title: 'Stale',
+        whenLastUpdate: new Date(Date.now() - DAY_MS)
+    }));
+    await core.store.putSubscriptions('https://stale.example.com/feed.xml', [
+        makeSubscription({ url: 'http://gone.example.com/notify', whenExpires: past })
     ]);
 
-    const generated = await stats.generateStats();
+    const generated = await generateStats();
 
     assert.equal(generated.feedsWithSubscribers, 0);
     assert.equal(generated.totalActiveSubscriptions, 0);

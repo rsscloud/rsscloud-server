@@ -1,5 +1,5 @@
 const express = require('express'),
-    { store } = require('../core'),
+    { core, store } = require('../core'),
     {
         toCoreResource,
         toLegacyResource,
@@ -7,8 +7,10 @@ const express = require('express'),
         toLegacySubscription,
         toLegacyData
     } = require('../services/legacy-store-shape'),
-    removeExpiredSubscriptions = require('../services/remove-expired-subscriptions'),
+    createRemoveExpiredSubscriptions = require('../services/remove-expired-subscriptions'),
     router = new express.Router();
+
+const removeExpiredSubscriptions = createRemoveExpiredSubscriptions({ core });
 
 console.warn(
     '[test-api] ENABLE_TEST_API=true — /test/* endpoints are mounted. Never enable in production.'

@@ -1,10 +1,13 @@
 const express = require('express'),
     fs = require('fs'),
     md = require('markdown-it')(),
-    { generateOpml } = require('../services/feeds-opml'),
+    { createFeedsOpml } = require('../services/feeds-opml'),
+    { createStats } = require('../services/stats'),
     { toLegacyData } = require('../services/legacy-store-shape'),
     { ping, pleaseNotify, rpc2 } = require('@rsscloud/express'),
     { core, store } = require('../core'),
+    { generateOpml } = createFeedsOpml({ core }),
+    { getStats } = createStats({ core }),
     router = new express.Router();
 
 // Core-backed protocol front doors (@rsscloud/express driving @rsscloud/core).
@@ -40,7 +43,6 @@ router.use('/viewLog', require('./view-log'));
 router.use('/stats', require('./stats'));
 
 router.get('/stats.json', (req, res) => {
-    const { getStats } = require('../services/stats');
     res.set('Content-Type', 'application/json');
     res.send(JSON.stringify(getStats(), null, 2));
 });
