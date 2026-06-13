@@ -76,6 +76,9 @@ importers:
 
   apps/server:
     dependencies:
+      '@rsscloud/client':
+        specifier: workspace:*
+        version: link:../../packages/client
       '@rsscloud/core':
         specifier: workspace:*
         version: link:../../packages/core
