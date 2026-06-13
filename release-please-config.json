@@ -24,6 +24,12 @@
             "component": "express",
             "changelog-path": "CHANGELOG.md",
             "package-name": "@rsscloud/express"
+        },
+        "packages/client": {
+            "release-type": "node",
+            "component": "client",
+            "changelog-path": "CHANGELOG.md",
+            "package-name": "@rsscloud/client"
         }
     }
 }

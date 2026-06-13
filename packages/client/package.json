@@ -1,0 +1,74 @@
+{
+    "name": "@rsscloud/client",
+    "version": "0.0.0",
+    "description": "The subscriber + publisher end of the rssCloud protocol — pleaseNotify, ping, notification handling, and <cloud> feed emission",
+    "license": "MIT",
+    "author": "Andrew Shell <andrew@andrewshell.org>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/rsscloud/rsscloud-server.git",
+        "directory": "packages/client"
+    },
+    "homepage": "https://github.com/rsscloud/rsscloud-server/tree/main/packages/client#readme",
+    "bugs": {
+        "url": "https://github.com/rsscloud/rsscloud-server/issues"
+    },
+    "type": "module",
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": {
+                "types": "./dist/index.d.ts",
+                "default": "./dist/index.js"
+            },
+            "require": {
+                "types": "./dist/index.d.cts",
+                "default": "./dist/index.cjs"
+            }
+        },
+        "./package.json": "./package.json"
+    },
+    "files": [
+        "dist",
+        "README.md",
+        "LICENSE.md",
+        "CHANGELOG.md"
+    ],
+    "publishConfig": {
+        "access": "public"
+    },
+    "engines": {
+        "node": ">=22"
+    },
+    "sideEffects": false,
+    "dependencies": {
+        "@rsscloud/xml-rpc": "workspace:*",
+        "xml2js": "^0.6.2"
+    },
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "clean": "rm -rf dist coverage",
+        "lint": "eslint src",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "coverage": "vitest run --coverage",
+        "check": "pnpm run typecheck && pnpm run lint && pnpm run test",
+        "prepack": "pnpm run build",
+        "prepublishOnly": "pnpm run build"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.18.0",
+        "@types/node": "^22.10.0",
+        "@types/xml2js": "^0.4.14",
+        "@vitest/coverage-v8": "^3.2.4",
+        "eslint": "^9.18.0",
+        "tsup": "^8.3.5",
+        "typescript": "^5.7.2",
+        "typescript-eslint": "^8.20.0",
+        "vitest": "^3.2.4"
+    }
+}
