@@ -5,6 +5,7 @@ import type {
     VerifyContext
 } from '../engine/plugin.js';
 import type { Protocol } from '../engine/protocol.js';
+import { fetchWithTimeout } from '../fetch-with-timeout.js';
 import { buildNotifyCall } from './xml-rpc-codec.js';
 
 /** Construction-time dependencies for the rssCloud XML-RPC protocol plugin. */
@@ -33,28 +34,13 @@ export function createXmlRpcProtocolPlugin(
     const requestTimeoutMs =
         options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
 
-    /** Fetch with the configured timeout enforced via an abort signal. */
-    async function fetchWithTimeout(
-        url: string,
-        init: RequestInit
-    ): Promise<Response> {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
-
-        try {
-            return await doFetch(url, { ...init, signal: controller.signal });
-        } finally {
-            clearTimeout(timeout);
-        }
-    }
-
     /** POST the notify methodCall; throws on timeout or non-2xx. */
     async function sendNotify(
         targetUrl: string,
         procedure: string,
         resourceUrl: string
     ): Promise<void> {
-        const res = await fetchWithTimeout(targetUrl, {
+        const res = await fetchWithTimeout(doFetch, requestTimeoutMs, targetUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'text/xml' },
             body: buildNotifyCall(procedure, resourceUrl)

@@ -10,6 +10,7 @@ import type {
 } from './dto.js';
 import { RssCloudError } from '../errors.js';
 import { createEventBus } from '../events.js';
+import { fetchWithTimeout } from '../fetch-with-timeout.js';
 import { createDefaultFeedParser } from '../feed/feed-parser.js';
 import {
     generateStats as runGenerateStats,
@@ -84,22 +85,6 @@ export function createRssCloudCore(
         return new Date(base.getTime() + config.ctSecsResourceExpire * 1000);
     }
 
-    async function fetchWithTimeout(
-        url: string,
-        init: RequestInit
-    ): Promise<Response> {
-        const controller = new AbortController();
-        const timeout = setTimeout(
-            () => controller.abort(),
-            config.requestTimeoutMs
-        );
-        try {
-            return await doFetch(url, { ...init, signal: controller.signal });
-        } finally {
-            clearTimeout(timeout);
-        }
-    }
-
     function newResource(url: string): Resource {
         return {
             url,
@@ -141,7 +126,12 @@ export function createRssCloudCore(
         let ok = false;
 
         try {
-            const res = await fetchWithTimeout(resourceUrl, { method: 'GET' });
+            const res = await fetchWithTimeout(
+                doFetch,
+                config.requestTimeoutMs,
+                resourceUrl,
+                { method: 'GET' }
+            );
             ok = res.ok;
             if (ok) {
                 body = await res.text();
