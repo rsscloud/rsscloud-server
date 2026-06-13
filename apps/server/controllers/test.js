@@ -5,8 +5,7 @@ const express = require('express'),
         subscriptionToJson,
         subscriptionFromJson
     } = require('@rsscloud/core'),
-    { toFeedsJson } = require('../services/feeds-json'),
-    createRemoveExpiredSubscriptions = require('../services/remove-expired-subscriptions');
+    { toFeedsJson } = require('../services/feeds-json');
 
 const EPOCH_ISO = new Date(0).toISOString();
 
@@ -32,9 +31,6 @@ function resourceFromInput(feedUrl, raw) {
 // seedResource/seedSubscriptions/clearFeeds.
 function createTestController({ core }) {
     const router = new express.Router();
-    const removeExpiredSubscriptions = createRemoveExpiredSubscriptions({
-        core
-    });
 
     console.warn(
         '[test-api] ENABLE_TEST_API=true — /test/* endpoints are mounted. Never enable in production.'
@@ -127,7 +123,7 @@ function createTestController({ core }) {
 
     router.post('/removeExpired', async(req, res) => {
         try {
-            const result = await removeExpiredSubscriptions();
+            const result = await core.removeExpired();
             res.json({ success: true, result });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
