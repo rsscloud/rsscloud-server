@@ -6,7 +6,7 @@ import type {
 } from '../engine/plugin.js';
 import type { Protocol } from '../engine/protocol.js';
 import { fetchWithTimeout } from '../fetch-with-timeout.js';
-import { buildNotifyCall } from './xml-rpc-codec.js';
+import { Builder } from 'xml2js';
 
 /** Construction-time dependencies for the rssCloud XML-RPC protocol plugin. */
 export interface XmlRpcProtocolPluginOptions {
@@ -20,6 +20,20 @@ const XML_RPC_PROTOCOLS: Protocol[] = ['xml-rpc'];
 
 /** Fallback request timeout when none is supplied (mirrors the server default). */
 const DEFAULT_REQUEST_TIMEOUT_MS = 4000;
+
+/**
+ * Build the rssCloud notify `methodCall`: the resource URL as a single untyped
+ * (bare-string) param — the historical rssCloud notify shape. Kept here rather
+ * than in the generic @rsscloud/xml-rpc builder, which only emits typed values.
+ */
+function buildNotifyCall(procedure: string, url: string): string {
+    return new Builder().buildObject({
+        methodCall: {
+            methodName: procedure,
+            params: { param: { value: url } }
+        }
+    });
+}
 
 /**
  * The rssCloud XML-RPC delivery protocol. Subscribers are notified with a

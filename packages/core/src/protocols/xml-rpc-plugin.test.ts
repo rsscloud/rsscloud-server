@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DeliveryContext, VerifyContext } from '../engine/plugin.js';
 import type { Resource } from '../engine/resource.js';
 import type { Subscription } from '../engine/subscription.js';
-import { parseMethodCall } from './xml-rpc-codec.js';
+import { parseMethodCall } from '@rsscloud/xml-rpc';
 import { createXmlRpcProtocolPlugin } from './xml-rpc-plugin.js';
 
 const epoch = new Date(0);
