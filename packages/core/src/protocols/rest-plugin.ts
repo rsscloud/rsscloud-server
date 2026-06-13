@@ -5,6 +5,7 @@ import type {
     VerifyContext
 } from '../engine/plugin.js';
 import type { Protocol } from '../engine/protocol.js';
+import { fetchWithTimeout } from '../fetch-with-timeout.js';
 
 /** Construction-time dependencies for the rssCloud REST protocol plugin. */
 export interface RestProtocolPluginOptions {
@@ -49,30 +50,12 @@ export function createRestProtocolPlugin(
         return body;
     }
 
-    /** Fetch with the configured timeout enforced via an abort signal. */
-    async function fetchWithTimeout(
-        url: string,
-        init: RequestInit
-    ): Promise<Response> {
-        const controller = new AbortController();
-        const timeout = setTimeout(
-            () => controller.abort(),
-            requestTimeoutMs
-        );
-
-        try {
-            return await doFetch(url, { ...init, signal: controller.signal });
-        } finally {
-            clearTimeout(timeout);
-        }
-    }
-
     /** POST the notification, following redirects; throws on timeout or non-2xx. */
     async function sendNotify(
         targetUrl: string,
         body: URLSearchParams
     ): Promise<void> {
-        const res = await fetchWithTimeout(targetUrl, {
+        const res = await fetchWithTimeout(doFetch, requestTimeoutMs, targetUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body,
@@ -112,7 +95,9 @@ export function createRestProtocolPlugin(
         const query = new URLSearchParams({ url: resourceUrl, challenge });
         const testUrl = apiurl + '?' + query.toString();
 
-        const res = await fetchWithTimeout(testUrl, { method: 'GET' });
+        const res = await fetchWithTimeout(doFetch, requestTimeoutMs, testUrl, {
+            method: 'GET'
+        });
         const body = await res.text();
 
         if (!res.ok || body !== challenge) {
