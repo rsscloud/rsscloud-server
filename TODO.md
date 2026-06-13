@@ -37,14 +37,17 @@ trust the names over the numbers.
 >   package root; the engine and both protocol plugins delegate. One home, one
 >   fake-timer test suite (abort-on-timeout + clear-on-settle). Coverage 100%.
 > - **Stopped the stats label lying** — core's `Stats` now carries `windowDays`
->   alongside `feedsChangedLastWindow`; `toLegacyStats` passes both through and
->   `views/stats.handlebars` interpolates the count ("changed in last
+>   alongside `feedsChangedLastWindow`; the stats projection passes both through
+>   and `views/stats.handlebars` interpolates the count ("changed in last
 >   {{windowDays}} days"). Change `feedsChangedWindowDays` and the label follows.
 > - **Collapsed the `remove-expired-subscriptions` pass-through** — the service
 >   was `() => core.removeExpired()` with a 152-line test re-verifying core's
 >   maintenance behaviour. Deleted both; the three call sites (startup +
 >   scheduled cleanup in `app.js`, `/test/removeExpired`) call core directly,
 >   and the behaviour stays owned + tested once in `engine/maintenance.test.ts`.
+> - **Retired the "legacy" framing in `services/stats.js`** — `toLegacyStats`
+>   became a misnomer once the label fix dropped the last legacy field; renamed
+>   to `toStatsView` and cleared the adjacent stale wording.
 
 All three items from the first review (2026-06-12) are done.
 
@@ -54,16 +57,12 @@ A pass over `apps/server` after the cleanups above. Package question answered:
 **nothing new should be pulled into a package beyond the already-planned client**
 (below) — the read-models (`feeds-json`, `feeds-opml`, the stats projection) each
 have a single consumer, so they're hypothetical seams, not real ones; everything
-else is host/composition. Two small optional follow-ons remain:
+else is host/composition. One small optional follow-on remains:
 
 1. **Concentrate the `/test/*` error-envelope.** All seven routes in
    `controllers/test.js` repeat the same `try/catch` → `{ success, error }`
    envelope. A small `wrap(handler)` would make the harness contract one seam.
    (Test-only API; low stakes.)
-2. **Retire the "legacy" framing in `services/stats.js`.** `toLegacyStats` is now
-   a misnomer — the label fix removed the last legacy field. Rename to
-   `toStatsView` and optionally export the pure projection so it's testable
-   without a file write.
 
 ## WebSub hub support (bigger — spans core + express)
 
