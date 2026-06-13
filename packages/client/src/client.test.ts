@@ -88,6 +88,25 @@ describe('createRssCloudClient pleaseNotify', () => {
         expect(body.get('path')).toBe('/notify');
         expect(body.get('protocol')).toBe('http-post');
         expect(body.get('url1')).toBe('https://feed.example/rss');
+        // An explicit domain is sent, so the hub uses it (the diffDomain flow).
+        expect(body.get('domain')).toBe('sub.example');
+    });
+
+    it('omits domain from the REST form when none is given', async () => {
+        const { fn, calls } = fakeFetch();
+        const client = createRssCloudClient({
+            serverUrl: 'http://hub.example:5337',
+            fetch: fn
+        });
+
+        await client.pleaseNotify({
+            protocol: 'http-post',
+            callback: { port: 9000, path: '/notify' },
+            feedUrl: 'https://feed.example/rss'
+        });
+
+        // No domain → the hub falls back to the caller's connection address.
+        expect(form(calls[0]!.init).has('domain')).toBe(false);
     });
 
     it('registers an xml-rpc callback over /RPC2 with the six params', async () => {
@@ -115,6 +134,24 @@ describe('createRssCloudClient pleaseNotify', () => {
             ['https://feed.example/rss'],
             'sub.example'
         ]);
+    });
+
+    it('sends an empty domain param over xml-rpc when none is given', async () => {
+        const { fn, calls } = fakeFetch();
+        const client = createRssCloudClient({
+            serverUrl: 'http://hub.example:5337',
+            fetch: fn
+        });
+
+        await client.pleaseNotify({
+            protocol: 'xml-rpc',
+            callback: { port: 9000, path: '/RPC2' },
+            feedUrl: 'https://feed.example/rss'
+        });
+
+        const call = await parseMethodCall(calls[0]?.init.body as string);
+        // Empty domain → the hub treats it as absent (ADR-0001) and uses the caller.
+        expect(call.params[5]).toBe('');
     });
 });
 
