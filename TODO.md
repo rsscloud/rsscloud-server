@@ -40,10 +40,30 @@ trust the names over the numbers.
 >   alongside `feedsChangedLastWindow`; `toLegacyStats` passes both through and
 >   `views/stats.handlebars` interpolates the count ("changed in last
 >   {{windowDays}} days"). Change `feedsChangedWindowDays` and the label follows.
+> - **Collapsed the `remove-expired-subscriptions` pass-through** — the service
+>   was `() => core.removeExpired()` with a 152-line test re-verifying core's
+>   maintenance behaviour. Deleted both; the three call sites (startup +
+>   scheduled cleanup in `app.js`, `/test/removeExpired`) call core directly,
+>   and the behaviour stays owned + tested once in `engine/maintenance.test.ts`.
 
-All three reviewed cleanup items are done. (The review's sixth item — extracting
-the hand-rolled wire builders out of `apps/server/client.js` — is the "Client app
-+ `@rsscloud/client` package" work below, not a separate task.)
+All three items from the first review (2026-06-12) are done.
+
+### Second review (2026-06-13) — remaining small finds
+
+A pass over `apps/server` after the cleanups above. Package question answered:
+**nothing new should be pulled into a package beyond the already-planned client**
+(below) — the read-models (`feeds-json`, `feeds-opml`, the stats projection) each
+have a single consumer, so they're hypothetical seams, not real ones; everything
+else is host/composition. Two small optional follow-ons remain:
+
+1. **Concentrate the `/test/*` error-envelope.** All seven routes in
+   `controllers/test.js` repeat the same `try/catch` → `{ success, error }`
+   envelope. A small `wrap(handler)` would make the harness contract one seam.
+   (Test-only API; low stakes.)
+2. **Retire the "legacy" framing in `services/stats.js`.** `toLegacyStats` is now
+   a misnomer — the label fix removed the last legacy field. Rename to
+   `toStatsView` and optionally export the pure projection so it's testable
+   without a file write.
 
 ## WebSub hub support (bigger — spans core + express)
 
