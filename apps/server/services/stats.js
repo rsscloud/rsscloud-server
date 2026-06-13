@@ -17,7 +17,8 @@ function getStats() {
     } catch {
         return {
             generatedAt: null,
-            feedsChangedLast7Days: 0,
+            feedsChangedLastWindow: 0,
+            windowDays: config.feedsChangedWindowDays,
             feedsWithSubscribers: 0,
             uniqueAggregators: 0,
             totalActiveSubscriptions: 0,
@@ -28,9 +29,10 @@ function getStats() {
     }
 }
 
-// Map core's Stats onto the legacy wire shape the view + /stats.json expose:
-// rename feedsChangedLastWindow, and report exactly the three known protocols
-// (seeded at 0, dropping any core might include outside that set).
+// Map core's Stats onto the wire shape the view + /stats.json expose: carry the
+// change window (count + its size in days, so the label can't lie) and report
+// exactly the three known protocols (seeded at 0, dropping any core might
+// include outside that set).
 function toLegacyStats(coreStats) {
     const protocolBreakdown = {};
     for (const protocol of KNOWN_PROTOCOLS) {
@@ -39,7 +41,8 @@ function toLegacyStats(coreStats) {
     }
     return {
         generatedAt: coreStats.generatedAt,
-        feedsChangedLast7Days: coreStats.feedsChangedLastWindow,
+        feedsChangedLastWindow: coreStats.feedsChangedLastWindow,
+        windowDays: coreStats.windowDays,
         feedsWithSubscribers: coreStats.feedsWithSubscribers,
         uniqueAggregators: coreStats.uniqueAggregators,
         totalActiveSubscriptions: coreStats.totalActiveSubscriptions,

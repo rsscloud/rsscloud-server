@@ -62,7 +62,8 @@ function makeSubscription(overrides = {}) {
 
 const EMPTY_STATS = {
     generatedAt: null,
-    feedsChangedLast7Days: 0,
+    feedsChangedLastWindow: 0,
+    windowDays: 7,
     feedsWithSubscribers: 0,
     uniqueAggregators: 0,
     totalActiveSubscriptions: 0,
@@ -88,6 +89,19 @@ test('generateStats persists an empty snapshot getStats reads back', async() => 
     assert.ok(!Number.isNaN(Date.parse(generated.generatedAt)));
     assert.deepEqual({ ...generated, generatedAt: null }, EMPTY_STATS);
     assert.deepEqual(getStats(), generated);
+});
+
+test('generateStats carries the configured change window through', async() => {
+    const core = createRssCloudCore({
+        store: createInMemoryStore(),
+        plugins: [],
+        config: resolveConfig({ feedsChangedWindowDays: 30 })
+    });
+    const { generateStats } = createStats({ core });
+
+    const generated = await generateStats();
+
+    assert.equal(generated.windowDays, 30);
 });
 
 test('generateStats aggregates active subscriptions into the legacy shape', async() => {
@@ -116,7 +130,7 @@ test('generateStats aggregates active subscriptions into the legacy shape', asyn
 
     const generated = await generateStats();
 
-    assert.equal(generated.feedsChangedLast7Days, 2);
+    assert.equal(generated.feedsChangedLastWindow, 2);
     assert.equal(generated.feedsWithSubscribers, 2);
     assert.equal(generated.totalActiveSubscriptions, 3);
     // sub1.example.com is shared across both feeds — counted once.
