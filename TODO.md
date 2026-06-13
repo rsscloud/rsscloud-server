@@ -1,64 +1,13 @@
 # TODO — rsscloud-server: open work
 
-Outstanding + future work only. The `apps/server` → `@rsscloud/core` migration and
-the on-disk **v2 format unification** (disk == domain model; `legacy-store-shape.js`
-deleted; one-way legacy importer in `file-store.ts`) are both done — their history
-lives in git (`feat(core):` / `refactor(server):` commits), not here. Per CLAUDE.md:
-build with the `tdd` skill (red-green vertical slices); Conventional Commits enforced.
-Architecture decisions are recorded in `docs/adr/`; domain vocabulary in `CONTEXT.md`.
-
-## Architecture cleanup (deepening opportunities)
-
-From an architecture review (2026-06-12). Ordered by payoff. Vocabulary: a
-**shallow** module's interface is nearly as complex as its implementation; a
-**deep** one hides a lot of behaviour behind a small interface; a **seam** is a
-place behaviour can be swapped without editing in place; **leakage** is one
-module's internals crossing a seam into another. File/line refs will drift —
-trust the names over the numbers.
-
-> **Done (history in git):**
-> - **Sealed the `core.store` port** — `RssCloudCore` exposes a narrow
->   `listFeeds()` read seam plus `seedResource()` / `seedSubscriptions()` /
->   `clearFeeds()` for the test API; `readonly store` is gone from the
->   interface. All state access is concentrated in core.
-> - **Opened the HTTP-edge seam** — controllers are a
->   `createControllers({ core })` factory, so importing them no longer boots a
->   `FileStore`. The near-identical `res.render` shells (`home`, `ping-form`,
->   `please-notify-form`) collapsed into a table-driven mount, and `/docs` +
->   `/LICENSE.md` share one `renderMarkdownDoc` service. HTTP behaviour stays
->   covered by the e2e suite (no new HTTP-level unit tests, by decision).
-> - **Lifted the maintenance jobs out of `create-core.ts`** — `removeExpired`
->   and `generateStats` now live in `engine/maintenance.ts` as functions over
->   `(store, config, now)`; the factory delegates. Shrank the factory ~143
->   lines and the maintenance suite exercises them directly against an
->   in-memory store (one core-level smoke test per delegation). Coverage 100%.
-> - **Collapsed the three `fetchWithTimeout` copies** — the abort/`clearTimeout`
->   dance now lives in one `fetchWithTimeout(doFetch, ms, url, init)` at the
->   package root; the engine and both protocol plugins delegate. One home, one
->   fake-timer test suite (abort-on-timeout + clear-on-settle). Coverage 100%.
-> - **Stopped the stats label lying** — core's `Stats` now carries `windowDays`
->   alongside `feedsChangedLastWindow`; the stats projection passes both through
->   and `views/stats.handlebars` interpolates the count ("changed in last
->   {{windowDays}} days"). Change `feedsChangedWindowDays` and the label follows.
-> - **Collapsed the `remove-expired-subscriptions` pass-through** — the service
->   was `() => core.removeExpired()` with a 152-line test re-verifying core's
->   maintenance behaviour. Deleted both; the three call sites (startup +
->   scheduled cleanup in `app.js`, `/test/removeExpired`) call core directly,
->   and the behaviour stays owned + tested once in `engine/maintenance.test.ts`.
-> - **Retired the "legacy" framing in `services/stats.js`** — `toLegacyStats`
->   became a misnomer once the label fix dropped the last legacy field; renamed
->   to `toStatsView` and cleared the adjacent stale wording.
-> - **Concentrated the `/test/*` response envelope** — all seven test-API routes
->   repeated the same `try/catch` → `{ success, ...fields }` / 500 `{ success,
->   error }`. Lifted into one `wrap(handler)`; each route returns just its
->   payload. Behaviour-preserving (verified via an in-process mount).
-
-Both reviews are fully closed out. The first review's (2026-06-12) three items
-and the second review's (2026-06-13) finds are all done. The package question is
-settled: **nothing new should be pulled into a package beyond the already-planned
-client** (below) — the read-models (`feeds-json`, `feeds-opml`, the stats
-projection) each have a single consumer, so they're hypothetical seams, not real
-ones; everything else in `apps/server` is host/composition.
+Outstanding + future work only. Completed work lives in git history, not here —
+that includes the `apps/server` → `@rsscloud/core` migration, the on-disk **v2
+format unification** (disk == domain model; `legacy-store-shape.js` deleted; one-way
+legacy importer in `file-store.ts`), and the 2026-06 architecture-cleanup passes
+across `@rsscloud/core` and `apps/server` (`refactor(core):` / `refactor(server):`
+commits). Per CLAUDE.md: build with the `tdd` skill (red-green vertical slices);
+Conventional Commits enforced. Architecture decisions are recorded in `docs/adr/`;
+domain vocabulary in `CONTEXT.md`.
 
 ## WebSub hub support (bigger — spans core + express)
 
@@ -101,7 +50,10 @@ HMAC, and leases.
 
 Pull `apps/server/client.js` into two layers, mirroring how `apps/server` consumes
 `@rsscloud/core`. It already works against the live server — this is extraction +
-packaging, not a behaviour change.
+packaging, not a behaviour change. The 2026-06-13 architecture review settled that
+**this is the only extraction `apps/server` warrants** — the other read-models
+(`feeds-json`, `feeds-opml`, the stats projection) have one consumer each, and the
+rest is host/composition.
 
 *`@rsscloud/client` (`packages/client`)* — the **subscriber+publisher end** of the
 protocol (core is the hub end); reusable + published:
