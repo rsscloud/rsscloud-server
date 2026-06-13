@@ -46,34 +46,81 @@ so new `Subscription` fields ride along with no extra mapping.
 express `websub` factory + an e2e callback handshake. Defer content distribution,
 HMAC, and leases.
 
-## Client app + `@rsscloud/client` package (bigger)
+## Client extraction + shared XML-RPC codec (bigger — three workspaces)
 
-Pull `apps/server/client.js` into two layers, mirroring how `apps/server` consumes
-`@rsscloud/core`. It already works against the live server — this is extraction +
-packaging, not a behaviour change. The 2026-06-13 architecture review settled that
-**this is the only extraction `apps/server` warrants** — the other read-models
-(`feeds-json`, `feeds-opml`, the stats projection) have one consumer each, and the
-rest is host/composition.
+Pull `apps/server/client.js` (568 lines: protocol wire logic + outbound calls + a
+stateful Express dev UI) into a published `@rsscloud/client` package plus a private
+`apps/client` harness — mirroring how `apps/server` consumes `@rsscloud/core`. It
+already works against the live server, so this is extraction + packaging, not a
+behaviour change. The 2026-06-13 architecture review settled that **this is the only
+extraction `apps/server` warrants** — the other read-models (`feeds-json`,
+`feeds-opml`, the stats projection) have one consumer each, and the rest is
+host/composition.
 
-*`@rsscloud/client` (`packages/client`)* — the **subscriber+publisher end** of the
-protocol (core is the hub end); reusable + published:
-- **Subscriber:** send `pleaseNotify` (REST + XML-RPC), do the http-post challenge
-  echo, receive/parse notifications (http-post + XML-RPC `rssCloud.notify`).
-- **Publisher:** send `ping` (REST + XML-RPC); optional helper to emit a feed with the
-  `<cloud>` element. The wire builders inline in `client.js` today move here.
+The wire logic is **not** independently reimplemented (the e2e convention is for the
+test harness, not two libraries). Instead a focused **`@rsscloud/xml-rpc`** package
+holds the generic XML-RPC codec that both core (hub) and client (subscriber/publisher)
+build on — two production consumers, a real seam (delete it and encode/decode reappears
+in both). Depending on `@rsscloud/core` for this would be the wrong direction (the
+client would drag in the whole hub engine for ~150 lines of codec). e2e stays
+independent — deliberately not a consumer.
 
-*`apps/client` (private, like `apps/e2e`)* — the interactive dev harness on the
-package: the existing Express UI (Subscribe/Ping controls + request log, serving test
-feeds). The manual counterpart to the automated e2e.
+```
+@rsscloud/xml-rpc   generic XML-RPC codec (no rssCloud semantics)
+   ├─ @rsscloud/core    hub: parse pleaseNotify/ping, emit success/fault, build notify
+   └─ @rsscloud/client  subscriber/publisher: build pleaseNotify/ping, parse notify, emit success
+apps/client   private Express dev harness on @rsscloud/client
+```
 
-*Notes:*
-- **Wire format** is now known in core (hub side) and the e2e helpers; decide a shared
-  module vs. independent reimplementation in the client (leaning independent, per the
-  keep-e2e-independent convention).
-- **WebSub-ready:** grows a WebSub subscriber/publisher once that lands.
-- **Workspace:** `apps/client` private (not release-tracked); `packages/client`
-  release-tracked + 100% coverage, like `@rsscloud/core`.
+### `@rsscloud/xml-rpc` (new, published, 100% coverage)
+Generic XML-RPC only — no `rssCloud.*` knowledge.
+- `parseMethodCall(xml)` + `parseMethodResponse(xml)` (the decoder moves out of core).
+- `buildMethodCall(methodName, params)` — **new** typed-value builder (core's current
+  encoders are ad-hoc/untyped).
+- `buildMethodResponse(value)` / `serializeFault(code, str)`.
+- An **`XmlRpcValue` model** (`i4`/`string`/`boolean`/`array`/`struct`/…) — the one real
+  design piece; worth a short grill at that slice.
+- Core refactor: `xml-rpc-dispatcher` + `xml-rpc-plugin` import from it; core keeps only
+  its rssCloud-specific shapes as thin wrappers. Core's 25 codec tests move here; core
+  stays green + 100%.
 
-*First slice:* lift the wire builders + subscribe/ping calls into `packages/client`
-with tests, thin `client.js` to a UI shell on the package, then relocate it to
-`apps/client`.
+### `@rsscloud/client` (new, published, 100% coverage) — factory API, full subscriber+publisher
+```
+createRssCloudClient({ serverUrl, fetch? }) → {
+  pleaseNotify({ protocol, callback: { domain, port, path }, feedUrl }) → { status, body }
+  ping({ protocol, feedUrl }) → { status, body }
+}
+```
+Plus exported pure helpers: `parseNotify(body)` → feedUrl, `buildNotifyResponse()` (the
+boolean XML), challenge echo, and `renderCloudFeed({ feedName, link, items, cloud })`
+(RSS-with-`<cloud>`). The rssCloud XML-RPC builders (`buildPleaseNotifyCall`,
+`buildPingCall`) live here over `@rsscloud/xml-rpc`'s `buildMethodCall`; REST bodies are
+trivial `URLSearchParams`.
+
+### `apps/client` (private, like `apps/e2e`)
+The Express UI, request log, feed store, and routes — consuming `@rsscloud/client`. The
+`client` script + `body-parser`/`xmlbuilder`/`morgan` deps move here out of `apps/server`.
+
+### Slices (codec-first → no transient duplication; each stays green)
+1. Scaffold `@rsscloud/xml-rpc`; add to `release-please-config.json`.
+2. Move the decoder (`parseMethodCall` + value decode) + its tests into it.
+3. Add the typed `XmlRpcValue` builder (`buildMethodCall`/`buildMethodResponse`/fault), TDD.
+4. Refactor core onto it — dispatcher/plugin import the generic codec; core green + 100%.
+5. Scaffold `@rsscloud/client`; add to release config.
+6. Client XML-RPC builders (`buildPleaseNotifyCall`/`buildPingCall`) on the shared codec, TDD.
+7. Client send layer — `createRssCloudClient` with injected `fetch`, REST + XML-RPC, TDD.
+8. Client receive + feed emit — `parseNotify`/`buildNotifyResponse`/challenge + `renderCloudFeed`, TDD.
+9. Thin `client.js` onto `@rsscloud/client` (still in `apps/server`, still runs).
+10. Relocate to `apps/client` (new private workspace; drop the script/deps from `apps/server`;
+    handle `express.static('public')`).
+
+Steps 1–4 are a self-contained, shippable improvement (core slims, no client yet); 5–10
+build and land the client.
+
+*Workspace/release:* `pnpm-workspace.yaml` already globs `packages/*` + `apps/*` (no
+change). `release-please-config.json` gains `packages/xml-rpc` + `packages/client`
+(components `xml-rpc` / `client`); `apps/client` stays untracked like `apps/e2e`. Cascade:
+`xml-rpc → core → express → server`, and `xml-rpc → client`.
+
+*Notes:* `CONTEXT.md` gains subscriber/publisher-end vocabulary during implementation.
+**WebSub-ready:** the client grows a WebSub subscriber/publisher once that lands.
