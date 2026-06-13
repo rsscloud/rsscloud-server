@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const config = require('../config');
 
-// Protocols the legacy stats shape always reports, even at zero. core only
-// includes protocols it actually saw, so we seed these and merge core's counts.
+// Protocols the stats view always reports, even at zero. core only includes
+// protocols it actually saw, so we seed these and merge core's counts.
 const KNOWN_PROTOCOLS = ['http-post', 'https-post', 'xml-rpc'];
 
 function getStatsFilePath() {
@@ -33,7 +33,7 @@ function getStats() {
 // change window (count + its size in days, so the label can't lie) and report
 // exactly the three known protocols (seeded at 0, dropping any core might
 // include outside that set).
-function toLegacyStats(coreStats) {
+function toStatsView(coreStats) {
     const protocolBreakdown = {};
     for (const protocol of KNOWN_PROTOCOLS) {
         protocolBreakdown[protocol] =
@@ -57,7 +57,7 @@ function toLegacyStats(coreStats) {
 // touch only the stats file (a host concern) and so don't depend on the store.
 function createStats({ core }) {
     async function generateStats() {
-        const stats = toLegacyStats(await core.generateStats());
+        const stats = toStatsView(await core.generateStats());
 
         // Write atomically
         const filePath = getStatsFilePath();

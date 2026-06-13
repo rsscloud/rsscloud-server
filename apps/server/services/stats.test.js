@@ -104,7 +104,7 @@ test('generateStats carries the configured change window through', async() => {
     assert.equal(generated.windowDays, 30);
 });
 
-test('generateStats aggregates active subscriptions into the legacy shape', async() => {
+test('generateStats aggregates active subscriptions into the stats view', async() => {
     const { core, generateStats } = setup();
     const recent = new Date(Date.now() - DAY_MS);
     const future = new Date(Date.now() + DAY_MS);
