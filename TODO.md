@@ -16,21 +16,13 @@ place behaviour can be swapped without editing in place; **leakage** is one
 module's internals crossing a seam into another. File/line refs will drift —
 trust the names over the numbers.
 
-### 1. Seal the `core.store` port (the keystone)
+> The keystone — sealing the `core.store` port — is **done**: `RssCloudCore`
+> now exposes a narrow `listFeeds()` read seam plus `seedResource()` /
+> `seedSubscriptions()` / `clearFeeds()` for the test API, and `readonly store`
+> is gone from the interface. All state access is concentrated in core. History
+> in git (`refactor(core):` / `refactor(server):`). This unblocks #1 below.
 
-`Store` is injected *into* the engine, then re-exposed *out* of it
-(`core/engine/core.ts` `readonly store`, re-exported by `apps/server/core.js`).
-That leak lets the read side reach past the engine to touch state directly:
-`controllers/index.js` (`/subscriptions.json`), `services/feeds-json.js`,
-`services/feeds-opml.js`, the whole `/test/*` API in `controllers/test.js`, and
-even core's own tests (`core.store.list()`).
-
-*Fix:* give `RssCloudCore` a narrow read seam — `listFeeds()` snapshot plus a
-`seedResource()` for the test API — and drop `readonly store` from the
-interface. Concentrates all state access in one module. Unblocks #2 (the
-injectable in-memory core).
-
-### 2. Open a test seam at the HTTP edge
+### 1. Open a test seam at the HTTP edge
 
 Controllers `require('../core')` at module load, so importing any one boots a
 real `FileStore` — no controller has a test. Four (`home`, `ping-form`,
@@ -41,7 +33,7 @@ real `FileStore` — no controller has a test. Four (`home`, `ping-form`,
 (`feeds-opml`, `stats`, etc.), plus a table-driven mount for the render-only
 routes. Two adapters justify the seam: prod core and an in-memory core in tests.
 
-### 3. Lift the maintenance jobs out of `create-core.ts`
+### 2. Lift the maintenance jobs out of `create-core.ts`
 
 `removeExpired` and `generateStats` (~130 lines inside the 585-line factory) are
 read-only jobs needing only `store` + a clock, but are exercisable only by
@@ -50,7 +42,7 @@ building a full core with fetch + plugin mocks they never use.
 *Fix:* extract as functions over `(store, config, now)`; core delegates. Narrows
 the test surface; shrinks the factory. (Coverage stays 100% per CLAUDE.md.)
 
-### 4. One `fetchWithTimeout`, not three copies
+### 3. One `fetchWithTimeout`, not three copies
 
 The abort-controller + `clearTimeout` pattern is written verbatim in
 `engine/create-core.ts`, `protocols/rest-plugin.ts`, and
@@ -59,7 +51,7 @@ The abort-controller + `clearTimeout` pattern is written verbatim in
 *Fix:* a shared `fetchWithTimeout(doFetch, ms, url, init)` core util. A bug in
 the abort dance then has one place to live, and one place to test.
 
-### 5. `feedsChangedLast7Days` label can silently lie
+### 4. `feedsChangedLast7Days` label can silently lie
 
 The window is a config value upstream (`feedsChangedWindowDays`) but a baked-in
 literal `7` downstream: the wire field name in `services/stats.js`

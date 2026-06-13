@@ -96,21 +96,21 @@ test('generateStats aggregates active subscriptions into the legacy shape', asyn
     const future = new Date(Date.now() + DAY_MS);
     const past = new Date(Date.now() - DAY_MS);
 
-    await core.store.putResource('https://a.example.com/feed.xml', makeResource('https://a.example.com/feed.xml', {
+    await core.seedResource('https://a.example.com/feed.xml', makeResource('https://a.example.com/feed.xml', {
         title: 'Alpha',
         whenLastUpdate: recent
     }));
-    await core.store.putSubscriptions('https://a.example.com/feed.xml', [
+    await core.seedSubscriptions('https://a.example.com/feed.xml', [
         makeSubscription({ url: 'http://sub1.example.com/notify', whenExpires: future }),
         makeSubscription({ url: 'http://sub2.example.com/notify', whenExpires: future }),
         makeSubscription({ url: 'http://gone.example.com/notify', whenExpires: past })
     ]);
 
-    await core.store.putResource('https://b.example.com/feed.xml', makeResource('https://b.example.com/feed.xml', {
+    await core.seedResource('https://b.example.com/feed.xml', makeResource('https://b.example.com/feed.xml', {
         title: 'Bravo',
         whenLastUpdate: recent
     }));
-    await core.store.putSubscriptions('https://b.example.com/feed.xml', [
+    await core.seedSubscriptions('https://b.example.com/feed.xml', [
         makeSubscription({ url: 'http://sub1.example.com/notify', whenExpires: future })
     ]);
 
@@ -148,11 +148,11 @@ test('generateStats omits feeds whose subscriptions have all expired', async() =
     const { core, generateStats } = setup();
     const past = new Date(Date.now() - DAY_MS);
 
-    await core.store.putResource('https://stale.example.com/feed.xml', makeResource('https://stale.example.com/feed.xml', {
+    await core.seedResource('https://stale.example.com/feed.xml', makeResource('https://stale.example.com/feed.xml', {
         title: 'Stale',
         whenLastUpdate: new Date(Date.now() - DAY_MS)
     }));
-    await core.store.putSubscriptions('https://stale.example.com/feed.xml', [
+    await core.seedSubscriptions('https://stale.example.com/feed.xml', [
         makeSubscription({ url: 'http://gone.example.com/notify', whenExpires: past })
     ]);
 

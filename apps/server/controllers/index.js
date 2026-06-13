@@ -5,7 +5,7 @@ const express = require('express'),
     { createStats } = require('../services/stats'),
     { toFeedsJson } = require('../services/feeds-json'),
     { ping, pleaseNotify, rpc2 } = require('@rsscloud/express'),
-    { core, store } = require('../core'),
+    { core } = require('../core'),
     { generateOpml } = createFeedsOpml({ core }),
     { getStats } = createStats({ core }),
     router = new express.Router();
@@ -49,7 +49,7 @@ router.get('/stats.json', (req, res) => {
 
 router.get('/subscriptions.json', async(req, res, next) => {
     try {
-        const feeds = toFeedsJson(await store.list());
+        const feeds = toFeedsJson(await core.listFeeds());
         res.set('Content-Type', 'application/json');
         res.send(JSON.stringify({ version: 2, feeds }, null, 2));
     } catch (err) {

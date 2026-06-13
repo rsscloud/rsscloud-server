@@ -28,9 +28,9 @@ const plugins = [
 // createFileStore is async, but core.js is required synchronously — the
 // @rsscloud/express middleware factories need a concrete `core` at mount time.
 // core takes the store promise, resolves it once, and defers every operation
-// until the load completes, so the host gets a concrete `core` immediately.
-// `core.store` is the ready store the read-side controllers use; `core.close()`
-// flushes + closes it for the graceful-shutdown hooks in app.js.
+// until the load completes, so the host gets a concrete `core` immediately. The
+// store stays private to core; read-side controllers use `core.listFeeds()` and
+// `core.close()` flushes + closes it for the graceful-shutdown hooks in app.js.
 const core = createRssCloudCore({
     store: createFileStore({
         filePath: config.dataFilePath,
@@ -43,4 +43,4 @@ const core = createRssCloudCore({
     config: coreConfig
 });
 
-module.exports = { core, events: core.events, store: core.store };
+module.exports = { core, events: core.events };

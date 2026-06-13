@@ -1052,22 +1052,6 @@ describe('createRssCloudCore async store construction', () => {
         expect((await store.getResource(FEED))?.ctChecks).toBe(1);
     });
 
-    it('exposes core.store as a Store backed by the resolved store', async () => {
-        const inner = createInMemoryStore();
-
-        const core = createRssCloudCore({
-            store: Promise.resolve(inner),
-            plugins: [],
-            config: resolveConfig(),
-            fetch: fetchReturning(RSS)
-        });
-
-        await core.ping({ resourceUrl: FEED });
-
-        const entries = await core.store.list();
-        expect(entries.map(e => e.feedUrl)).toContain(FEED);
-    });
-
     it('close() awaits construction and closes a store that can close', async () => {
         const close = vi.fn(async () => undefined);
         const inner = { ...createInMemoryStore(), close };
@@ -1091,5 +1075,67 @@ describe('createRssCloudCore async store construction', () => {
         });
 
         await expect(core.close()).resolves.toBeUndefined();
+    });
+});
+
+describe('createRssCloudCore listFeeds', () => {
+    it('returns a snapshot of every tracked feed', async () => {
+        const inner = createInMemoryStore();
+        await inner.putResource(FEED, resource());
+        await inner.putSubscriptions(FEED, [subscription()]);
+
+        const core = createRssCloudCore({
+            store: inner,
+            plugins: [],
+            config: resolveConfig()
+        });
+
+        const feeds = await core.listFeeds();
+
+        expect(feeds).toEqual([
+            { feedUrl: FEED, resource: resource(), subscriptions: [subscription()] }
+        ]);
+    });
+});
+
+describe('createRssCloudCore feed seeding', () => {
+    function freshCore() {
+        return createRssCloudCore({
+            store: createInMemoryStore(),
+            plugins: [],
+            config: resolveConfig()
+        });
+    }
+
+    it('seedResource persists a resource that listFeeds reflects', async () => {
+        const core = freshCore();
+
+        await core.seedResource(FEED, resource());
+
+        expect(await core.listFeeds()).toEqual([
+            { feedUrl: FEED, resource: resource(), subscriptions: [] }
+        ]);
+    });
+
+    it('seedSubscriptions persists subscriptions that listFeeds reflects', async () => {
+        const core = freshCore();
+
+        await core.seedSubscriptions(FEED, [subscription()]);
+
+        expect(await core.listFeeds()).toEqual([
+            { feedUrl: FEED, resource: null, subscriptions: [subscription()] }
+        ]);
+    });
+
+    it('clearFeeds removes every tracked feed', async () => {
+        const core = freshCore();
+        await core.seedResource(FEED, resource());
+        await core.seedSubscriptions('https://other.example/rss', [
+            subscription()
+        ]);
+
+        await core.clearFeeds();
+
+        expect(await core.listFeeds()).toEqual([]);
     });
 });

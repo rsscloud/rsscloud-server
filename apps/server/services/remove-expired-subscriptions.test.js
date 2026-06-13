@@ -55,13 +55,13 @@ function makeSubscription(overrides = {}) {
 }
 
 async function entryFor(core, feedUrl) {
-    return (await core.store.list()).find(e => e.feedUrl === feedUrl);
+    return (await core.listFeeds()).find(e => e.feedUrl === feedUrl);
 }
 
 test('removes an expired subscription and prunes the now-empty feed', async() => {
     const { core, removeExpiredSubscriptions } = setup();
     const feed = 'https://a.example.com/feed.xml';
-    await core.store.putSubscriptions(feed, [makeSubscription({ whenExpires: expired() })]);
+    await core.seedSubscriptions(feed, [makeSubscription({ whenExpires: expired() })]);
 
     const result = await removeExpiredSubscriptions();
 
@@ -72,8 +72,8 @@ test('removes an expired subscription and prunes the now-empty feed', async() =>
 test('clears an expired subscription but retains a recently-updated feed', async() => {
     const { core, removeExpiredSubscriptions } = setup();
     const feed = 'https://b.example.com/feed.xml';
-    await core.store.putResource(feed, makeResource(feed, { whenLastUpdate: withinWindow() }));
-    await core.store.putSubscriptions(feed, [makeSubscription({ whenExpires: expired() })]);
+    await core.seedResource(feed, makeResource(feed, { whenLastUpdate: withinWindow() }));
+    await core.seedSubscriptions(feed, [makeSubscription({ whenExpires: expired() })]);
 
     const result = await removeExpiredSubscriptions();
 
@@ -86,8 +86,8 @@ test('clears an expired subscription but retains a recently-updated feed', async
 test('removes a feed whose resource is older than the retention window', async() => {
     const { core, removeExpiredSubscriptions } = setup();
     const feed = 'https://c.example.com/feed.xml';
-    await core.store.putResource(feed, makeResource(feed, { whenLastUpdate: beyondWindow() }));
-    await core.store.putSubscriptions(feed, [makeSubscription({ whenExpires: expired() })]);
+    await core.seedResource(feed, makeResource(feed, { whenLastUpdate: beyondWindow() }));
+    await core.seedSubscriptions(feed, [makeSubscription({ whenExpires: expired() })]);
 
     await removeExpiredSubscriptions();
 
@@ -97,8 +97,8 @@ test('removes a feed whose resource is older than the retention window', async()
 test('leaves active subscriptions untouched', async() => {
     const { core, removeExpiredSubscriptions } = setup();
     const feed = 'https://d.example.com/feed.xml';
-    await core.store.putResource(feed, makeResource(feed, { whenLastUpdate: withinWindow() }));
-    await core.store.putSubscriptions(feed, [makeSubscription({ whenExpires: active() })]);
+    await core.seedResource(feed, makeResource(feed, { whenLastUpdate: withinWindow() }));
+    await core.seedSubscriptions(feed, [makeSubscription({ whenExpires: active() })]);
 
     const result = await removeExpiredSubscriptions();
 
@@ -111,7 +111,7 @@ test('leaves active subscriptions untouched', async() => {
 test('removes an orphaned resource with no subscriptions', async() => {
     const { core, removeExpiredSubscriptions } = setup();
     const feed = 'https://e.example.com/feed.xml';
-    await core.store.putResource(feed, makeResource(feed, { whenLastUpdate: beyondWindow() }));
+    await core.seedResource(feed, makeResource(feed, { whenLastUpdate: beyondWindow() }));
 
     await removeExpiredSubscriptions();
 
@@ -121,7 +121,7 @@ test('removes an orphaned resource with no subscriptions', async() => {
 test('returns the core MaintenanceResult shape', async() => {
     const { core, removeExpiredSubscriptions } = setup();
     const feed = 'https://f.example.com/feed.xml';
-    await core.store.putSubscriptions(feed, [makeSubscription({ whenExpires: expired() })]);
+    await core.seedSubscriptions(feed, [makeSubscription({ whenExpires: expired() })]);
 
     const result = await removeExpiredSubscriptions();
 
@@ -136,8 +136,8 @@ test('returns the core MaintenanceResult shape', async() => {
 test('removes a subscription that has reached the consecutive-error limit', async() => {
     const { core, removeExpiredSubscriptions } = setup();
     const feed = 'https://g.example.com/feed.xml';
-    await core.store.putResource(feed, makeResource(feed, { whenLastUpdate: withinWindow() }));
-    await core.store.putSubscriptions(feed, [
+    await core.seedResource(feed, makeResource(feed, { whenLastUpdate: withinWindow() }));
+    await core.seedSubscriptions(feed, [
         makeSubscription({
             whenExpires: active(),
             ctConsecutiveErrors: coreConfig.maxConsecutiveErrors
