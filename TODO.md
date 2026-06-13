@@ -48,21 +48,17 @@ trust the names over the numbers.
 > - **Retired the "legacy" framing in `services/stats.js`** — `toLegacyStats`
 >   became a misnomer once the label fix dropped the last legacy field; renamed
 >   to `toStatsView` and cleared the adjacent stale wording.
+> - **Concentrated the `/test/*` response envelope** — all seven test-API routes
+>   repeated the same `try/catch` → `{ success, ...fields }` / 500 `{ success,
+>   error }`. Lifted into one `wrap(handler)`; each route returns just its
+>   payload. Behaviour-preserving (verified via an in-process mount).
 
-All three items from the first review (2026-06-12) are done.
-
-### Second review (2026-06-13) — remaining small finds
-
-A pass over `apps/server` after the cleanups above. Package question answered:
-**nothing new should be pulled into a package beyond the already-planned client**
-(below) — the read-models (`feeds-json`, `feeds-opml`, the stats projection) each
-have a single consumer, so they're hypothetical seams, not real ones; everything
-else is host/composition. One small optional follow-on remains:
-
-1. **Concentrate the `/test/*` error-envelope.** All seven routes in
-   `controllers/test.js` repeat the same `try/catch` → `{ success, error }`
-   envelope. A small `wrap(handler)` would make the harness contract one seam.
-   (Test-only API; low stakes.)
+Both reviews are fully closed out. The first review's (2026-06-12) three items
+and the second review's (2026-06-13) finds are all done. The package question is
+settled: **nothing new should be pulled into a package beyond the already-planned
+client** (below) — the read-models (`feeds-json`, `feeds-opml`, the stats
+projection) each have a single consumer, so they're hypothetical seams, not real
+ones; everything else in `apps/server` is host/composition.
 
 ## WebSub hub support (bigger — spans core + express)
 
