@@ -7,14 +7,12 @@ const config = require('./config'),
     getDayjs = require('./services/dayjs-wrapper'),
     { createStats } = require('./services/stats'),
     morgan = require('morgan'),
-    createRemoveExpiredSubscriptions = require('./services/remove-expired-subscriptions'),
     websocket = require('./services/websocket'),
     { core, events: coreEvents } = require('./core'),
     { createControllers } = require('./controllers'),
     bridgeCoreEvents = require('./services/core-event-bridge');
 
 const stats = createStats({ core });
-const removeExpiredSubscriptions = createRemoveExpiredSubscriptions({ core });
 
 let app, hbs, server, dayjs;
 
@@ -23,7 +21,7 @@ console.log(`${config.appName} ${config.appVersion}`);
 // Schedule cleanup tasks
 function scheduleCleanupTasks() {
     // Run cleanup immediately on startup
-    removeExpiredSubscriptions()
+    core.removeExpired()
         .then(() => console.log('Startup subscription cleanup completed'))
         .catch(err =>
             console.error('Error in startup subscription cleanup:', err)
@@ -34,7 +32,7 @@ function scheduleCleanupTasks() {
         async() => {
             try {
                 console.log('Running scheduled subscription cleanup...');
-                await removeExpiredSubscriptions();
+                await core.removeExpired();
             } catch (error) {
                 console.error(
                     'Error in scheduled subscription cleanup:',
