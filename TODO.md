@@ -16,24 +16,19 @@ place behaviour can be swapped without editing in place; **leakage** is one
 module's internals crossing a seam into another. File/line refs will drift —
 trust the names over the numbers.
 
-> The keystone — sealing the `core.store` port — is **done**: `RssCloudCore`
-> now exposes a narrow `listFeeds()` read seam plus `seedResource()` /
-> `seedSubscriptions()` / `clearFeeds()` for the test API, and `readonly store`
-> is gone from the interface. All state access is concentrated in core. History
-> in git (`refactor(core):` / `refactor(server):`). This unblocks #1 below.
+> **Done (history in git):**
+> - **Sealed the `core.store` port** — `RssCloudCore` exposes a narrow
+>   `listFeeds()` read seam plus `seedResource()` / `seedSubscriptions()` /
+>   `clearFeeds()` for the test API; `readonly store` is gone from the
+>   interface. All state access is concentrated in core.
+> - **Opened the HTTP-edge seam** — controllers are a
+>   `createControllers({ core })` factory, so importing them no longer boots a
+>   `FileStore`. The near-identical `res.render` shells (`home`, `ping-form`,
+>   `please-notify-form`) collapsed into a table-driven mount, and `/docs` +
+>   `/LICENSE.md` share one `renderMarkdownDoc` service. HTTP behaviour stays
+>   covered by the e2e suite (no new HTTP-level unit tests, by decision).
 
-### 1. Open a test seam at the HTTP edge
-
-Controllers `require('../core')` at module load, so importing any one boots a
-real `FileStore` — no controller has a test. Four (`home`, `ping-form`,
-`please-notify-form`, `docs`) are near-identical `res.render` shells, and the
-`/LICENSE.md` route re-inlines what `docs.js` already does.
-
-*Fix:* a `createControllers({ core })` factory mirroring the testable services
-(`feeds-opml`, `stats`, etc.), plus a table-driven mount for the render-only
-routes. Two adapters justify the seam: prod core and an in-memory core in tests.
-
-### 2. Lift the maintenance jobs out of `create-core.ts`
+### 1. Lift the maintenance jobs out of `create-core.ts`
 
 `removeExpired` and `generateStats` (~130 lines inside the 585-line factory) are
 read-only jobs needing only `store` + a clock, but are exercisable only by
@@ -42,7 +37,7 @@ building a full core with fetch + plugin mocks they never use.
 *Fix:* extract as functions over `(store, config, now)`; core delegates. Narrows
 the test surface; shrinks the factory. (Coverage stays 100% per CLAUDE.md.)
 
-### 3. One `fetchWithTimeout`, not three copies
+### 2. One `fetchWithTimeout`, not three copies
 
 The abort-controller + `clearTimeout` pattern is written verbatim in
 `engine/create-core.ts`, `protocols/rest-plugin.ts`, and
@@ -51,7 +46,7 @@ The abort-controller + `clearTimeout` pattern is written verbatim in
 *Fix:* a shared `fetchWithTimeout(doFetch, ms, url, init)` core util. A bug in
 the abort dance then has one place to live, and one place to test.
 
-### 4. `feedsChangedLast7Days` label can silently lie
+### 3. `feedsChangedLast7Days` label can silently lie
 
 The window is a config value upstream (`feedsChangedWindowDays`) but a baked-in
 literal `7` downstream: the wire field name in `services/stats.js`

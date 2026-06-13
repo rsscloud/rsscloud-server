@@ -10,6 +10,7 @@ const config = require('./config'),
     createRemoveExpiredSubscriptions = require('./services/remove-expired-subscriptions'),
     websocket = require('./services/websocket'),
     { core, events: coreEvents } = require('./core'),
+    { createControllers } = require('./controllers'),
     bridgeCoreEvents = require('./services/core-event-bridge');
 
 const stats = createStats({ core });
@@ -93,7 +94,7 @@ app.use(
 );
 
 // Load controllers (includes the core-backed /ping + /pleaseNotify front doors)
-app.use(require('./controllers'));
+app.use(createControllers({ core }));
 
 async function gracefulShutdown() {
     await core.close();
