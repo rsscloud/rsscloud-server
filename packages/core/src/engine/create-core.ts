@@ -11,10 +11,13 @@ import type {
 import { RssCloudError } from '../errors.js';
 import { createEventBus } from '../events.js';
 import { createDefaultFeedParser } from '../feed/feed-parser.js';
+import {
+    generateStats as runGenerateStats,
+    removeExpired as runRemoveExpired
+} from './maintenance.js';
 import type { ResourcePayload, ProtocolPlugin } from './plugin.js';
 import type { Protocol } from './protocol.js';
 import type { Resource } from './resource.js';
-import type { FeedStat, MaintenanceResult, Stats } from './stats.js';
 import type { Subscription } from './subscription.js';
 import type { FeedEntry, Store } from '../store/store.js';
 import type {
@@ -425,146 +428,6 @@ export function createRssCloudCore(
         return { success: true, message: 'Unsubscribed.' };
     }
 
-    function windowCutoff(from: Date): Date {
-        return new Date(
-            from.getTime() - config.feedsChangedWindowDays * 86400 * 1000
-        );
-    }
-
-    async function removeExpired(): Promise<MaintenanceResult> {
-        const current = now();
-        const cutoff = windowCutoff(current);
-        const entries = await store.list();
-
-        let subscriptionsRemoved = 0;
-        let feedsDeleted = 0;
-        let orphanedResourcesRemoved = 0;
-
-        const recentlyUpdated = (resource: Resource | null): boolean =>
-            resource !== null &&
-            resource.whenLastUpdate.getTime() > 0 &&
-            resource.whenLastUpdate >= cutoff;
-
-        for (const entry of entries) {
-            if (entry.subscriptions.length === 0) {
-                if (recentlyUpdated(entry.resource)) {
-                    continue;
-                }
-                await store.remove(entry.feedUrl);
-                orphanedResourcesRemoved += 1;
-                continue;
-            }
-
-            const valid = entry.subscriptions.filter(subscription => {
-                const expired =
-                    subscription.whenExpires.getTime() <= current.getTime();
-                const exhausted =
-                    subscription.ctConsecutiveErrors >=
-                    config.maxConsecutiveErrors;
-                if (expired || exhausted) {
-                    subscriptionsRemoved += 1;
-                    return false;
-                }
-                return true;
-            });
-
-            if (valid.length === entry.subscriptions.length) {
-                continue;
-            }
-
-            if (valid.length === 0) {
-                if (recentlyUpdated(entry.resource)) {
-                    await store.putSubscriptions(entry.feedUrl, []);
-                } else {
-                    await store.remove(entry.feedUrl);
-                    feedsDeleted += 1;
-                }
-            } else {
-                await store.putSubscriptions(entry.feedUrl, valid);
-            }
-        }
-
-        return {
-            subscriptionsRemoved,
-            feedsProcessed: entries.length,
-            feedsDeleted,
-            orphanedResourcesRemoved
-        };
-    }
-
-    async function generateStats(): Promise<Stats> {
-        const current = now();
-        const cutoff = windowCutoff(current);
-        const entries = await store.list();
-
-        let feedsChangedLastWindow = 0;
-        let totalActiveSubscriptions = 0;
-        const hostnames = new Set<string>();
-        const protocolBreakdown: Record<string, number> = {};
-        const feedStats: FeedStat[] = [];
-
-        for (const entry of entries) {
-            const lastUpdate = entry.resource?.whenLastUpdate ?? null;
-            const hasRealUpdate =
-                lastUpdate !== null && lastUpdate.getTime() > 0;
-            if (hasRealUpdate && lastUpdate >= cutoff) {
-                feedsChangedLastWindow += 1;
-            }
-
-            let activeCount = 0;
-            for (const subscription of entry.subscriptions) {
-                if (subscription.whenExpires.getTime() <= current.getTime()) {
-                    continue;
-                }
-                activeCount += 1;
-                totalActiveSubscriptions += 1;
-                try {
-                    hostnames.add(new URL(subscription.url).hostname);
-                } catch {
-                    // ignore unparseable callback URLs
-                }
-                protocolBreakdown[subscription.protocol] =
-                    (protocolBreakdown[subscription.protocol] ?? 0) + 1;
-            }
-
-            if (activeCount > 0) {
-                feedStats.push({
-                    url: entry.feedUrl,
-                    subscriberCount: activeCount,
-                    whenLastUpdate: hasRealUpdate
-                        ? lastUpdate.toISOString()
-                        : null,
-                    feedTitle: entry.resource?.feed?.title ?? null
-                });
-            }
-        }
-
-        const sorted = [...feedStats].sort(
-            (a, b) => b.subscriberCount - a.subscriberCount
-        );
-        const cut = sorted.slice(0, 10);
-        const last = cut[cut.length - 1];
-        let topFeeds = cut;
-        let moreFeeds: FeedStat[] = [];
-        if (last !== undefined && sorted.length > 10) {
-            topFeeds = sorted.filter(
-                feed => feed.subscriberCount >= last.subscriberCount
-            );
-            moreFeeds = sorted.slice(topFeeds.length);
-        }
-
-        return {
-            generatedAt: current.toISOString(),
-            feedsChangedLastWindow,
-            feedsWithSubscribers: feedStats.length,
-            uniqueAggregators: hostnames.size,
-            totalActiveSubscriptions,
-            topFeeds,
-            moreFeeds,
-            protocolBreakdown
-        };
-    }
-
     async function close(): Promise<void> {
         const resolved = await storeReady;
         if (isClosable(resolved)) {
@@ -606,7 +469,7 @@ export function createRssCloudCore(
         seedSubscriptions,
         clearFeeds,
         close,
-        removeExpired,
-        generateStats
+        removeExpired: () => runRemoveExpired(store, config, now),
+        generateStats: () => runGenerateStats(store, config, now)
     };
 }
