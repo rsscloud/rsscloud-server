@@ -27,17 +27,13 @@ trust the names over the numbers.
 >   `please-notify-form`) collapsed into a table-driven mount, and `/docs` +
 >   `/LICENSE.md` share one `renderMarkdownDoc` service. HTTP behaviour stays
 >   covered by the e2e suite (no new HTTP-level unit tests, by decision).
+> - **Lifted the maintenance jobs out of `create-core.ts`** — `removeExpired`
+>   and `generateStats` now live in `engine/maintenance.ts` as functions over
+>   `(store, config, now)`; the factory delegates. Shrank the factory ~143
+>   lines and the maintenance suite exercises them directly against an
+>   in-memory store (one core-level smoke test per delegation). Coverage 100%.
 
-### 1. Lift the maintenance jobs out of `create-core.ts`
-
-`removeExpired` and `generateStats` (~130 lines inside the 585-line factory) are
-read-only jobs needing only `store` + a clock, but are exercisable only by
-building a full core with fetch + plugin mocks they never use.
-
-*Fix:* extract as functions over `(store, config, now)`; core delegates. Narrows
-the test surface; shrinks the factory. (Coverage stays 100% per CLAUDE.md.)
-
-### 2. One `fetchWithTimeout`, not three copies
+### 1. One `fetchWithTimeout`, not three copies
 
 The abort-controller + `clearTimeout` pattern is written verbatim in
 `engine/create-core.ts`, `protocols/rest-plugin.ts`, and
@@ -46,7 +42,7 @@ The abort-controller + `clearTimeout` pattern is written verbatim in
 *Fix:* a shared `fetchWithTimeout(doFetch, ms, url, init)` core util. A bug in
 the abort dance then has one place to live, and one place to test.
 
-### 3. `feedsChangedLast7Days` label can silently lie
+### 2. `feedsChangedLast7Days` label can silently lie
 
 The window is a config value upstream (`feedsChangedWindowDays`) but a baked-in
 literal `7` downstream: the wire field name in `services/stats.js`
