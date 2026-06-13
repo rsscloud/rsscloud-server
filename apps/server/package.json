@@ -6,7 +6,6 @@
     "scripts": {
         "start": "node --use_strict app.js",
         "dev": "nodemon --use_strict --ignore data/ ./app.js",
-        "client": "nodemon --use_strict --ignore data/ ./client.js",
         "test": "node --test services/*.test.js",
         "lint": "eslint --fix controllers/ services/ *.js"
     },
@@ -16,10 +15,8 @@
     "author": "Andrew Shell <andrew@andrewshell.org>",
     "license": "MIT",
     "dependencies": {
-        "@rsscloud/client": "workspace:*",
         "@rsscloud/core": "workspace:*",
         "@rsscloud/express": "workspace:*",
-        "body-parser": "^2.2.2",
         "cors": "^2.8.6",
         "dayjs": "^1.11.20",
         "dotenv": "^17.4.2",
