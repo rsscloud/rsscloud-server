@@ -12,6 +12,8 @@ export interface Stats {
     /** ISO 8601 generation time, or `null` before the first run. */
     generatedAt: string | null;
     feedsChangedLastWindow: number;
+    /** The size (days) of the change window {@link feedsChangedLastWindow} counts. */
+    windowDays: number;
     feedsWithSubscribers: number;
     /** Distinct subscriber hostnames. */
     uniqueAggregators: number;

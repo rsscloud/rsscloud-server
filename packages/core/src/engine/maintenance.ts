@@ -147,6 +147,7 @@ export async function generateStats(
     return {
         generatedAt: current.toISOString(),
         feedsChangedLastWindow,
+        windowDays: config.feedsChangedWindowDays,
         feedsWithSubscribers: feedStats.length,
         uniqueAggregators: hostnames.size,
         totalActiveSubscriptions,
