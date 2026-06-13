@@ -5,7 +5,12 @@ export type NotifyProtocol = 'http-post' | 'https-post' | 'xml-rpc';
 
 /** Where the hub should deliver notifications for a subscription. */
 export interface Callback {
-    domain: string;
+    /**
+     * Explicit callback host. When given, the hub uses it (the cross-domain
+     * `diffDomain` flow, with a verify challenge for http-post); when omitted,
+     * the hub falls back to the caller's connection address.
+     */
+    domain?: string;
     port: number;
     path: string;
 }
@@ -86,7 +91,8 @@ export function createRssCloudClient(
                     path: opts.callback.path,
                     protocol: opts.protocol,
                     urls: [opts.feedUrl],
-                    domain: opts.callback.domain
+                    // Empty string = "no explicit domain" (ADR-0001).
+                    domain: opts.callback.domain ?? ''
                 })
             );
         }
@@ -96,6 +102,10 @@ export function createRssCloudClient(
             protocol: opts.protocol,
             url1: opts.feedUrl
         });
+        // Send domain only when explicit; otherwise the hub uses the caller address.
+        if (opts.callback.domain) {
+            form.set('domain', opts.callback.domain);
+        }
         return send('/pleaseNotify', FORM_TYPE, form.toString());
     }
 

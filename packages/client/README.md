@@ -37,10 +37,22 @@ const { status, body } = await client.pleaseNotify({
 });
 ```
 
-> For `http-post` / `https-post` the hub derives the callback host from the
-> connection, so `callback.domain` is only consulted for the XML-RPC transport —
-> `port` and `path` are what matter here. Use `protocol: 'http-post'` for a plain
-> (non-TLS) callback, e.g. in local development.
+> `callback.domain` is **optional** and selects the verification flow on every
+> transport. Give it (as above) and the hub uses that host — confirming an
+> `http-post`/`https-post` callback with a one-time challenge `GET` to it. Omit it
+> and the hub falls back to your connection's address with no challenge:
+>
+> ```ts
+> await client.pleaseNotify({
+>     protocol: 'http-post',
+>     callback: { port: 9000, path: '/notify' }, // no domain → caller address
+>     feedUrl: 'https://feed.example/rss'
+> });
+> ```
+>
+> For a public HTTPS callback you'll usually want the explicit `domain` so the hub
+> reaches your real host. Use `protocol: 'http-post'` for a plain (non-TLS)
+> callback, e.g. in local development.
 
 Then serve the callback the hub will call. It does two things: answer the one-time
 **verify challenge** (a `GET` carrying `?challenge=…`), and accept **notifications**
