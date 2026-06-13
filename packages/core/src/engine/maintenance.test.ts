@@ -60,6 +60,16 @@ describe('generateStats', () => {
         expect(stats.generatedAt).toBe('2026-06-01T00:00:00.000Z');
     });
 
+    it('reports the configured change window, not a baked-in literal', async () => {
+        const stats = await generateStats(
+            createInMemoryStore(),
+            resolveConfig({ feedsChangedWindowDays: 14 }),
+            clock
+        );
+
+        expect(stats.windowDays).toBe(14);
+    });
+
     it('computes an activity snapshot across feed states', async () => {
         const store = createInMemoryStore();
 
