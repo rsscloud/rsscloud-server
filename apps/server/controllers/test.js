@@ -1,5 +1,5 @@
 const express = require('express'),
-    { core, store } = require('../core'),
+    { core } = require('../core'),
     {
         resourceToJson,
         resourceFromJson,
@@ -20,6 +20,13 @@ router.use(express.json());
 
 const EPOCH_ISO = new Date(0).toISOString();
 
+// The /test/* API drives core's narrow seed/snapshot seam — it never reaches
+// into the store. Reads find the feed in the listFeeds() snapshot; writes go
+// through seedResource/seedSubscriptions/clearFeeds.
+async function findEntry(feedUrl) {
+    return (await core.listFeeds()).find(entry => entry.feedUrl === feedUrl);
+}
+
 // The /test/* API speaks the core model's JSON shape (JsonResource /
 // JsonSubscription). setResource stays lenient — the harness sends partial
 // fixtures — filling core defaults and the feed URL before deserializing.
@@ -38,9 +45,7 @@ function resourceFromInput(feedUrl, raw) {
 
 router.post('/clear', async(req, res) => {
     try {
-        for (const { feedUrl } of await store.list()) {
-            await store.remove(feedUrl);
-        }
+        await core.clearFeeds();
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -50,7 +55,7 @@ router.post('/clear', async(req, res) => {
 router.post('/setResource', async(req, res) => {
     try {
         const { feedUrl, resource } = req.body;
-        await store.putResource(feedUrl, resourceFromInput(feedUrl, resource));
+        await core.seedResource(feedUrl, resourceFromInput(feedUrl, resource));
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -60,7 +65,8 @@ router.post('/setResource', async(req, res) => {
 router.post('/getResource', async(req, res) => {
     try {
         const { feedUrl } = req.body;
-        const resource = await store.getResource(feedUrl);
+        const entry = await findEntry(feedUrl);
+        const resource = entry?.resource ?? null;
         res.json({
             success: true,
             found: resource !== null,
@@ -74,7 +80,7 @@ router.post('/getResource', async(req, res) => {
 router.post('/setSubscriptions', async(req, res) => {
     try {
         const { feedUrl, subscriptions } = req.body;
-        await store.putSubscriptions(
+        await core.seedSubscriptions(
             feedUrl,
             subscriptions.map(subscriptionFromJson)
         );
@@ -87,7 +93,7 @@ router.post('/setSubscriptions', async(req, res) => {
 router.post('/getSubscriptions', async(req, res) => {
     try {
         const { feedUrl } = req.body;
-        const entry = (await store.list()).find(e => e.feedUrl === feedUrl);
+        const entry = await findEntry(feedUrl);
         res.json({
             success: true,
             found: entry !== undefined,
@@ -102,7 +108,7 @@ router.post('/getSubscriptions', async(req, res) => {
 
 router.post('/getData', async(req, res) => {
     try {
-        res.json({ success: true, data: toFeedsJson(await store.list()) });
+        res.json({ success: true, data: toFeedsJson(await core.listFeeds()) });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

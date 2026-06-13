@@ -54,7 +54,7 @@ async function parseOpml(xml) {
 
 test('generateOpml renders a feed with full metadata as an outline', async() => {
     const { core, generateOpml } = setup();
-    await core.store.putResource('https://a.example.com/feed.xml', makeResource('https://a.example.com/feed.xml', {
+    await core.seedResource('https://a.example.com/feed.xml', makeResource('https://a.example.com/feed.xml', {
         type: 'atom',
         title: 'Alpha',
         description: 'The Alpha feed',
@@ -89,9 +89,9 @@ test('generateOpml sorts case-insensitively and falls back to the feed URL', asy
     const { core, generateOpml } = setup();
     // Untitled feed: text falls back to the URL, type defaults to rss, and no
     // title/description/htmlUrl/language attributes are emitted.
-    await core.store.putResource('https://apple.example.com/feed.xml', makeResource('https://apple.example.com/feed.xml'));
-    await core.store.putResource('https://b.example.com/feed.xml', makeResource('https://b.example.com/feed.xml', { title: 'banana' }));
-    await core.store.putResource('https://z.example.com/feed.xml', makeResource('https://z.example.com/feed.xml', { title: 'Cherry' }));
+    await core.seedResource('https://apple.example.com/feed.xml', makeResource('https://apple.example.com/feed.xml'));
+    await core.seedResource('https://b.example.com/feed.xml', makeResource('https://b.example.com/feed.xml', { title: 'banana' }));
+    await core.seedResource('https://z.example.com/feed.xml', makeResource('https://z.example.com/feed.xml', { title: 'Cherry' }));
 
     const result = await parseOpml(await generateOpml());
     const outlines = result.opml.body[0].outline;
@@ -109,7 +109,7 @@ test('generateOpml sorts case-insensitively and falls back to the feed URL', asy
 
 test('generateOpml lists a subscribed feed that was never pinged', async() => {
     const { core, generateOpml } = setup();
-    await core.store.putSubscriptions('https://new.example.com/feed.xml', [makeSubscription()]);
+    await core.seedSubscriptions('https://new.example.com/feed.xml', [makeSubscription()]);
 
     const result = await parseOpml(await generateOpml());
     const outlines = result.opml.body[0].outline;

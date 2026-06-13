@@ -16,7 +16,7 @@ import type { Protocol } from './protocol.js';
 import type { Resource } from './resource.js';
 import type { FeedStat, MaintenanceResult, Stats } from './stats.js';
 import type { Subscription } from './subscription.js';
-import type { Store } from '../store/store.js';
+import type { FeedEntry, Store } from '../store/store.js';
 import type {
     RssCloudCore,
     RssCloudCoreOptions
@@ -572,12 +572,39 @@ export function createRssCloudCore(
         }
     }
 
+    function listFeeds(): Promise<FeedEntry[]> {
+        return store.list();
+    }
+
+    function seedResource(
+        feedUrl: string,
+        resource: Resource
+    ): Promise<void> {
+        return store.putResource(feedUrl, resource);
+    }
+
+    function seedSubscriptions(
+        feedUrl: string,
+        subscriptions: Subscription[]
+    ): Promise<void> {
+        return store.putSubscriptions(feedUrl, subscriptions);
+    }
+
+    async function clearFeeds(): Promise<void> {
+        for (const { feedUrl } of await store.list()) {
+            await store.remove(feedUrl);
+        }
+    }
+
     return {
         subscribe,
         unsubscribe,
         ping,
         events,
-        store,
+        listFeeds,
+        seedResource,
+        seedSubscriptions,
+        clearFeeds,
         close,
         removeExpired,
         generateStats

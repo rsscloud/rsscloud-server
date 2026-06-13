@@ -11,7 +11,9 @@ import type { EventBus } from '../events.js';
 import type { FeedParser } from '../feed/feed.js';
 import type { ProtocolPlugin } from './plugin.js';
 import type { MaintenanceResult, Stats } from './stats.js';
-import type { Store } from '../store/store.js';
+import type { Resource } from './resource.js';
+import type { Subscription } from './subscription.js';
+import type { FeedEntry, Store } from '../store/store.js';
 
 /**
  * Everything core needs, assembled by the host's composition root. The shared
@@ -60,10 +62,28 @@ export interface RssCloudCore {
     readonly events: EventBus;
 
     /**
-     * The persistence store, ready to use. When constructed from a
-     * `Promise<Store>`, this facade defers each call until the load resolves.
+     * Read-only snapshot of every tracked feed — the host's seam for the
+     * raw-data views (`/subscriptions.json`, OPML export) without reaching into
+     * the store. Concentrates all state access in core; the {@link Store} stays
+     * private to the engine.
      */
-    readonly store: Store;
+    listFeeds(): Promise<FeedEntry[]>;
+
+    /**
+     * Seed a feed's resource state directly. The narrow write seam the host's
+     * test API drives to stage fixtures; production paths reach state only
+     * through {@link subscribe}/{@link ping}.
+     */
+    seedResource(feedUrl: string, resource: Resource): Promise<void>;
+
+    /** Seed a feed's subscriber list directly (see {@link seedResource}). */
+    seedSubscriptions(
+        feedUrl: string,
+        subscriptions: Subscription[]
+    ): Promise<void>;
+
+    /** Drop every tracked feed — the test API's reset between fixtures. */
+    clearFeeds(): Promise<void>;
 
     /**
      * Await async store construction and tear the store down (flush + close).

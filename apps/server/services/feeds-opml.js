@@ -5,14 +5,14 @@ const getDayjs = require('./dayjs-wrapper');
 // Builds the `/feeds.opml` document: every tracked feed as an <outline>,
 // sorted case-insensitively by display text. The controller owns the HTTP
 // response (Content-Type + error forwarding); this returns the XML string.
-// Reads the injected core's store, whose `resource.feed` metadata is null/absent
-// for a feed that has never been pinged (so text falls back to the feed URL).
+// Reads the injected core's feed snapshot, whose `resource.feed` metadata is
+// null/absent for a feed never pinged (so text falls back to the feed URL).
 function createFeedsOpml({ core }) {
     async function generateOpml() {
         const dayjs = await getDayjs();
         const nowIso = dayjs().utc().format();
 
-        const entries = await core.store.list();
+        const entries = await core.listFeeds();
         const outlines = [];
 
         for (const { feedUrl, resource } of entries) {
