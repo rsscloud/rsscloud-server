@@ -3,9 +3,9 @@
 The notification context of the [rssCloud](http://rsscloud.org/) protocol: subscribers
 register a callback for a feed, publishers signal when a feed changes, and the server
 fans notifications out to subscribers. `@rsscloud/core` is the protocol-neutral engine
-(the **Hub** end); the transports and HTTP edge wrap it. `@rsscloud/client` is the
-matching **Client** end (the **Subscriber** + **Publisher** side), and `@rsscloud/xml-rpc`
-is the **XML-RPC codec** both ends share.
+(the **Hub** end); the transports and HTTP edge wrap it. `apps/client` is the matching
+**Client** end (the **Subscriber** + **Publisher** side), and `@rsscloud/xml-rpc` is the
+**XML-RPC codec** both ends share.
 
 ## Language
 
@@ -77,10 +77,11 @@ protocol-neutral hub engine; `apps/server` is one deployment of it.
 _Avoid_: server (that's a deployment of the hub, not the role), broker.
 
 **Client**:
-The **Subscriber** + **Publisher** end of the protocol — the mirror of the **Hub**.
-`@rsscloud/client` builds the **pleaseNotify**/**Ping** calls, echoes the verify challenge,
-parses inbound **Notification**s, and renders a feed's **Cloud element**; `apps/client` is
-the interactive harness over it.
+The **Subscriber** + **Publisher** end of the protocol — the mirror of the **Hub**,
+living in `apps/client`. Its `lib/` builds the **pleaseNotify**/**Ping** calls (on the
+**XML-RPC codec**) and renders a feed's **Cloud element**; the app hosts the callback
+endpoint that answers the verify challenge and acknowledges **Notification**s. Not a
+published package — a real subscriber must host that endpoint, so it stays app logic.
 _Avoid_: agent, consumer, SDK.
 
 **Subscriber**:

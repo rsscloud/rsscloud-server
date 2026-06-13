@@ -31,9 +31,9 @@ importers:
 
   apps/client:
     dependencies:
-      '@rsscloud/client':
+      '@rsscloud/xml-rpc':
         specifier: workspace:*
-        version: link:../../packages/client
+        version: link:../../packages/xml-rpc
       body-parser:
         specifier: ^2.2.2
         version: 2.2.2
@@ -43,6 +43,9 @@ importers:
       morgan:
         specifier: ^1.10.1
         version: 1.10.1
+      xml2js:
+        specifier: ^0.6.2
+        version: 0.6.2
     devDependencies:
       '@eslint/js':
         specifier: ^10.0.1
@@ -147,43 +150,6 @@ importers:
       nodemon:
         specifier: 3.1.14
         version: 3.1.14
-
-  packages/client:
-    dependencies:
-      '@rsscloud/xml-rpc':
-        specifier: workspace:*
-        version: link:../xml-rpc
-      xml2js:
-        specifier: ^0.6.2
-        version: 0.6.2
-    devDependencies:
-      '@eslint/js':
-        specifier: ^9.18.0
-        version: 9.39.4
-      '@types/node':
-        specifier: ^22.10.0
-        version: 22.19.19
-      '@types/xml2js':
-        specifier: ^0.4.14
-        version: 0.4.14
-      '@vitest/coverage-v8':
-        specifier: ^3.2.4
-        version: 3.2.4(vitest@3.2.4(@types/node@22.19.19)(esbuild@0.27.7)(jiti@2.6.1))
-      eslint:
-        specifier: ^9.18.0
-        version: 9.39.4(jiti@2.6.1)
-      tsup:
-        specifier: ^8.3.5
-        version: 8.5.1(jiti@2.6.1)(postcss@8.5.15)(typescript@5.9.3)
-      typescript:
-        specifier: ^5.7.2
-        version: 5.9.3
-      typescript-eslint:
-        specifier: ^8.20.0
-        version: 8.59.4(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/node@22.19.19)(esbuild@0.27.7)(jiti@2.6.1)
 
   packages/core:
     dependencies:

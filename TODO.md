@@ -4,10 +4,10 @@ Outstanding + future work only. Completed work lives in git history, not here �
 that includes the `apps/server` → `@rsscloud/core` migration, the on-disk **v2
 format unification** (disk == domain model; `legacy-store-shape.js` deleted; one-way
 legacy importer in `file-store.ts`), the 2026-06 architecture-cleanup passes
-across `@rsscloud/core` and `apps/server`, and the **client extraction** — a shared
-`@rsscloud/xml-rpc` codec (core + client build on it), the published
-`@rsscloud/client` (subscriber+publisher, factory API), and the private
-`apps/client` harness. Per CLAUDE.md: build with the `tdd` skill (red-green vertical slices);
+across `@rsscloud/core` and `apps/server`, and the shared **`@rsscloud/xml-rpc`** codec
+(core builds its `/RPC2` dispatcher on it). The subscriber/publisher client logic lives
+in `apps/client` (its `lib/`), not a published package — a real subscriber must host a
+notify endpoint, so it's app logic for now. Per CLAUDE.md: build with the `tdd` skill (red-green vertical slices);
 Conventional Commits enforced. Architecture decisions are recorded in `docs/adr/`;
 domain vocabulary in `CONTEXT.md`.
 
