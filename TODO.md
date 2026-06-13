@@ -36,20 +36,14 @@ trust the names over the numbers.
 >   dance now lives in one `fetchWithTimeout(doFetch, ms, url, init)` at the
 >   package root; the engine and both protocol plugins delegate. One home, one
 >   fake-timer test suite (abort-on-timeout + clear-on-settle). Coverage 100%.
+> - **Stopped the stats label lying** — core's `Stats` now carries `windowDays`
+>   alongside `feedsChangedLastWindow`; `toLegacyStats` passes both through and
+>   `views/stats.handlebars` interpolates the count ("changed in last
+>   {{windowDays}} days"). Change `feedsChangedWindowDays` and the label follows.
 
-### 1. `feedsChangedLast7Days` label can silently lie
-
-The window is a config value upstream (`feedsChangedWindowDays`) but a baked-in
-literal `7` downstream: the wire field name in `services/stats.js`
-(`toLegacyStats`) and the wording in `views/stats.handlebars`. Change the config
-and the label keeps claiming "7 days".
-
-*Fix:* carry the window count through the projection (`feedsChangedLastWindow` +
-`windowDays`) and let the template interpolate it.
-
-> The review's sixth item — extracting the hand-rolled wire builders out of
-> `apps/server/client.js` — is already the "Client app + `@rsscloud/client`
-> package" work below. Not duplicated here.
+All three reviewed cleanup items are done. (The review's sixth item — extracting
+the hand-rolled wire builders out of `apps/server/client.js` — is the "Client app
++ `@rsscloud/client` package" work below, not a separate task.)
 
 ## WebSub hub support (bigger — spans core + express)
 
