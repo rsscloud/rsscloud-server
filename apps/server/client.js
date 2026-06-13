@@ -1,8 +1,12 @@
 const bodyParser = require('body-parser'),
-    builder = require('xmlbuilder'),
     express = require('express'),
     morgan = require('morgan'),
     packageJson = require('./package.json'),
+    {
+        createRssCloudClient,
+        buildNotifyResponse,
+        renderCloudFeed
+    } = require('@rsscloud/client'),
     textParser = bodyParser.text({ type: '*/xml' }),
     urlencodedParser = bodyParser.urlencoded({ extended: false });
 
@@ -23,6 +27,10 @@ const clientConfig = {
     port: getNumericConfig('PORT', 9000),
     rsscloudServer: 'http://localhost:5337'
 };
+
+// All protocol wire work (pleaseNotify/ping calls, the XML-RPC notify ack, and
+// <cloud> feed rendering) lives in @rsscloud/client; this file is just the UI.
+const client = createRssCloudClient({ serverUrl: clientConfig.rsscloudServer });
 
 // In-memory data stores (reset on restart)
 const requestLog = [];
@@ -91,11 +99,6 @@ app.use((req, res, next) => {
     next();
 });
 
-// Helper function to generate RFC 2822 date string
-function toRfc2822(date) {
-    return date.toUTCString();
-}
-
 // Helper function to escape HTML entities
 function escapeHtml(text) {
     return text
@@ -104,109 +107,6 @@ function escapeHtml(text) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
-}
-
-// Helper function to build XML-RPC pleaseNotify call
-function buildPleaseNotifyCall(port, path, protocol, feedUrl, domain) {
-    const notifyProcedure = protocol === 'xml-rpc' ? 'rssCloud.notify' : '';
-
-    const methodCall = {
-        methodCall: {
-            methodName: 'rssCloud.pleaseNotify',
-            params: {
-                param: []
-            }
-        }
-    };
-
-    // Add notifyProcedure (string)
-    methodCall.methodCall.params.param.push({
-        value: { string: notifyProcedure }
-    });
-
-    // Add port (integer)
-    methodCall.methodCall.params.param.push({
-        value: { i4: port }
-    });
-
-    // Add path (string)
-    methodCall.methodCall.params.param.push({
-        value: { string: path }
-    });
-
-    // Add protocol (string)
-    methodCall.methodCall.params.param.push({
-        value: { string: protocol }
-    });
-
-    // Add urlList (array with single URL)
-    methodCall.methodCall.params.param.push({
-        value: {
-            array: {
-                data: [
-                    {
-                        value: { string: feedUrl }
-                    }
-                ]
-            }
-        }
-    });
-
-    // Add domain (string)
-    methodCall.methodCall.params.param.push({
-        value: { string: domain }
-    });
-
-    return builder.create(methodCall).end({ pretty: true });
-}
-
-// Helper function to build XML-RPC ping call
-function buildPingCall(feedUrl) {
-    const methodCall = {
-        methodCall: {
-            methodName: 'rssCloud.ping',
-            params: {
-                param: {
-                    value: { string: feedUrl }
-                }
-            }
-        }
-    };
-    return builder.create(methodCall).end({ pretty: true });
-}
-
-// Helper function to generate RSS feed XML
-function generateRssFeed(feedName) {
-    const items = feedItems[feedName] || [
-        { title: 'initialized', timestamp: new Date() }
-    ];
-    const feedUrl = `http://${clientConfig.domain}:${clientConfig.port}/${feedName}`;
-
-    const rss = {
-        rss: {
-            '@version': '2.0',
-            channel: {
-                title: `Test Feed: ${feedName}`,
-                link: feedUrl,
-                description: 'Test feed for rssCloud',
-                cloud: {
-                    '@domain': 'localhost',
-                    '@port': '5337',
-                    '@path': '/RPC2',
-                    '@registerProcedure': 'rssCloud.pleaseNotify',
-                    '@protocol': 'xml-rpc'
-                },
-                item: items.map((item, index) => ({
-                    title: item.title,
-                    description: `Feed item: ${item.title}`,
-                    pubDate: toRfc2822(item.timestamp),
-                    guid: `${feedName}-${index}`
-                }))
-            }
-        }
-    };
-
-    return builder.create(rss, { encoding: 'UTF-8' }).end({ pretty: true });
 }
 
 // Helper function to format request body for display
@@ -359,45 +259,16 @@ app.post('/subscribe', urlencodedParser, async(req, res) => {
     const feedUrl = `http://${clientConfig.domain}:${clientConfig.port}/${feedName}`;
 
     try {
-        let response;
+        const { status, body } = await client.pleaseNotify({
+            protocol: useXmlRpc ? 'xml-rpc' : 'http-post',
+            callback: {
+                domain: clientConfig.domain,
+                port: clientConfig.port,
+                path: useXmlRpc ? '/RPC2' : '/notify'
+            },
+            feedUrl
+        });
 
-        if (useXmlRpc) {
-            // XML-RPC request
-            const xmlBody = buildPleaseNotifyCall(
-                clientConfig.port,
-                '/RPC2',
-                'xml-rpc',
-                feedUrl,
-                clientConfig.domain
-            );
-
-            response = await fetch(`${clientConfig.rsscloudServer}/RPC2`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/xml' },
-                body: xmlBody
-            });
-        } else {
-            // REST request
-            const formData = new URLSearchParams({
-                port: clientConfig.port.toString(),
-                path: '/notify',
-                protocol: 'http-post',
-                url1: feedUrl
-            });
-
-            response = await fetch(
-                `${clientConfig.rsscloudServer}/pleaseNotify`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body: formData.toString()
-                }
-            );
-        }
-
-        const responseText = await response.text();
         res.type('html').send(`
             <!DOCTYPE html>
             <html>
@@ -406,8 +277,8 @@ app.post('/subscribe', urlencodedParser, async(req, res) => {
                 <h2>Subscribe Result</h2>
                 <p><strong>Feed:</strong> ${escapeHtml(feedUrl)}</p>
                 <p><strong>Protocol:</strong> ${useXmlRpc ? 'XML-RPC' : 'REST'}</p>
-                <p><strong>Status:</strong> ${response.status}</p>
-                <pre style="background: #f5f5f5; padding: 10px; overflow: auto;">${escapeHtml(responseText)}</pre>
+                <p><strong>Status:</strong> ${status}</p>
+                <pre style="background: #f5f5f5; padding: 10px; overflow: auto;">${escapeHtml(body)}</pre>
                 <p><a href="/">Back to client</a></p>
             </body>
             </html>
@@ -446,31 +317,11 @@ app.post('/ping-feed', urlencodedParser, async(req, res) => {
     });
 
     try {
-        let response;
+        const { status, body } = await client.ping({
+            feedUrl,
+            transport: useXmlRpc ? 'xml-rpc' : 'rest'
+        });
 
-        if (useXmlRpc) {
-            // XML-RPC ping
-            const xmlBody = buildPingCall(feedUrl);
-
-            response = await fetch(`${clientConfig.rsscloudServer}/RPC2`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/xml' },
-                body: xmlBody
-            });
-        } else {
-            // REST ping
-            const formData = new URLSearchParams({ url: feedUrl });
-
-            response = await fetch(`${clientConfig.rsscloudServer}/ping`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: formData.toString()
-            });
-        }
-
-        const responseText = await response.text();
         res.type('html').send(`
             <!DOCTYPE html>
             <html>
@@ -480,8 +331,8 @@ app.post('/ping-feed', urlencodedParser, async(req, res) => {
                 <p><strong>Feed:</strong> ${escapeHtml(feedUrl)}</p>
                 <p><strong>Protocol:</strong> ${useXmlRpc ? 'XML-RPC' : 'REST'}</p>
                 <p><strong>Items in feed:</strong> ${feedItems[feedName].length}</p>
-                <p><strong>Status:</strong> ${response.status}</p>
-                <pre style="background: #f5f5f5; padding: 10px; overflow: auto;">${escapeHtml(responseText)}</pre>
+                <p><strong>Status:</strong> ${status}</p>
+                <pre style="background: #f5f5f5; padding: 10px; overflow: auto;">${escapeHtml(body)}</pre>
                 <p><a href="/">Back to client</a></p>
             </body>
             </html>
@@ -515,23 +366,8 @@ app.post('/notify', urlencodedParser, (req, res) => {
 
 // Route: Handle XML-RPC notifications
 app.post('/RPC2', textParser, (req, res) => {
-    // Body is already logged by middleware
-    // Return XML-RPC success response
-    const response = builder
-        .create({
-            methodResponse: {
-                params: {
-                    param: {
-                        value: {
-                            boolean: 1
-                        }
-                    }
-                }
-            }
-        })
-        .end({ pretty: true });
-
-    res.type('text/xml').send(response);
+    // Body is already logged by middleware; acknowledge with the boolean reply.
+    res.type('text/xml').send(buildNotifyResponse());
 });
 
 // Route: Serve RSS feeds (must be after specific routes)
@@ -544,7 +380,29 @@ app.get('/:feedName', (req, res) => {
         return;
     }
 
-    const rssXml = generateRssFeed(feedName);
+    const items = feedItems[feedName] || [
+        { title: 'initialized', timestamp: new Date() }
+    ];
+    const feedUrl = `http://${clientConfig.domain}:${clientConfig.port}/${feedName}`;
+
+    const rssXml = renderCloudFeed({
+        title: `Test Feed: ${feedName}`,
+        link: feedUrl,
+        description: 'Test feed for rssCloud',
+        cloud: {
+            domain: 'localhost',
+            port: 5337,
+            path: '/RPC2',
+            registerProcedure: 'rssCloud.pleaseNotify',
+            protocol: 'xml-rpc'
+        },
+        items: items.map((item, index) => ({
+            title: item.title,
+            description: `Feed item: ${item.title}`,
+            pubDate: item.timestamp,
+            guid: `${feedName}-${index}`
+        }))
+    });
     res.type('application/rss+xml').send(rssXml);
 });
 

@@ -16,6 +16,7 @@
     "author": "Andrew Shell <andrew@andrewshell.org>",
     "license": "MIT",
     "dependencies": {
+        "@rsscloud/client": "workspace:*",
         "@rsscloud/core": "workspace:*",
         "@rsscloud/express": "workspace:*",
         "body-parser": "^2.2.2",
