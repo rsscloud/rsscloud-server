@@ -13,3 +13,14 @@ export {
     buildPingCall,
     type PleaseNotifyParams
 } from './rpc-calls.js';
+export {
+    buildNotifyResponse,
+    parseHttpPostNotify,
+    parseXmlRpcNotify
+} from './notify.js';
+export {
+    renderCloudFeed,
+    type CloudElement,
+    type CloudFeedOptions,
+    type FeedItem
+} from './feed.js';
