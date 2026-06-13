@@ -32,17 +32,12 @@ trust the names over the numbers.
 >   `(store, config, now)`; the factory delegates. Shrank the factory ~143
 >   lines and the maintenance suite exercises them directly against an
 >   in-memory store (one core-level smoke test per delegation). Coverage 100%.
+> - **Collapsed the three `fetchWithTimeout` copies** — the abort/`clearTimeout`
+>   dance now lives in one `fetchWithTimeout(doFetch, ms, url, init)` at the
+>   package root; the engine and both protocol plugins delegate. One home, one
+>   fake-timer test suite (abort-on-timeout + clear-on-settle). Coverage 100%.
 
-### 1. One `fetchWithTimeout`, not three copies
-
-The abort-controller + `clearTimeout` pattern is written verbatim in
-`engine/create-core.ts`, `protocols/rest-plugin.ts`, and
-`protocols/xml-rpc-plugin.ts`; only the timeout source differs.
-
-*Fix:* a shared `fetchWithTimeout(doFetch, ms, url, init)` core util. A bug in
-the abort dance then has one place to live, and one place to test.
-
-### 2. `feedsChangedLast7Days` label can silently lie
+### 1. `feedsChangedLast7Days` label can silently lie
 
 The window is a config value upstream (`feedsChangedWindowDays`) but a baked-in
 literal `7` downstream: the wire field name in `services/stats.js`
