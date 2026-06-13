@@ -11,10 +11,21 @@ import {
     type SubscribeParams
 } from './subscribe-request.js';
 import {
-    parseMethodCall,
-    serializeFault,
-    serializeSuccess
-} from './xml-rpc-codec.js';
+    bool,
+    buildFault,
+    buildMethodResponse,
+    parseMethodCall
+} from '@rsscloud/xml-rpc';
+
+/** rssCloud success response: a methodResponse carrying boolean true. */
+function serializeSuccess(ok: boolean): string {
+    return buildMethodResponse(bool(ok));
+}
+
+/** rssCloud fault response: the standard faultCode/faultString struct. */
+function serializeFault(code: number, faultString: string): string {
+    return buildFault(code, faultString);
+}
 
 /** Per-request context the adapter resolves before handing core the raw XML. */
 export interface XmlRpcDispatchContext {
