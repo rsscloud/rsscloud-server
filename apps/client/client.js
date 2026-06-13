@@ -6,7 +6,7 @@ const bodyParser = require('body-parser'),
         createRssCloudClient,
         buildNotifyResponse,
         renderCloudFeed
-    } = require('@rsscloud/client'),
+    } = require('./lib'),
     textParser = bodyParser.text({ type: '*/xml' }),
     urlencodedParser = bodyParser.urlencoded({ extended: false });
 
@@ -29,7 +29,7 @@ const clientConfig = {
 };
 
 // All protocol wire work (pleaseNotify/ping calls, the XML-RPC notify ack, and
-// <cloud> feed rendering) lives in @rsscloud/client; this file is just the UI.
+// <cloud> feed rendering) lives in ./lib; this file is just the UI.
 const client = createRssCloudClient({ serverUrl: clientConfig.rsscloudServer });
 
 // In-memory data stores (reset on restart)
