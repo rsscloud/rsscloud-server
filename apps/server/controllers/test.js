@@ -25,6 +25,20 @@ function resourceFromInput(feedUrl, raw) {
     });
 }
 
+// Every /test/* route shares one envelope: a handler that returns the payload
+// fields (or nothing) becomes `{ success: true, ...fields }`, and any throw
+// becomes a 500 `{ success: false, error }`. The handler owns only its own
+// logic; the success/failure contract lives here, once.
+function wrap(handler) {
+    return async(req, res) => {
+        try {
+            res.json({ success: true, ...(await handler(req)) });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    };
+}
+
 // Built with an injected core (prod file-backed or in-memory in tests). The
 // /test/* API drives core's narrow seed/snapshot seam — it never reaches into
 // the store. Reads find the feed in the listFeeds() snapshot; writes go through
@@ -44,91 +58,51 @@ function createTestController({ core }) {
         );
     }
 
-    router.post('/clear', async(req, res) => {
-        try {
-            await core.clearFeeds();
-            res.json({ success: true });
-        } catch (error) {
-            res.status(500).json({ success: false, error: error.message });
-        }
-    });
+    router.post('/clear', wrap(async() => {
+        await core.clearFeeds();
+    }));
 
-    router.post('/setResource', async(req, res) => {
-        try {
-            const { feedUrl, resource } = req.body;
-            await core.seedResource(
-                feedUrl,
-                resourceFromInput(feedUrl, resource)
-            );
-            res.json({ success: true });
-        } catch (error) {
-            res.status(500).json({ success: false, error: error.message });
-        }
-    });
+    router.post('/setResource', wrap(async(req) => {
+        const { feedUrl, resource } = req.body;
+        await core.seedResource(feedUrl, resourceFromInput(feedUrl, resource));
+    }));
 
-    router.post('/getResource', async(req, res) => {
-        try {
-            const { feedUrl } = req.body;
-            const entry = await findEntry(feedUrl);
-            const resource = entry?.resource ?? null;
-            res.json({
-                success: true,
-                found: resource !== null,
-                resource: resource !== null ? resourceToJson(resource) : null
-            });
-        } catch (error) {
-            res.status(500).json({ success: false, error: error.message });
-        }
-    });
+    router.post('/getResource', wrap(async(req) => {
+        const { feedUrl } = req.body;
+        const entry = await findEntry(feedUrl);
+        const resource = entry?.resource ?? null;
+        return {
+            found: resource !== null,
+            resource: resource !== null ? resourceToJson(resource) : null
+        };
+    }));
 
-    router.post('/setSubscriptions', async(req, res) => {
-        try {
-            const { feedUrl, subscriptions } = req.body;
-            await core.seedSubscriptions(
-                feedUrl,
-                subscriptions.map(subscriptionFromJson)
-            );
-            res.json({ success: true });
-        } catch (error) {
-            res.status(500).json({ success: false, error: error.message });
-        }
-    });
+    router.post('/setSubscriptions', wrap(async(req) => {
+        const { feedUrl, subscriptions } = req.body;
+        await core.seedSubscriptions(
+            feedUrl,
+            subscriptions.map(subscriptionFromJson)
+        );
+    }));
 
-    router.post('/getSubscriptions', async(req, res) => {
-        try {
-            const { feedUrl } = req.body;
-            const entry = await findEntry(feedUrl);
-            res.json({
-                success: true,
-                found: entry !== undefined,
-                subscriptions: entry
-                    ? entry.subscriptions.map(subscriptionToJson)
-                    : []
-            });
-        } catch (error) {
-            res.status(500).json({ success: false, error: error.message });
-        }
-    });
+    router.post('/getSubscriptions', wrap(async(req) => {
+        const { feedUrl } = req.body;
+        const entry = await findEntry(feedUrl);
+        return {
+            found: entry !== undefined,
+            subscriptions: entry
+                ? entry.subscriptions.map(subscriptionToJson)
+                : []
+        };
+    }));
 
-    router.post('/getData', async(req, res) => {
-        try {
-            res.json({
-                success: true,
-                data: toFeedsJson(await core.listFeeds())
-            });
-        } catch (error) {
-            res.status(500).json({ success: false, error: error.message });
-        }
-    });
+    router.post('/getData', wrap(async() => ({
+        data: toFeedsJson(await core.listFeeds())
+    })));
 
-    router.post('/removeExpired', async(req, res) => {
-        try {
-            const result = await core.removeExpired();
-            res.json({ success: true, result });
-        } catch (error) {
-            res.status(500).json({ success: false, error: error.message });
-        }
-    });
+    router.post('/removeExpired', wrap(async() => ({
+        result: await core.removeExpired()
+    })));
 
     return router;
 }
