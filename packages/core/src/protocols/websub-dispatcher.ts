@@ -1,3 +1,4 @@
+import type { RssCloudCore } from '../engine/core.js';
 import type { SubscribeRequest } from '../engine/dto.js';
 
 /**
@@ -50,4 +51,42 @@ export function parseSubscribe(
             protocol: 'websub'
         }
     };
+}
+
+/** A fully-resolved WebSub HTTP status the front door copies onto its reply. */
+export interface WebSubResponse {
+    status: number;
+}
+
+/** Construction-time dependencies for the WebSub front door. */
+export interface WebSubDispatcherOptions {
+    core: Pick<RssCloudCore, 'acceptSubscription'>;
+}
+
+/** Parsed-body-in, status-out WebSub `hub.*` front door. */
+export interface WebSubDispatcher {
+    dispatch(body: Record<string, unknown>): WebSubResponse;
+}
+
+/**
+ * Build the WebSub front door. A malformed `hub.*` body is rejected synchronously
+ * (`400`); a valid subscribe is accepted for async intent verification
+ * (`202` — see ADR-0002) by handing the built request to
+ * {@link RssCloudCore.acceptSubscription}.
+ */
+export function createWebSubDispatcher(
+    options: WebSubDispatcherOptions
+): WebSubDispatcher {
+    const { core } = options;
+
+    function dispatch(body: Record<string, unknown>): WebSubResponse {
+        const parsed = parseSubscribe(body);
+        if (!parsed.ok) {
+            return { status: parsed.status };
+        }
+        core.acceptSubscription(parsed.request);
+        return { status: 202 };
+    }
+
+    return { dispatch };
 }
