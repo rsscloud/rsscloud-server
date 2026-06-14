@@ -65,6 +65,13 @@ export interface RssCloudCore {
      * {@link subscribe} — the synchronous rssCloud path is unchanged.
      */
     acceptSubscription(req: SubscribeRequest): void;
+    /**
+     * Accept an unsubscribe for async intent verification (WebSub
+     * `hub.mode=unsubscribe`): returns immediately and schedules a challenge
+     * GET, removing the subscription only once the callback confirms intent.
+     * The verified counterpart to {@link unsubscribe}, which has no verify hook.
+     */
+    acceptUnsubscription(req: UnsubscribeRequest): void;
     /** Cancel subscriptions. */
     unsubscribe(req: UnsubscribeRequest): Promise<UnsubscribeResponse>;
     /**

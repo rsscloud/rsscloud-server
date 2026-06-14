@@ -1,5 +1,5 @@
 import type { RssCloudCore } from '../engine/core.js';
-import type { SubscribeRequest } from '../engine/dto.js';
+import type { SubscribeRequest, UnsubscribeRequest } from '../engine/dto.js';
 
 /**
  * Outcome of parsing a WebSub `hub.*` subscribe request: either a ready-to-drive
@@ -9,8 +9,13 @@ export type WebSubParseResult =
     | { ok: true; request: SubscribeRequest }
     | { ok: false; status: number };
 
+/** Outcome of parsing a WebSub `hub.*` unsubscribe request (see {@link WebSubParseResult}). */
+export type WebSubUnsubscribeParseResult =
+    | { ok: true; request: UnsubscribeRequest }
+    | { ok: false; status: number };
+
 /** Any `hub.*` shape the hub can't act on is a malformed request. */
-const MALFORMED: WebSubParseResult = { ok: false, status: 400 };
+const MALFORMED = { ok: false as const, status: 400 };
 
 /** True when `value` parses as an absolute URL (a relative URL throws sans base). */
 function isAbsoluteUrl(value: string): boolean {
@@ -20,6 +25,25 @@ function isAbsoluteUrl(value: string): boolean {
     } catch {
         return false;
     }
+}
+
+/**
+ * The two fields every actionable `hub.*` request shares: a valid absolute
+ * `hub.callback` and a non-empty `hub.topic`. Returns `null` when either is
+ * malformed.
+ */
+function parseHubCallbackTopic(
+    body: Record<string, unknown>
+): { callback: string; topic: string } | null {
+    const callback = body['hub.callback'];
+    if (typeof callback !== 'string' || !isAbsoluteUrl(callback)) {
+        return null;
+    }
+    const topic = body['hub.topic'];
+    if (typeof topic !== 'string' || topic === '') {
+        return null;
+    }
+    return { callback, topic };
 }
 
 /**
@@ -35,17 +59,13 @@ export function parseSubscribe(
     if (body['hub.mode'] !== 'subscribe') {
         return MALFORMED;
     }
-    const callback = body['hub.callback'];
-    if (typeof callback !== 'string' || !isAbsoluteUrl(callback)) {
-        return MALFORMED;
-    }
-    const topic = body['hub.topic'];
-    if (typeof topic !== 'string' || topic === '') {
+    const parsed = parseHubCallbackTopic(body);
+    if (parsed === null) {
         return MALFORMED;
     }
     const request: SubscribeRequest = {
-        resourceUrls: [topic],
-        callbackUrl: callback,
+        resourceUrls: [parsed.topic],
+        callbackUrl: parsed.callback,
         protocol: 'websub'
     };
     const secret = body['hub.secret'];
@@ -55,6 +75,31 @@ export function parseSubscribe(
     return { ok: true, request };
 }
 
+/**
+ * Parse and validate a WebSub unsubscribe form body. Like {@link parseSubscribe}
+ * it builds the request directly from `hub.callback`/`hub.topic`; an unsubscribe
+ * carries no `details` (no secret/lease to renew).
+ */
+export function parseUnsubscribe(
+    body: Record<string, unknown>
+): WebSubUnsubscribeParseResult {
+    if (body['hub.mode'] !== 'unsubscribe') {
+        return MALFORMED;
+    }
+    const parsed = parseHubCallbackTopic(body);
+    if (parsed === null) {
+        return MALFORMED;
+    }
+    return {
+        ok: true,
+        request: {
+            resourceUrls: [parsed.topic],
+            callbackUrl: parsed.callback,
+            protocol: 'websub'
+        }
+    };
+}
+
 /** A fully-resolved WebSub HTTP status the front door copies onto its reply. */
 export interface WebSubResponse {
     status: number;
@@ -62,7 +107,7 @@ export interface WebSubResponse {
 
 /** Construction-time dependencies for the WebSub front door. */
 export interface WebSubDispatcherOptions {
-    core: Pick<RssCloudCore, 'acceptSubscription'>;
+    core: Pick<RssCloudCore, 'acceptSubscription' | 'acceptUnsubscription'>;
 }
 
 /** Parsed-body-in, status-out WebSub `hub.*` front door. */
@@ -71,10 +116,11 @@ export interface WebSubDispatcher {
 }
 
 /**
- * Build the WebSub front door. A malformed `hub.*` body is rejected synchronously
- * (`400`); a valid subscribe is accepted for async intent verification
- * (`202` — see ADR-0002) by handing the built request to
- * {@link RssCloudCore.acceptSubscription}.
+ * Build the WebSub front door. A malformed `hub.*` body (or an unsupported
+ * `hub.mode`) is rejected synchronously (`400`); a valid subscribe/unsubscribe
+ * is accepted for async intent verification (`202` — see ADR-0002) by handing
+ * the built request to {@link RssCloudCore.acceptSubscription} /
+ * {@link RssCloudCore.acceptUnsubscription}.
  */
 export function createWebSubDispatcher(
     options: WebSubDispatcherOptions
@@ -82,12 +128,23 @@ export function createWebSubDispatcher(
     const { core } = options;
 
     function dispatch(body: Record<string, unknown>): WebSubResponse {
-        const parsed = parseSubscribe(body);
-        if (!parsed.ok) {
-            return { status: parsed.status };
+        if (body['hub.mode'] === 'subscribe') {
+            const parsed = parseSubscribe(body);
+            if (!parsed.ok) {
+                return { status: parsed.status };
+            }
+            core.acceptSubscription(parsed.request);
+            return { status: 202 };
         }
-        core.acceptSubscription(parsed.request);
-        return { status: 202 };
+        if (body['hub.mode'] === 'unsubscribe') {
+            const parsed = parseUnsubscribe(body);
+            if (!parsed.ok) {
+                return { status: parsed.status };
+            }
+            core.acceptUnsubscription(parsed.request);
+            return { status: 202 };
+        }
+        return { status: 400 };
     }
 
     return { dispatch };

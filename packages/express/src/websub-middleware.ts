@@ -3,7 +3,7 @@ import { createWebSubDispatcher, type RssCloudCore } from '@rsscloud/core';
 
 /** Construction-time dependencies for the WebSub front-door middleware. */
 export interface WebSubMiddlewareOptions {
-    core: Pick<RssCloudCore, 'acceptSubscription'>;
+    core: Pick<RssCloudCore, 'acceptSubscription' | 'acceptUnsubscription'>;
 }
 
 /** Parses the `application/x-www-form-urlencoded` `hub.*` body. */
