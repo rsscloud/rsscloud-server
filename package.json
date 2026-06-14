@@ -21,7 +21,9 @@
         "overrides": {
             "serialize-javascript": ">=7.0.5",
             "qs": ">=6.15.2",
-            "vite": ">=6.4.2"
+            "vite": ">=6.4.2",
+            "esbuild": ">=0.28.1",
+            "diff": ">=8.0.3"
         },
         "onlyBuiltDependencies": [
             "esbuild"
