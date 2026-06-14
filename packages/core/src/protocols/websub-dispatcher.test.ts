@@ -66,6 +66,25 @@ describe('parseSubscribe', () => {
 
         expect(result).toEqual({ ok: false, status: 400 });
     });
+
+    it('carries a supplied hub.secret through as details.secret', () => {
+        const result = parseSubscribe({
+            'hub.mode': 'subscribe',
+            'hub.callback': 'https://sub.example.com/listener',
+            'hub.topic': 'http://feed.example/rss',
+            'hub.secret': 's3cr3t'
+        });
+
+        expect(result).toEqual({
+            ok: true,
+            request: {
+                resourceUrls: ['http://feed.example/rss'],
+                callbackUrl: 'https://sub.example.com/listener',
+                protocol: 'websub',
+                details: { secret: 's3cr3t' }
+            }
+        });
+    });
 });
 
 describe('createWebSubDispatcher', () => {

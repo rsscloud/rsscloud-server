@@ -33,5 +33,8 @@ module.exports = {
     statsIntervalMs: getNumericConfig('STATS_INTERVAL_MS', 3600000),
     feedsChangedWindowDays: getNumericConfig('FEEDS_CHANGED_WINDOW_DAYS', 7),
     webSubPath,
-    hubUrl: getConfig('HUB_URL', `http://${domain}:${port}${webSubPath}`)
+    hubUrl: getConfig('HUB_URL', `http://${domain}:${port}${webSubPath}`),
+    // HMAC algorithm for the X-Hub-Signature header on authenticated WebSub
+    // deliveries (subscribers that supplied a hub.secret). Default sha256.
+    webSubSignatureAlgo: getConfig('WEBSUB_SIGNATURE_ALGO', 'sha256')
 };

@@ -30,7 +30,8 @@ const plugins = [
     createXmlRpcProtocolPlugin({ requestTimeoutMs: config.requestTimeout }),
     createWebSubProtocolPlugin({
         requestTimeoutMs: config.requestTimeout,
-        hubUrl: config.hubUrl
+        hubUrl: config.hubUrl,
+        signatureAlgo: config.webSubSignatureAlgo
     })
 ];
 
