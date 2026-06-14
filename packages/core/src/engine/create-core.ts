@@ -20,6 +20,7 @@ import type { ResourcePayload, ProtocolPlugin } from './plugin.js';
 import type { Protocol } from './protocol.js';
 import type { Resource } from './resource.js';
 import type { Subscription } from './subscription.js';
+import { createInProcessVerificationScheduler } from './verification-scheduler.js';
 import type { FeedEntry, Store } from '../store/store.js';
 import type {
     RssCloudCore,
@@ -69,6 +70,18 @@ export function createRssCloudCore(
     const events = options.events ?? createEventBus();
     const doFetch = options.fetch ?? fetch;
     const now = options.now ?? (() => new Date());
+    const scheduler =
+        options.scheduler ??
+        createInProcessVerificationScheduler({
+            onError: error =>
+                events.emit('error', {
+                    scope: 'websub-verification',
+                    error:
+                        error instanceof Error
+                            ? error
+                            : new Error(String(error))
+                })
+        });
     const feedParser =
         options.feedParser ??
         createDefaultFeedParser({ maxResourceSize: config.maxResourceSize });
@@ -398,6 +411,17 @@ export function createRssCloudCore(
         };
     }
 
+    function acceptSubscription(req: SubscribeRequest): void {
+        // A new caller of the unchanged `subscribe`: the scheduler runs the
+        // verify→persist out of band so the front door can answer `202` first.
+        // `subscribe` persists only after `verify` succeeds and records nothing
+        // on a refusal, so no extra failure handling is needed here — only a
+        // genuine exception reaches the scheduler's onError.
+        scheduler.schedule(async () => {
+            await subscribe(req);
+        });
+    }
+
     async function unsubscribe(
         req: UnsubscribeRequest
     ): Promise<UnsubscribeResponse> {
@@ -451,6 +475,7 @@ export function createRssCloudCore(
 
     return {
         subscribe,
+        acceptSubscription,
         unsubscribe,
         ping,
         events,

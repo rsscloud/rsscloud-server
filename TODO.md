@@ -173,12 +173,15 @@ Flows that must have an e2e (happy path + the ★ negatives):
   throw (always verifies — ignores `diffDomain`). Injected `fetch` + challenge generator.
   `protocols: ['websub']`. (→ `packages/core/src/protocols/websub-plugin.ts`;
   `deliver()` is an interim failing stub until S2.1.)
-- [ ] **S1.3** `VerificationScheduler` as a `createRssCloudCore` option (default
+- [x] **S1.3** `VerificationScheduler` as a `createRssCloudCore` option (default
   in-process: run task next tick, catch+log; injectable for tests) + an engine
   async-accept method `acceptSubscription(req)` that returns immediately and schedules
   verify→persist via the scheduler: success persists a `protocol:'websub'` subscription
   (with `details`), failure records nothing. `core.subscribe` is unchanged — the accept
   method is a new caller of it. Unit test drains a capturing scheduler.
+  (→ `engine/verification-scheduler.ts`; default scheduler routes a thrown task to the
+  `error` event, scope `websub-verification`. Pre-ping-on-subscribe kept for now — see
+  open question.)
 - [ ] **S1.4** core `websub-dispatcher` ↔ express `websub({ core })` factory (same shape
   as `ping`/`pleaseNotify`): parse the form body, `hub.mode=subscribe` → `core.accept…`
   → `202`, malformed → `4xx`. Mirror `rest-middleware` (thin; dispatcher owns logic).
