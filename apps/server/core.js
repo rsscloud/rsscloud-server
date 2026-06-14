@@ -6,6 +6,7 @@ const {
     createRssCloudCore,
     createRestProtocolPlugin,
     createXmlRpcProtocolPlugin,
+    createWebSubProtocolPlugin,
     createFileStore,
     resolveConfig
 } = require('@rsscloud/core');
@@ -20,9 +21,14 @@ const coreConfig = resolveConfig({
     feedsChangedWindowDays: config.feedsChangedWindowDays
 });
 
+// Registers the 'websub' protocol so core.subscribe accepts WebSub subscriptions
+// (without it, core.subscribe → UNSUPPORTED_PROTOCOL). Content distribution
+// (and the hubUrl it needs) lands in a later phase; for now the plugin verifies
+// subscriber intent.
 const plugins = [
     createRestProtocolPlugin({ requestTimeoutMs: config.requestTimeout }),
-    createXmlRpcProtocolPlugin({ requestTimeoutMs: config.requestTimeout })
+    createXmlRpcProtocolPlugin({ requestTimeoutMs: config.requestTimeout }),
+    createWebSubProtocolPlugin({ requestTimeoutMs: config.requestTimeout })
 ];
 
 // createFileStore is async, but core.js is required synchronously — the
