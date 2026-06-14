@@ -4,6 +4,12 @@ const https = require('https'),
     bodyParser = require('body-parser'),
     textParser = bodyParser.text({ type: '*/xml' }),
     urlencodedParser = bodyParser.urlencoded({ extended: false }),
+    // Content-capture: record the raw body of any POST the urlencoded parser
+    // skipped (e.g. a WebSub content distribution carrying the feed verbatim).
+    // body-parser bails out when an earlier parser already set `req._body`, so
+    // this only fires for non-urlencoded POSTs and leaves rssCloud notify
+    // bodies (parsed into objects) untouched.
+    rawBodyParser = bodyParser.text({ type: () => true }),
     parseRpcRequest = require('./helpers/parse-rpc-request'),
     querystring = require('querystring'),
     MOCK_SERVER_DOMAIN = process.env.MOCK_SERVER_DOMAIN,
@@ -107,7 +113,12 @@ module.exports = {
     before: async function() {
         this.app.post('/RPC2', textParser, rpcController.bind(this));
         this.app.get('*', restController.bind(this));
-        this.app.post('*', urlencodedParser, restController.bind(this));
+        this.app.post(
+            '*',
+            urlencodedParser,
+            rawBodyParser,
+            restController.bind(this)
+        );
 
         this.server = await this.app.listen(MOCK_SERVER_PORT);
         console.log(`    → Mock server started on port: ${MOCK_SERVER_PORT}`);

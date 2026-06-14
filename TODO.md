@@ -210,19 +210,25 @@ Flows that must have an e2e (happy path + the ★ negatives):
 **Phase 2 — Content distribution via the existing rssCloud ping (THE PAYOFF)**
 > Proves the primary use case: an rssCloud-only publisher's `/ping` fans content out to
 > WebSub subscribers. No WebSub publish path — relies on core's resource-keyed fan-out.
-- [ ] **S2.1** `websub-plugin.deliver()`: POST `payload.body` to the callback, relaying
+- [x] **S2.1** `websub-plugin.deliver()`: POST `payload.body` to the callback, relaying
   the topic's `Content-Type = payload.contentType` **verbatim** (xml/atom/json/etc. — the
   hub is content-type-agnostic; `payload.contentType` is `string | null`, so pick a
   fallback like `application/octet-stream` when the origin sent none), plus
   `Link: <hubUrl>; rel="hub", <topic>; rel="self"`. No signature yet. Inject `hubUrl`.
   Unit tests with injected `fetch` (cover the present-and-null content-type branches).
-- [ ] **S2.2** e2e (**the killer test** — extends the harness with content-capture):
+  (Done; `hubUrl` is an optional `createWebSubProtocolPlugin` option, wired from
+  `config.hubUrl` in `apps/server/core.js`; delivery follows 3xx redirects like
+  `rest-plugin`. 100% core coverage; 217 core tests passing.)
+- [x] **S2.2** e2e (**the killer test** — extends the harness with content-capture):
   put an rssCloud subscriber **and** a WebSub subscriber on the same topic `T`, then hit
   the *existing* rssCloud `/ping` for `T` with changed content; assert **both** fire from
   that single ping — the rssCloud sub gets its notify, the WebSub callback gets a POST
   carrying the feed body + relayed `Content-Type` + `Link` rels. No `hub.mode=publish`
   involved — this is the headline "free WebSub for rssCloud publishers" cross-protocol
   proof.
+  (Done; `WebSub cross-protocol fan-out` in `apps/e2e/test/websub.js`. Content-capture
+  added to the shared `mock` via a catch-all `bodyParser.text` that records raw,
+  non-urlencoded POST bodies without disturbing rssCloud notify parsing. 139 e2e passing.)
 
 **Phase 3 — Authenticated distribution (HMAC-SHA256)**
 - [ ] **S3.1** parse + store `hub.secret` in `details` at subscribe. **S3.2** when

@@ -137,3 +137,107 @@ describe('WebSub subscribe', function() {
         expect(res).status(400);
     });
 });
+
+describe('WebSub cross-protocol fan-out', function() {
+    before(async function() {
+        await storeApi.before();
+        await mock.before();
+    });
+
+    after(async function() {
+        await storeApi.after();
+        await mock.after();
+    });
+
+    beforeEach(async function() {
+        await storeApi.beforeEach();
+        await mock.beforeEach();
+    });
+
+    afterEach(async function() {
+        await storeApi.afterEach();
+        await mock.afterEach();
+    });
+
+    // The headline use case: a publisher who only speaks rssCloud keeps pinging
+    // as today, and a single /ping fans the changed feed out to BOTH an rssCloud
+    // subscriber (a notify) and a WebSub subscriber (the feed body) — no
+    // hub.mode=publish involved.
+    it('fans one rssCloud ping out to both an rssCloud and a WebSub subscriber', async function() {
+        const feedPath = '/cross-feed.xml',
+            topicUrl = mock.serverUrl + feedPath,
+            websubCallbackPath = '/cross-websub-callback',
+            websubCallbackUrl = mock.serverUrl + websubCallbackPath,
+            restNotifyPath = '/cross-rest-notify',
+            restNotifyUrl = mock.serverUrl + restNotifyPath,
+            initialFeed = '<rss>version-1</rss>',
+            changedFeed = '<rss>version-2-changed</rss>';
+
+        // The topic feed starts at version 1.
+        mock.route('GET', feedPath, 200, initialFeed);
+        // WebSub callback: echo the challenge on the verification GET, and
+        // accept the content distribution on the POST.
+        mock.route('GET', websubCallbackPath, 200, req => {
+            return req.query['hub.challenge'];
+        });
+        mock.route('POST', websubCallbackPath, 200, 'ok');
+        // The rssCloud subscriber's notify endpoint.
+        mock.route('POST', restNotifyPath, 200, 'Thanks for the update! :-)');
+
+        // Subscribe via WebSub and wait for the async handshake to record it.
+        // (core pre-pings the topic here, recording version 1's hash; no
+        // subscribers exist yet, so that pre-ping fans out to no one.)
+        const subRes = await hubRequest({
+            'hub.mode': 'subscribe',
+            'hub.callback': websubCallbackUrl,
+            'hub.topic': topicUrl
+        });
+        expect(subRes).status(202);
+
+        const websubSub = await waitForWebSubSubscription(topicUrl);
+        expect(websubSub, 'websub subscription should be recorded').to.not.be
+            .null;
+
+        // Add an rssCloud REST subscriber on the SAME topic.
+        await storeApi.addSubscription(
+            topicUrl,
+            false,
+            restNotifyUrl,
+            'http-post'
+        );
+
+        // The feed changes to version 2.
+        mock.route('GET', feedPath, 200, changedFeed);
+
+        // A single, ordinary rssCloud ping for the topic.
+        const pingRes = await chai
+            .request(SERVER_URL)
+            .post('/ping')
+            .set('content-type', 'application/x-www-form-urlencoded')
+            .send({ url: topicUrl });
+        expect(pingRes).status(200);
+
+        // The rssCloud subscriber received its form-encoded notify.
+        expect(mock.requests.POST)
+            .property(restNotifyPath)
+            .lengthOf(1, `Missing rssCloud notify POST ${restNotifyPath}`);
+        expect(mock.requests.POST[restNotifyPath][0].body).property(
+            'url',
+            topicUrl
+        );
+
+        // The WebSub subscriber received the changed feed body as content
+        // distribution, with the origin's Content-Type relayed and the hub/self
+        // Link rels advertised.
+        expect(mock.requests.POST)
+            .property(websubCallbackPath)
+            .lengthOf(1, `Missing WebSub content POST ${websubCallbackPath}`);
+        const delivery = mock.requests.POST[websubCallbackPath][0];
+        expect(delivery.body).to.equal(changedFeed);
+        expect(delivery.headers['content-type']).to.match(/text\/html/);
+        const link = delivery.headers['link'];
+        expect(link, 'Link header').to.be.a('string');
+        expect(link).to.include('rel="hub"');
+        expect(link).to.include(`<${topicUrl}>; rel="self"`);
+    });
+});
