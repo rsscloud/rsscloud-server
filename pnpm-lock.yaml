@@ -19,6 +19,9 @@ importers:
       '@commitlint/config-conventional':
         specifier: ^20.5.3
         version: 20.5.3
+      '@eslint/js':
+        specifier: ^10.0.1
+        version: 10.0.1(eslint@10.4.0(jiti@2.6.1))
       husky:
         specifier: ^9.1.7
         version: 9.1.7
@@ -71,9 +74,6 @@ importers:
       chai-http:
         specifier: ^4.4.0
         version: 4.4.0
-      chai-json:
-        specifier: ^1.0.0
-        version: 1.0.0
       chai-xml:
         specifier: ^0.4.1
         version: 0.4.1(chai@4.5.0)
@@ -92,9 +92,6 @@ importers:
       mocha-multi:
         specifier: ^1.1.7
         version: 1.1.7(mocha@11.7.5)
-      supertest:
-        specifier: ^7.2.2
-        version: 7.2.2
       xml2js:
         specifier: ^0.6.2
         version: 0.6.2
@@ -134,9 +131,6 @@ importers:
       ws:
         specifier: ^8.20.1
         version: 8.20.1
-      xml2js:
-        specifier: ^0.6.2
-        version: 0.6.2
       xmlbuilder:
         specifier: ^15.1.1
         version: 15.1.1
@@ -150,6 +144,9 @@ importers:
       nodemon:
         specifier: 3.1.14
         version: 3.1.14
+      xml2js:
+        specifier: ^0.6.2
+        version: 0.6.2
 
   packages/core:
     dependencies:
@@ -1245,18 +1242,11 @@ packages:
     resolution: {integrity: sha512-uswN3rZpawlRaa5NiDUHcDZ3v2dw5QgLyAwnQ2tnVNuP7CwIsOFuYJ0xR1WiR7ymD4roBnJIzOUep7w9jQMFJA==}
     engines: {node: '>=10'}
 
-  chai-json@1.0.0:
-    resolution: {integrity: sha512-p9eEYu3H2BkpU8PW8kqt0N6Ni6UG3LCCjlqHtZbrgvGRJYD4UnJuh704EFbGRxylzEPWsaOGhgXfdn0n1W3hhA==}
-
   chai-xml@0.4.1:
     resolution: {integrity: sha512-VUf5Ol4ifOAsgz+lN4tfWENgQtrKxHPWsmpL5wdbqQdkpblZkcDlaT2aFvsPQH219Yvl8vc4064yFErgBIn9bw==}
     engines: {node: '>= 0.8.0'}
     peerDependencies:
       chai: '>=1.10.0 '
-
-  chai@3.5.0:
-    resolution: {integrity: sha512-eRYY0vPS2a9zt5w5Z0aCeWbrXTEyvk7u/Xf71EzNObrjSCPgMm1Nku/D/u2tiqHBX5j40wWhj54YJLtgn8g55A==}
-    engines: {node: '>= 0.4.0'}
 
   chai@4.5.0:
     resolution: {integrity: sha512-RITGBfijLkBddZvnn8jdqoTypxvqbOLYQkGGxXzeFjVHvudaPw0HNFD9x928/eUwYWd2dPCugVqspGALTZZQKw==}
@@ -1411,9 +1401,6 @@ packages:
   decamelize@4.0.0:
     resolution: {integrity: sha512-9iE1PgSik9HeIIw2JO94IidnE3eBoQrFJ3w7sFuzSX4DpmZ3v5sZpUiV5Swcf6mQEF+Y0ru8Neo+p+nyh2J+hQ==}
     engines: {node: '>=10'}
-
-  deep-eql@0.1.3:
-    resolution: {integrity: sha512-6sEotTRGBFiNcqVoeHwnfopbSpi5NbH1VWJmYCVkmxMmaVTT0bUTrNaGyBwhgP4MZL012W/mkzIn3Da+iDYweg==}
 
   deep-eql@4.1.4:
     resolution: {integrity: sha512-SUwdGfqdKOwxCPeVYjwSyRpJ7Z+fhpwIAtmCUdZIWZ/YP5R9WAsyuSgpLVDi9bjWoN2LXHNss/dk3urXtdQxGg==}
@@ -1947,9 +1934,6 @@ packages:
 
   json-stable-stringify-without-jsonify@1.0.1:
     resolution: {integrity: sha512-Bdboy+l7tA3OGW6FjyFHWkP5LuByj1Tk33Ljyq0axyzdk9//JSi2u3fP1QSmd1KNwq6VOKYGlAu87CisVir6Pw==}
-
-  jsonfile@3.0.1:
-    resolution: {integrity: sha512-oBko6ZHlubVB5mRFkur5vgYR1UyqX+S6Y/oCfLhqNdcc2fYFlDpIoNc7AfKS1KOGcnNAkvsr0grLck9ANM815w==}
 
   keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
@@ -2633,12 +2617,6 @@ packages:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
     engines: {node: '>= 0.8.0'}
 
-  type-detect@0.1.1:
-    resolution: {integrity: sha512-5rqszGVwYgBoDkIm2oUtvkfZMQ0vk29iDMU0W2qCa3rG0vPDNczCMT4hV/bLBgLg8k8ri6+u3Zbt+S/14eMzlA==}
-
-  type-detect@1.0.0:
-    resolution: {integrity: sha512-f9Uv6ezcpvCQjJU0Zqbg+65qdcszv3qUQsZfjdRbWiZ7AMenrX1u0lNk9EoWWX6e1F+NULyg27mtdeZ5WhpljA==}
-
   type-detect@4.1.0:
     resolution: {integrity: sha512-Acylog8/luQ8L7il+geoSxhEkazvkslg7PSNKOX59mbB9cOveP5aq9h74Y7YU8yDpJwetzQQrfIwtf4Wp4LKcw==}
     engines: {node: '>=4'}
@@ -2676,9 +2654,6 @@ packages:
 
   undefsafe@2.0.5:
     resolution: {integrity: sha512-WxONCrssBM8TSPRqN5EmsjVrsv4A8X12J4ArBiiayv3DyyG3ZlIg6yysuuSYdZsVz3TKcTg2fd//Ujd4CHV1iA==}
-
-  underscore@1.13.8:
-    resolution: {integrity: sha512-DXtD3ZtEQzc7M8m4cXotyHR+FAS18C64asBYY5vqZexfYryNNnDc02W4hKg3rdQuqOYas1jkseX0+nZXjTXnvQ==}
 
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
@@ -3794,22 +3769,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  chai-json@1.0.0:
-    dependencies:
-      chai: 3.5.0
-      jsonfile: 3.0.1
-      underscore: 1.13.8
-
   chai-xml@0.4.1(chai@4.5.0):
     dependencies:
       chai: 4.5.0
       xml2js: 0.5.0
-
-  chai@3.5.0:
-    dependencies:
-      assertion-error: 1.1.0
-      deep-eql: 0.1.3
-      type-detect: 1.0.0
 
   chai@4.5.0:
     dependencies:
@@ -3968,10 +3931,6 @@ snapshots:
       supports-color: 8.1.1
 
   decamelize@4.0.0: {}
-
-  deep-eql@0.1.3:
-    dependencies:
-      type-detect: 0.1.1
 
   deep-eql@4.1.4:
     dependencies:
@@ -4567,10 +4526,6 @@ snapshots:
   json-schema-traverse@1.0.0: {}
 
   json-stable-stringify-without-jsonify@1.0.1: {}
-
-  jsonfile@3.0.1:
-    optionalDependencies:
-      graceful-fs: 4.2.11
 
   keyv@4.5.4:
     dependencies:
@@ -5285,10 +5240,6 @@ snapshots:
     dependencies:
       prelude-ls: 1.2.1
 
-  type-detect@0.1.1: {}
-
-  type-detect@1.0.0: {}
-
   type-detect@4.1.0: {}
 
   type-is@1.6.18:
@@ -5323,8 +5274,6 @@ snapshots:
     optional: true
 
   undefsafe@2.0.5: {}
-
-  underscore@1.13.8: {}
 
   undici-types@6.21.0: {}
 
