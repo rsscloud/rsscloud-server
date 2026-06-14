@@ -1,5 +1,38 @@
 # Changelog
 
+## [4.0.0](https://github.com/rsscloud/rsscloud-server/compare/server-v3.0.0...server-v4.0.0) (2026-06-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* **server:** apps/server no longer exposes the mocha test suite or its devDependencies. Anything that ran 'pnpm --filter @rsscloud/server run test' (none externally) must switch to 'pnpm --filter @rsscloud/e2e run e2e-test' inside the docker container, or 'pnpm test' at the root.
+* project restructured as pnpm monorepo
+
+### Features
+
+* add realtime log page and improved test infrastructure ([0e5ac48](https://github.com/rsscloud/rsscloud-server/commit/0e5ac485b9004fc20eab6ae1f56430c43b1b50a6))
+* convert to pnpm monorepo with server app ([a4e3d41](https://github.com/rsscloud/rsscloud-server/commit/a4e3d412d855cb26631accfc65898383eb7ea094))
+
+
+### Bug Fixes
+
+* **server:** build @rsscloud/xml-rpc in the Docker image ([2321097](https://github.com/rsscloud/rsscloud-server/commit/232109723731553903f771c761bffcb1289de548))
+* **server:** restore /docs and /LICENSE.md routes after monorepo split ([8b127de](https://github.com/rsscloud/rsscloud-server/commit/8b127ded6e45d33867b5a1d92f2619bd6d973fb1))
+* **server:** stop the stats label hardcoding "7 days" ([26e1d50](https://github.com/rsscloud/rsscloud-server/commit/26e1d5026330aaac3f1211983512210a5ef88815))
+
+
+### Code Refactoring
+
+* **server:** extract e2e test suite into apps/e2e ([7013512](https://github.com/rsscloud/rsscloud-server/commit/701351285a586db003d25388e7ba664f626e3c1c))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @rsscloud/core bumped to 1.0.0
+    * @rsscloud/express bumped to 1.0.0
+
 ## [3.0.0](https://github.com/rsscloud/rsscloud-server/compare/v2.4.0...v3.0.0) (2026-05-15)
 
 ### ⚠ BREAKING CHANGES
