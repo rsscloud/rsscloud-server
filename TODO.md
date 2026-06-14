@@ -197,12 +197,15 @@ Flows that must have an e2e (happy path + the ★ negatives):
   (Lease bounds + signature algo are added in Phases 5/3 when their slices need them.)
   (Done; `hubUrl` is config-only until S2.1's deliver consumes it — plugin gets
   `requestTimeoutMs` for now. Route mounts at `config.webSubPath`.)
-- [ ] **S1.6** e2e (**establishes the reusable mock subscriber harness** — challenge-echo):
+- [x] **S1.6** e2e (**establishes the reusable mock subscriber harness** — challenge-echo):
   POST subscribe → `202`, callback receives the verification GET, then **poll**
   `/subscriptions.json` (already lists every sub incl. `protocol:'websub'`) until the
   record appears — verification is async, so the test waits rather than asserting inline;
   ★ callback refuses to echo → record never appears (bounded timeout); ★ malformed
   `hub.*` (missing callback/topic, bad mode) → `4xx`.
+  (→ `apps/e2e/test/websub.js`; challenge-echo via the existing mock's function
+  `responseBody` (`req.query['hub.challenge']`); polls `storeApi.findSubscription`.
+  138 e2e passing.)
 
 **Phase 2 — Content distribution via the existing rssCloud ping (THE PAYOFF)**
 > Proves the primary use case: an rssCloud-only publisher's `/ping` fans content out to
