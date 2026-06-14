@@ -182,10 +182,11 @@ Flows that must have an e2e (happy path + the ★ negatives):
   (→ `engine/verification-scheduler.ts`; default scheduler routes a thrown task to the
   `error` event, scope `websub-verification`. Pre-ping-on-subscribe kept for now — see
   open question.)
-- [ ] **S1.4** core `websub-dispatcher` ↔ express `websub({ core })` factory (same shape
+- [x] **S1.4** core `websub-dispatcher` ↔ express `websub({ core })` factory (same shape
   as `ping`/`pleaseNotify`): parse the form body, `hub.mode=subscribe` → `core.accept…`
   → `202`, malformed → `4xx`. Mirror `rest-middleware` (thin; dispatcher owns logic).
   Export from `index.ts`. (No `scheduler`/`hubUrl` args — see architecture notes.)
+  (→ core `createWebSubDispatcher`; express `websub-middleware.ts`; both exported.)
 - [ ] **S1.5** Server integration (prerequisite for the S1.6 e2e):
   **(a)** `apps/server/core.js` — add `createWebSubProtocolPlugin({ hubUrl,
   requestTimeoutMs })` to the `plugins` array (registers `'websub'`; otherwise

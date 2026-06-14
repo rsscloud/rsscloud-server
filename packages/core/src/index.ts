@@ -33,6 +33,16 @@ export {
     type RestResponseFormat
 } from './protocols/rest-dispatcher.js';
 export {
+    createWebSubDispatcher,
+    type WebSubDispatcher,
+    type WebSubDispatcherOptions,
+    type WebSubResponse
+} from './protocols/websub-dispatcher.js';
+export {
+    createWebSubProtocolPlugin,
+    type WebSubProtocolPluginOptions
+} from './protocols/websub-plugin.js';
+export {
     createDefaultFeedParser,
     type DefaultFeedParserOptions
 } from './feed/feed-parser.js';

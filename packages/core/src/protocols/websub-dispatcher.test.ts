@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseSubscribe } from './websub-dispatcher.js';
+import type { SubscribeRequest } from '../engine/dto.js';
+import { createWebSubDispatcher, parseSubscribe } from './websub-dispatcher.js';
 
 describe('parseSubscribe', () => {
     it('builds a websub SubscribeRequest directly from hub.callback and hub.topic', () => {
@@ -64,5 +65,45 @@ describe('parseSubscribe', () => {
         });
 
         expect(result).toEqual({ ok: false, status: 400 });
+    });
+});
+
+describe('createWebSubDispatcher', () => {
+    function fakeCore(): {
+        calls: SubscribeRequest[];
+        acceptSubscription: (req: SubscribeRequest) => void;
+    } {
+        const calls: SubscribeRequest[] = [];
+        return { calls, acceptSubscription: req => void calls.push(req) };
+    }
+
+    it('accepts a valid subscribe with 202 and hands core the built request', () => {
+        const core = fakeCore();
+        const dispatcher = createWebSubDispatcher({ core });
+
+        const result = dispatcher.dispatch({
+            'hub.mode': 'subscribe',
+            'hub.callback': 'https://sub.example/listener',
+            'hub.topic': 'http://feed.example/rss'
+        });
+
+        expect(result).toEqual({ status: 202 });
+        expect(core.calls).toEqual([
+            {
+                resourceUrls: ['http://feed.example/rss'],
+                callbackUrl: 'https://sub.example/listener',
+                protocol: 'websub'
+            }
+        ]);
+    });
+
+    it('returns 400 for a malformed request without accepting anything', () => {
+        const core = fakeCore();
+        const dispatcher = createWebSubDispatcher({ core });
+
+        const result = dispatcher.dispatch({ 'hub.mode': 'subscribe' });
+
+        expect(result).toEqual({ status: 400 });
+        expect(core.calls).toEqual([]);
     });
 });
