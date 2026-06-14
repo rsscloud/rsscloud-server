@@ -154,18 +154,20 @@ Flows that must have an e2e (happy path + the ★ negatives):
 ### Slices (TDD vertical slices, red→green, in order)
 
 **Phase 0 — Foundations**
-- [ ] **S0.1** ADR: WebSub hub = async-`202` intent verification via an in-process
+- [x] **S0.1** ADR: WebSub hub = async-`202` intent verification via an in-process
   best-effort `VerificationScheduler` seam; persisted queue + retry is a future refactor
   behind the same seam. Record the lease + signature decisions too.
-- [ ] **S0.2** `CONTEXT.md`: add the WebSub vocabulary above (tie "Hub" to the existing
+  (→ `docs/adr/0002-websub-async-intent-verification-seam.md`)
+- [x] **S0.2** `CONTEXT.md`: add the WebSub vocabulary above (tie "Hub" to the existing
   Hub-end note; distinguish **Topic** from **Resource**, **Callback** from
   **Subscription.url**).
 
 **Phase 1 — Subscribe happy path (async handshake; no secret/lease/content yet)**
-- [ ] **S1.1** `websub-dispatcher` param parse/validate: `hub.mode`, `hub.callback`
+- [x] **S1.1** `websub-dispatcher` param parse/validate: `hub.mode`, `hub.callback`
   (valid absolute URL), `hub.topic` (present) → malformed returns `{status:400}`; a valid
   subscribe builds a `websub` `SubscribeRequest` **directly** (`callbackUrl=hub.callback`,
   `resourceUrls=[hub.topic]`, not via `buildSubscribeRequest`). Pure unit tests, no network.
+  (→ `packages/core/src/protocols/websub-dispatcher.ts`: `parseSubscribe`)
 - [ ] **S1.2** `websub-plugin.verify()`: challenge GET to the callback with `hub.mode`,
   `hub.topic`, `hub.challenge`; require `2xx` and an exact `hub.challenge` echo, else
   throw (always verifies — ignores `diffDomain`). Injected `fetch` + challenge generator.
