@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import type {
     DeliveryContext,
@@ -51,10 +52,15 @@ function resource(url: string): Resource {
 function deliveryContext(
     callbackUrl: string,
     resourceUrl: string,
-    payload: ResourcePayload = { body: '', contentType: null }
+    payload: ResourcePayload = { body: '', contentType: null },
+    details?: Record<string, unknown>
 ): DeliveryContext {
+    const sub = subscription(callbackUrl);
+    if (details !== undefined) {
+        sub.details = details;
+    }
     return {
-        subscription: subscription(callbackUrl),
+        subscription: sub,
         resource: resource(resourceUrl),
         payload
     };
@@ -342,6 +348,90 @@ describe('createWebSubProtocolPlugin deliver', () => {
 
         expect(result.ok).toBe(false);
         expect(result.error).toBeInstanceOf(Error);
+    });
+
+    it('signs the delivery with X-Hub-Signature when the subscription has a secret', async () => {
+        const calls: { init: RequestInit | undefined }[] = [];
+        const fakeFetch = (async (_url: string | URL, init?: RequestInit) => {
+            calls.push({ init });
+            return new Response(null, { status: 204 });
+        }) as typeof fetch;
+
+        const plugin = createWebSubProtocolPlugin({
+            fetch: fakeFetch,
+            hubUrl: 'https://hub.example/websub'
+        });
+
+        const body = '<rss>signed</rss>';
+        const result = await plugin.deliver(
+            deliveryContext(
+                'https://sub.example/listener',
+                'http://feed.example/rss',
+                { body, contentType: 'application/rss+xml' },
+                { secret: 'top-secret' }
+            )
+        );
+
+        expect(result.ok).toBe(true);
+        const headers = new Headers(calls[0]?.init?.headers);
+        const expected =
+            'sha256=' +
+            createHmac('sha256', 'top-secret').update(body).digest('hex');
+        expect(headers.get('x-hub-signature')).toBe(expected);
+    });
+
+    it('signs with the configured signatureAlgo when one is supplied', async () => {
+        const calls: { init: RequestInit | undefined }[] = [];
+        const fakeFetch = (async (_url: string | URL, init?: RequestInit) => {
+            calls.push({ init });
+            return new Response(null, { status: 204 });
+        }) as typeof fetch;
+
+        const plugin = createWebSubProtocolPlugin({
+            fetch: fakeFetch,
+            hubUrl: 'https://hub.example/websub',
+            signatureAlgo: 'sha512'
+        });
+
+        const body = '<rss>signed</rss>';
+        await plugin.deliver(
+            deliveryContext(
+                'https://sub.example/listener',
+                'http://feed.example/rss',
+                { body, contentType: 'application/rss+xml' },
+                { secret: 'top-secret' }
+            )
+        );
+
+        const headers = new Headers(calls[0]?.init?.headers);
+        const expected =
+            'sha512=' +
+            createHmac('sha512', 'top-secret').update(body).digest('hex');
+        expect(headers.get('x-hub-signature')).toBe(expected);
+    });
+
+    it('omits X-Hub-Signature when the subscription has no secret', async () => {
+        const calls: { init: RequestInit | undefined }[] = [];
+        const fakeFetch = (async (_url: string | URL, init?: RequestInit) => {
+            calls.push({ init });
+            return new Response(null, { status: 204 });
+        }) as typeof fetch;
+
+        const plugin = createWebSubProtocolPlugin({
+            fetch: fakeFetch,
+            hubUrl: 'https://hub.example/websub'
+        });
+
+        await plugin.deliver(
+            deliveryContext(
+                'https://sub.example/listener',
+                'http://feed.example/rss',
+                { body: '<rss>unsigned</rss>', contentType: 'application/rss+xml' }
+            )
+        );
+
+        const headers = new Headers(calls[0]?.init?.headers);
+        expect(headers.get('x-hub-signature')).toBeNull();
     });
 
     it('reports failure on a 3xx redirect with no Location to follow', async () => {

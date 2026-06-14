@@ -43,14 +43,16 @@ export function parseSubscribe(
     if (typeof topic !== 'string' || topic === '') {
         return MALFORMED;
     }
-    return {
-        ok: true,
-        request: {
-            resourceUrls: [topic],
-            callbackUrl: callback,
-            protocol: 'websub'
-        }
+    const request: SubscribeRequest = {
+        resourceUrls: [topic],
+        callbackUrl: callback,
+        protocol: 'websub'
     };
+    const secret = body['hub.secret'];
+    if (typeof secret === 'string') {
+        request.details = { secret };
+    }
+    return { ok: true, request };
 }
 
 /** A fully-resolved WebSub HTTP status the front door copies onto its reply. */

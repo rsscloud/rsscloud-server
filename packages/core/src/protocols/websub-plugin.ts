@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import type {
     DeliveryContext,
     DeliveryResult,
@@ -21,6 +22,12 @@ export interface WebSubProtocolPluginOptions {
      * `deliver`; a host always injects it (see `apps/server`).
      */
     hubUrl?: string;
+    /**
+     * HMAC algorithm for the `X-Hub-Signature` header when a subscriber
+     * supplied a `hub.secret`. Names the digest and the header method prefix
+     * (`<algo>=<hex>`). Defaults to `sha256`.
+     */
+    signatureAlgo?: string;
 }
 
 const WEBSUB_PROTOCOLS: Protocol[] = ['websub'];
@@ -50,6 +57,7 @@ export function createWebSubProtocolPlugin(
         options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
     const createChallenge = options.createChallenge ?? defaultCreateChallenge;
     const hubUrl = options.hubUrl;
+    const signatureAlgo = options.signatureAlgo ?? 'sha256';
 
     async function verify(ctx: VerifyContext): Promise<void> {
         const challenge = createChallenge();
@@ -76,17 +84,27 @@ export function createWebSubProtocolPlugin(
         targetUrl: string,
         ctx: DeliveryContext
     ): Promise<void> {
+        const headers: Record<string, string> = {
+            'Content-Type':
+                ctx.payload.contentType ?? 'application/octet-stream',
+            Link: `<${hubUrl}>; rel="hub", <${ctx.resource.url}>; rel="self"`
+        };
+
+        const secret = ctx.subscription.details?.['secret'];
+        if (typeof secret === 'string') {
+            const digest = createHmac(signatureAlgo, secret)
+                .update(ctx.payload.body)
+                .digest('hex');
+            headers['X-Hub-Signature'] = `${signatureAlgo}=${digest}`;
+        }
+
         const res = await fetchWithTimeout(
             doFetch,
             requestTimeoutMs,
             targetUrl,
             {
                 method: 'POST',
-                headers: {
-                    'Content-Type':
-                        ctx.payload.contentType ?? 'application/octet-stream',
-                    Link: `<${hubUrl}>; rel="hub", <${ctx.resource.url}>; rel="self"`
-                },
+                headers,
                 body: ctx.payload.body,
                 redirect: 'manual'
             }
