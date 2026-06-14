@@ -254,11 +254,17 @@ Flows that must have an e2e (happy path + the ★ negatives):
   143 e2e passing.)
 
 **Phase 5 — Leases (honor requested, clamped)**
-- [ ] **S5.1** `RssCloudConfig` lease bounds (default/min/max secs) + resolve defaults.
+- [x] **S5.1** `RssCloudConfig` lease bounds (default/min/max secs) + resolve defaults.
   **S5.2** parse `hub.lease_seconds`, clamp, store `details.leaseSeconds`,
   `whenExpires = now + chosen`; echo the chosen lease in the verification GET (thread the
   chosen value into `verify`). **S5.3** e2e: requested lease clamped + echoed; expiry via
   `removeExpired()`.
+  (Done; `RssCloudConfig` gains `webSubLease{Default,Min,Max}Secs` (default 86400/300/864000,
+  env `WEBSUB_LEASE_*`); the dispatcher parses `hub.lease_seconds` into `details`, core
+  clamps it in `subscribeOne`, stores the chosen value, sets `whenExpires = now + chosen`,
+  and threads it through `VerifyContext.leaseSeconds` so the plugin echoes `hub.lease_seconds`.
+  e2e `WebSub leases` covers clamp+echo and expiry via `removeExpired`. 241 core tests,
+  100% coverage; 145 e2e passing.)
 
 **Phase 6 — WebSub-native publish front door (secondary — pure-WebSub publishers)**
 - [ ] **S6.1** dispatcher/express `hub.mode=publish` (thin: `hub.url`/`hub.topic`) →
