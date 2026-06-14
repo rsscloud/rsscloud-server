@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { DeliveryContext, VerifyContext } from '../engine/plugin.js';
+import type {
+    DeliveryContext,
+    ResourcePayload,
+    VerifyContext
+} from '../engine/plugin.js';
 import type { Resource } from '../engine/resource.js';
 import type { Subscription } from '../engine/subscription.js';
 import { createWebSubProtocolPlugin } from './websub-plugin.js';
@@ -46,12 +50,13 @@ function resource(url: string): Resource {
 
 function deliveryContext(
     callbackUrl: string,
-    resourceUrl: string
+    resourceUrl: string,
+    payload: ResourcePayload = { body: '', contentType: null }
 ): DeliveryContext {
     return {
         subscription: subscription(callbackUrl),
         resource: resource(resourceUrl),
-        payload: { body: '', contentType: null }
+        payload
     };
 }
 
@@ -227,8 +232,126 @@ describe('createWebSubProtocolPlugin protocols', () => {
 });
 
 describe('createWebSubProtocolPlugin deliver', () => {
-    it('reports failure since content distribution is not implemented yet (S2.1)', async () => {
-        const plugin = createWebSubProtocolPlugin();
+    it('POSTs the feed body to the callback with the relayed Content-Type and Link rels', async () => {
+        const calls: { url: string; init: RequestInit | undefined }[] = [];
+        const fakeFetch = (async (url: string | URL, init?: RequestInit) => {
+            calls.push({ url: String(url), init });
+            return new Response(null, { status: 204 });
+        }) as typeof fetch;
+
+        const plugin = createWebSubProtocolPlugin({
+            fetch: fakeFetch,
+            hubUrl: 'https://hub.example/websub'
+        });
+
+        const result = await plugin.deliver(
+            deliveryContext(
+                'https://sub.example/listener',
+                'http://feed.example/rss',
+                { body: '<rss>updated</rss>', contentType: 'application/rss+xml' }
+            )
+        );
+
+        expect(result.ok).toBe(true);
+        expect(calls).toHaveLength(1);
+        expect(calls[0]?.url).toBe('https://sub.example/listener');
+        expect(calls[0]?.init?.method).toBe('POST');
+        expect(calls[0]?.init?.body).toBe('<rss>updated</rss>');
+
+        const headers = new Headers(calls[0]?.init?.headers);
+        expect(headers.get('content-type')).toBe('application/rss+xml');
+        expect(headers.get('link')).toBe(
+            '<https://hub.example/websub>; rel="hub", <http://feed.example/rss>; rel="self"'
+        );
+    });
+
+    it('falls back to application/octet-stream when the origin sent no Content-Type', async () => {
+        const calls: { init: RequestInit | undefined }[] = [];
+        const fakeFetch = (async (_url: string | URL, init?: RequestInit) => {
+            calls.push({ init });
+            return new Response(null, { status: 204 });
+        }) as typeof fetch;
+
+        const plugin = createWebSubProtocolPlugin({
+            fetch: fakeFetch,
+            hubUrl: 'https://hub.example/websub'
+        });
+
+        const result = await plugin.deliver(
+            deliveryContext(
+                'https://sub.example/listener',
+                'http://feed.example/rss',
+                { body: 'raw bytes', contentType: null }
+            )
+        );
+
+        expect(result.ok).toBe(true);
+        const headers = new Headers(calls[0]?.init?.headers);
+        expect(headers.get('content-type')).toBe('application/octet-stream');
+    });
+
+    it('follows a 3xx redirect and re-POSTs the body to the new location', async () => {
+        const calls: { url: string; init: RequestInit | undefined }[] = [];
+        const fakeFetch = (async (url: string | URL, init?: RequestInit) => {
+            calls.push({ url: String(url), init });
+            if (calls.length === 1) {
+                return new Response(null, {
+                    status: 302,
+                    headers: { location: 'https://sub.example/moved' }
+                });
+            }
+            return new Response(null, { status: 204 });
+        }) as typeof fetch;
+
+        const plugin = createWebSubProtocolPlugin({
+            fetch: fakeFetch,
+            hubUrl: 'https://hub.example/websub'
+        });
+
+        const result = await plugin.deliver(
+            deliveryContext(
+                'https://sub.example/listener',
+                'http://feed.example/rss',
+                { body: '<rss>updated</rss>', contentType: 'application/rss+xml' }
+            )
+        );
+
+        expect(result.ok).toBe(true);
+        expect(calls.map(c => c.url)).toEqual([
+            'https://sub.example/listener',
+            'https://sub.example/moved'
+        ]);
+        expect(calls[1]?.init?.body).toBe('<rss>updated</rss>');
+    });
+
+    it('reports failure when the callback responds non-2xx', async () => {
+        const fakeFetch = (async () =>
+            new Response('nope', { status: 404 })) as typeof fetch;
+
+        const plugin = createWebSubProtocolPlugin({
+            fetch: fakeFetch,
+            hubUrl: 'https://hub.example/websub'
+        });
+
+        const result = await plugin.deliver(
+            deliveryContext(
+                'https://sub.example/listener',
+                'http://feed.example/rss'
+            )
+        );
+
+        expect(result.ok).toBe(false);
+        expect(result.error).toBeInstanceOf(Error);
+    });
+
+    it('reports failure on a 3xx redirect with no Location to follow', async () => {
+        const fakeFetch = (async () =>
+            new Response(null, { status: 302 })) as typeof fetch;
+
+        const plugin = createWebSubProtocolPlugin({
+            fetch: fakeFetch,
+            hubUrl: 'https://hub.example/websub'
+        });
 
         const result = await plugin.deliver(
             deliveryContext(
