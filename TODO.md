@@ -231,10 +231,15 @@ Flows that must have an e2e (happy path + the ★ negatives):
   non-urlencoded POST bodies without disturbing rssCloud notify parsing. 139 e2e passing.)
 
 **Phase 3 — Authenticated distribution (HMAC-SHA256)**
-- [ ] **S3.1** parse + store `hub.secret` in `details` at subscribe. **S3.2** when
+- [x] **S3.1** parse + store `hub.secret` in `details` at subscribe. **S3.2** when
   `details.secret` present, add `X-Hub-Signature: sha256=HMAC(secret, body)`; algorithm a
   configurable plugin option (default `sha256`); no secret → no header. **S3.3** e2e:
   subscriber verifies the signature over the rssCloud-ping-delivered body.
+  (Done; `parseSubscribe` stores `details.secret`; plugin signs via `node:crypto`
+  `createHmac` keyed by the `signatureAlgo` option (default `sha256`), wired from
+  `WEBSUB_SIGNATURE_ALGO`/`config.webSubSignatureAlgo`. e2e `WebSub authenticated
+  distribution` recomputes the HMAC over the received body. 221 core tests, 100%
+  coverage; 141 e2e passing.)
 
 **Phase 4 — Unsubscribe (intent-verified)**
 - [ ] **S4.1** plugin verify for `hub.mode=unsubscribe` (shared verify keyed by mode).
