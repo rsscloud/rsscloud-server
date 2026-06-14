@@ -1,4 +1,5 @@
 import type {
+    DeliveryContext,
     DeliveryResult,
     ProtocolPlugin,
     VerifyContext
@@ -14,6 +15,12 @@ export interface WebSubProtocolPluginOptions {
     requestTimeoutMs?: number;
     /** Challenge generator for the intent-verification GET (injectable for tests). */
     createChallenge?: () => string;
+    /**
+     * The hub's externally-reachable URL, advertised to subscribers in the
+     * `Link rel="hub"` header on every content distribution. Required for
+     * `deliver`; a host always injects it (see `apps/server`).
+     */
+    hubUrl?: string;
 }
 
 const WEBSUB_PROTOCOLS: Protocol[] = ['websub'];
@@ -42,6 +49,7 @@ export function createWebSubProtocolPlugin(
     const requestTimeoutMs =
         options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
     const createChallenge = options.createChallenge ?? defaultCreateChallenge;
+    const hubUrl = options.hubUrl;
 
     async function verify(ctx: VerifyContext): Promise<void> {
         const challenge = createChallenge();
@@ -63,14 +71,47 @@ export function createWebSubProtocolPlugin(
         }
     }
 
-    // Content distribution lands in S2.1; until then delivery reports failure
-    // rather than throwing (the engine's deliverTo does not catch). The context
-    // parameter is omitted until the real implementation consumes it.
-    function deliver(): Promise<DeliveryResult> {
-        return Promise.resolve({
-            ok: false,
-            error: new Error('WebSub content distribution not implemented')
-        });
+    /** POST the feed body to one callback, following redirects like rssCloud notify. */
+    async function distribute(
+        targetUrl: string,
+        ctx: DeliveryContext
+    ): Promise<void> {
+        const res = await fetchWithTimeout(
+            doFetch,
+            requestTimeoutMs,
+            targetUrl,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type':
+                        ctx.payload.contentType ?? 'application/octet-stream',
+                    Link: `<${hubUrl}>; rel="hub", <${ctx.resource.url}>; rel="self"`
+                },
+                body: ctx.payload.body,
+                redirect: 'manual'
+            }
+        );
+
+        if (res.status >= 300 && res.status < 400) {
+            const location = res.headers.get('location');
+            if (location) {
+                await distribute(new URL(location, targetUrl).toString(), ctx);
+                return;
+            }
+        }
+
+        if (!res.ok) {
+            throw new Error('WebSub content distribution failed');
+        }
+    }
+
+    async function deliver(ctx: DeliveryContext): Promise<DeliveryResult> {
+        try {
+            await distribute(ctx.subscription.url, ctx);
+            return { ok: true };
+        } catch (err) {
+            return { ok: false, error: err as Error };
+        }
     }
 
     return { protocols: WEBSUB_PROTOCOLS, verify, deliver };

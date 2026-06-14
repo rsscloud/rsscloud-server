@@ -22,13 +22,16 @@ const coreConfig = resolveConfig({
 });
 
 // Registers the 'websub' protocol so core.subscribe accepts WebSub subscriptions
-// (without it, core.subscribe → UNSUPPORTED_PROTOCOL). Content distribution
-// (and the hubUrl it needs) lands in a later phase; for now the plugin verifies
-// subscriber intent.
+// (without it, core.subscribe → UNSUPPORTED_PROTOCOL). The plugin verifies
+// subscriber intent and, on fan-out, distributes the feed body to WebSub
+// callbacks — advertising this hub's public URL in the Link rel="hub" header.
 const plugins = [
     createRestProtocolPlugin({ requestTimeoutMs: config.requestTimeout }),
     createXmlRpcProtocolPlugin({ requestTimeoutMs: config.requestTimeout }),
-    createWebSubProtocolPlugin({ requestTimeoutMs: config.requestTimeout })
+    createWebSubProtocolPlugin({
+        requestTimeoutMs: config.requestTimeout,
+        hubUrl: config.hubUrl
+    })
 ];
 
 // createFileStore is async, but core.js is required synchronously — the
