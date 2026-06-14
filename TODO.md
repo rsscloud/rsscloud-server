@@ -242,10 +242,16 @@ Flows that must have an e2e (happy path + the ★ negatives):
   coverage; 141 e2e passing.)
 
 **Phase 4 — Unsubscribe (intent-verified)**
-- [ ] **S4.1** plugin verify for `hub.mode=unsubscribe` (shared verify keyed by mode).
+- [x] **S4.1** plugin verify for `hub.mode=unsubscribe` (shared verify keyed by mode).
   **S4.2** verified-unsubscribe path: scheduled task verifies intent then
   `core.unsubscribe` (which has no verify hook today). **S4.3** dispatcher/express branch
   `hub.mode=unsubscribe` → `202`. **S4.4** e2e unsubscribe handshake.
+  (Done; `VerifyContext.mode` threads `subscribe`/`unsubscribe` into the plugin's challenge
+  GET; new `core.acceptUnsubscription` schedules a verified removal (no-op if the sub is
+  absent or intent is refused); `websub-dispatcher` branches on `hub.mode` via a shared
+  `parseHubCallbackTopic`, express `core` Pick widened. e2e `WebSub unsubscribe` covers
+  verified removal + the refuse-echo negative. 232 core + 19 express tests, 100% coverage;
+  143 e2e passing.)
 
 **Phase 5 — Leases (honor requested, clamped)**
 - [ ] **S5.1** `RssCloudConfig` lease bounds (default/min/max secs) + resolve defaults.

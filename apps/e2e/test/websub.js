@@ -40,6 +40,28 @@ async function waitForWebSubSubscription(
     }
 }
 
+// Unsubscribe is async too (202, then a verification GET, then removal), so the
+// test polls until the websub subscription is gone or the timeout lapses.
+async function waitForWebSubUnsubscription(
+    topicUrl,
+    { timeoutMs = 5000, intervalMs = 100 } = {}
+) {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+        const subscriptions = (await storeApi.findSubscription(topicUrl)) || [];
+        const websub = subscriptions.find(
+            subscription => subscription.protocol === 'websub'
+        );
+        if (!websub) {
+            return true;
+        }
+        if (Date.now() >= deadline) {
+            return false;
+        }
+        await new Promise(resolve => setTimeout(resolve, intervalMs));
+    }
+}
+
 describe('WebSub subscribe', function() {
     before(async function() {
         await storeApi.before();
@@ -326,5 +348,102 @@ describe('WebSub authenticated distribution', function() {
         const { delivery } = await deliverViaPing({ secret: null });
 
         expect(delivery.headers).to.not.have.property('x-hub-signature');
+    });
+});
+
+describe('WebSub unsubscribe', function() {
+    before(async function() {
+        await storeApi.before();
+        await mock.before();
+    });
+
+    after(async function() {
+        await storeApi.after();
+        await mock.after();
+    });
+
+    beforeEach(async function() {
+        await storeApi.beforeEach();
+        await mock.beforeEach();
+    });
+
+    afterEach(async function() {
+        await storeApi.afterEach();
+        await mock.afterEach();
+    });
+
+    // Establish a recorded websub subscription, then return its topic/callback so
+    // a test can drive the unsubscribe handshake. `echoOnUnsubscribe` toggles
+    // whether the callback confirms the unsubscribe intent.
+    async function subscribed({ echoOnUnsubscribe }) {
+        const feedPath = '/unsub-feed.xml',
+            topicUrl = mock.serverUrl + feedPath,
+            callbackPath = '/unsub-callback',
+            callbackUrl = mock.serverUrl + callbackPath;
+
+        mock.route('GET', feedPath, 200, '<RSS Feed />');
+        // Always echo the subscribe challenge; echo the unsubscribe challenge
+        // only when the scenario wants the intent confirmed.
+        mock.route('GET', callbackPath, 200, req => {
+            if (req.query['hub.mode'] === 'unsubscribe' && !echoOnUnsubscribe) {
+                return 'refused';
+            }
+            return req.query['hub.challenge'];
+        });
+
+        const subRes = await hubRequest({
+            'hub.mode': 'subscribe',
+            'hub.callback': callbackUrl,
+            'hub.topic': topicUrl
+        });
+        expect(subRes).status(202);
+
+        const sub = await waitForWebSubSubscription(topicUrl);
+        expect(sub, 'websub subscription should be recorded').to.not.be.null;
+
+        return { topicUrl, callbackUrl, callbackPath };
+    }
+
+    it('accepts an unsubscribe, verifies intent, and removes the subscription', async function() {
+        const { topicUrl, callbackUrl, callbackPath } = await subscribed({
+            echoOnUnsubscribe: true
+        });
+
+        const res = await hubRequest({
+            'hub.mode': 'unsubscribe',
+            'hub.callback': callbackUrl,
+            'hub.topic': topicUrl
+        });
+        expect(res).status(202);
+
+        const removed = await waitForWebSubUnsubscription(topicUrl);
+        expect(removed, 'subscription should be removed after verified unsubscribe')
+            .to.be.true;
+
+        // The hub performed an unsubscribe-mode verification GET on the callback.
+        const unsubscribeVerifications = mock.requests.GET[callbackPath].filter(
+            req => req.query['hub.mode'] === 'unsubscribe'
+        );
+        expect(unsubscribeVerifications).to.have.lengthOf(1);
+    });
+
+    it('does not remove the subscription when the callback refuses to echo', async function() {
+        const { topicUrl, callbackUrl } = await subscribed({
+            echoOnUnsubscribe: false
+        });
+
+        const res = await hubRequest({
+            'hub.mode': 'unsubscribe',
+            'hub.callback': callbackUrl,
+            'hub.topic': topicUrl
+        });
+        // Still 202 — validation is synchronous, verification is not.
+        expect(res).status(202);
+
+        const removed = await waitForWebSubUnsubscription(topicUrl, {
+            timeoutMs: 2000
+        });
+        expect(removed, 'subscription must survive an unconfirmed unsubscribe').to
+            .be.false;
     });
 });
