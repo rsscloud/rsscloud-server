@@ -168,10 +168,11 @@ Flows that must have an e2e (happy path + the ★ negatives):
   subscribe builds a `websub` `SubscribeRequest` **directly** (`callbackUrl=hub.callback`,
   `resourceUrls=[hub.topic]`, not via `buildSubscribeRequest`). Pure unit tests, no network.
   (→ `packages/core/src/protocols/websub-dispatcher.ts`: `parseSubscribe`)
-- [ ] **S1.2** `websub-plugin.verify()`: challenge GET to the callback with `hub.mode`,
+- [x] **S1.2** `websub-plugin.verify()`: challenge GET to the callback with `hub.mode`,
   `hub.topic`, `hub.challenge`; require `2xx` and an exact `hub.challenge` echo, else
   throw (always verifies — ignores `diffDomain`). Injected `fetch` + challenge generator.
-  `protocols: ['websub']`.
+  `protocols: ['websub']`. (→ `packages/core/src/protocols/websub-plugin.ts`;
+  `deliver()` is an interim failing stub until S2.1.)
 - [ ] **S1.3** `VerificationScheduler` as a `createRssCloudCore` option (default
   in-process: run task next tick, catch+log; injectable for tests) + an engine
   async-accept method `acceptSubscription(req)` that returns immediately and schedules
