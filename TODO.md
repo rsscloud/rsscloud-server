@@ -187,7 +187,7 @@ Flows that must have an e2e (happy path + the ★ negatives):
   → `202`, malformed → `4xx`. Mirror `rest-middleware` (thin; dispatcher owns logic).
   Export from `index.ts`. (No `scheduler`/`hubUrl` args — see architecture notes.)
   (→ core `createWebSubDispatcher`; express `websub-middleware.ts`; both exported.)
-- [ ] **S1.5** Server integration (prerequisite for the S1.6 e2e):
+- [x] **S1.5** Server integration (prerequisite for the S1.6 e2e):
   **(a)** `apps/server/core.js` — add `createWebSubProtocolPlugin({ hubUrl,
   requestTimeoutMs })` to the `plugins` array (registers `'websub'`; otherwise
   `core.subscribe` rejects it).
@@ -195,6 +195,8 @@ Flows that must have an e2e (happy path + the ★ negatives):
   **(c)** `apps/server/config.js` — env for the hub's public base URL (`HUB_URL`,
   default derived from `DOMAIN`/`PORT`) and mount path (`WEBSUB_PATH`, default `/websub`).
   (Lease bounds + signature algo are added in Phases 5/3 when their slices need them.)
+  (Done; `hubUrl` is config-only until S2.1's deliver consumes it — plugin gets
+  `requestTimeoutMs` for now. Route mounts at `config.webSubPath`.)
 - [ ] **S1.6** e2e (**establishes the reusable mock subscriber harness** — challenge-echo):
   POST subscribe → `202`, callback receives the verification GET, then **poll**
   `/subscriptions.json` (already lists every sub incl. `protocol:'websub'`) until the
