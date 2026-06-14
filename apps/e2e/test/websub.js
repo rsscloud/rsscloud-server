@@ -1,5 +1,6 @@
 const chai = require('chai'),
     chaiHttp = require('chai-http'),
+    crypto = require('node:crypto'),
     expect = chai.expect,
     SERVER_URL = process.env.APP_URL || 'http://localhost:5337',
     mock = require('./mock'),
@@ -239,5 +240,91 @@ describe('WebSub cross-protocol fan-out', function() {
         expect(link, 'Link header').to.be.a('string');
         expect(link).to.include('rel="hub"');
         expect(link).to.include(`<${topicUrl}>; rel="self"`);
+    });
+});
+
+describe('WebSub authenticated distribution', function() {
+    before(async function() {
+        await storeApi.before();
+        await mock.before();
+    });
+
+    after(async function() {
+        await storeApi.after();
+        await mock.after();
+    });
+
+    beforeEach(async function() {
+        await storeApi.beforeEach();
+        await mock.beforeEach();
+    });
+
+    afterEach(async function() {
+        await storeApi.afterEach();
+        await mock.afterEach();
+    });
+
+    // Subscribe via WebSub (optionally with a secret), wait for the async
+    // handshake, change the feed, then fire one rssCloud ping. Returns the
+    // captured content-distribution POST so a test can verify its signature.
+    async function deliverViaPing({ secret }) {
+        const feedPath = '/auth-feed.xml',
+            topicUrl = mock.serverUrl + feedPath,
+            callbackPath = '/auth-websub-callback',
+            callbackUrl = mock.serverUrl + callbackPath,
+            changedFeed = '<rss>authenticated-payload</rss>';
+
+        mock.route('GET', feedPath, 200, '<rss>version-1</rss>');
+        mock.route('GET', callbackPath, 200, req => {
+            return req.query['hub.challenge'];
+        });
+        mock.route('POST', callbackPath, 200, 'ok');
+
+        const subRes = await hubRequest({
+            'hub.mode': 'subscribe',
+            'hub.callback': callbackUrl,
+            'hub.topic': topicUrl,
+            ...(secret ? { 'hub.secret': secret } : {})
+        });
+        expect(subRes).status(202);
+
+        const websubSub = await waitForWebSubSubscription(topicUrl);
+        expect(websubSub, 'websub subscription should be recorded').to.not.be
+            .null;
+
+        mock.route('GET', feedPath, 200, changedFeed);
+
+        const pingRes = await chai
+            .request(SERVER_URL)
+            .post('/ping')
+            .set('content-type', 'application/x-www-form-urlencoded')
+            .send({ url: topicUrl });
+        expect(pingRes).status(200);
+
+        expect(mock.requests.POST)
+            .property(callbackPath)
+            .lengthOf(1, `Missing WebSub content POST ${callbackPath}`);
+        return { delivery: mock.requests.POST[callbackPath][0], changedFeed };
+    }
+
+    it('signs the delivered body with X-Hub-Signature when the subscriber supplied a secret', async function() {
+        const secret = 'shared-websub-secret';
+        const { delivery, changedFeed } = await deliverViaPing({ secret });
+
+        // The subscriber recomputes the HMAC over the body it received.
+        expect(delivery.body).to.equal(changedFeed);
+        const expected =
+            'sha256=' +
+            crypto
+                .createHmac('sha256', secret)
+                .update(delivery.body)
+                .digest('hex');
+        expect(delivery.headers['x-hub-signature']).to.equal(expected);
+    });
+
+    it('sends no X-Hub-Signature when the subscriber supplied no secret', async function() {
+        const { delivery } = await deliverViaPing({ secret: null });
+
+        expect(delivery.headers).to.not.have.property('x-hub-signature');
     });
 });
