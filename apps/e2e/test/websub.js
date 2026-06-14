@@ -2,6 +2,7 @@ const chai = require('chai'),
     chaiHttp = require('chai-http'),
     crypto = require('node:crypto'),
     expect = chai.expect,
+    getDayjs = require('./helpers/dayjs-wrapper'),
     SERVER_URL = process.env.APP_URL || 'http://localhost:5337',
     mock = require('./mock'),
     storeApi = require('./store-api');
@@ -445,5 +446,88 @@ describe('WebSub unsubscribe', function() {
         });
         expect(removed, 'subscription must survive an unconfirmed unsubscribe').to
             .be.false;
+    });
+});
+
+describe('WebSub leases', function() {
+    before(async function() {
+        await storeApi.before();
+        await mock.before();
+    });
+
+    after(async function() {
+        await storeApi.after();
+        await mock.after();
+    });
+
+    beforeEach(async function() {
+        await storeApi.beforeEach();
+        await mock.beforeEach();
+    });
+
+    afterEach(async function() {
+        await storeApi.afterEach();
+        await mock.afterEach();
+    });
+
+    it('clamps the requested lease to the configured bounds and echoes it in the verification GET', async function() {
+        const feedPath = '/lease-feed.xml',
+            topicUrl = mock.serverUrl + feedPath,
+            callbackPath = '/lease-callback',
+            callbackUrl = mock.serverUrl + callbackPath;
+
+        mock.route('GET', feedPath, 200, '<RSS Feed />');
+        mock.route('GET', callbackPath, 200, req => req.query['hub.challenge']);
+
+        // 5 seconds is below the 300s minimum and is clamped up to it.
+        const res = await hubRequest({
+            'hub.mode': 'subscribe',
+            'hub.callback': callbackUrl,
+            'hub.topic': topicUrl,
+            'hub.lease_seconds': '5'
+        });
+        expect(res).status(202);
+
+        const sub = await waitForWebSubSubscription(topicUrl);
+        expect(sub, 'websub subscription should be recorded').to.not.be.null;
+        expect(sub.details).to.have.property('leaseSeconds', 300);
+
+        // The verification GET echoed the chosen (clamped) lease.
+        const verification = mock.requests.GET[callbackPath][0];
+        expect(verification.query['hub.lease_seconds']).to.equal('300');
+    });
+
+    it('drops a lapsed lease on removeExpired', async function() {
+        const feedPath = '/lease-expire-feed.xml',
+            topicUrl = mock.serverUrl + feedPath,
+            callbackPath = '/lease-expire-callback',
+            callbackUrl = mock.serverUrl + callbackPath;
+
+        mock.route('GET', feedPath, 200, '<RSS Feed />');
+        mock.route('GET', callbackPath, 200, req => req.query['hub.challenge']);
+
+        const res = await hubRequest({
+            'hub.mode': 'subscribe',
+            'hub.callback': callbackUrl,
+            'hub.topic': topicUrl
+        });
+        expect(res).status(202);
+
+        const sub = await waitForWebSubSubscription(topicUrl);
+        expect(sub, 'websub subscription should be recorded').to.not.be.null;
+
+        // Force the lease to have lapsed, then run expiry housekeeping.
+        const dayjs = await getDayjs();
+        sub.whenExpires = dayjs()
+            .utc()
+            .subtract(1, 'hour')
+            .format();
+        await storeApi.updateSubscription(topicUrl, sub);
+
+        await storeApi.removeExpired();
+
+        const remaining = (await storeApi.findSubscription(topicUrl)) || [];
+        const stillThere = remaining.find(s => s.protocol === 'websub');
+        expect(stillThere, 'lapsed lease should be removed').to.be.undefined;
     });
 });
