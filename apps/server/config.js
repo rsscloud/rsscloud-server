@@ -36,5 +36,10 @@ module.exports = {
     hubUrl: getConfig('HUB_URL', `http://${domain}:${port}${webSubPath}`),
     // HMAC algorithm for the X-Hub-Signature header on authenticated WebSub
     // deliveries (subscribers that supplied a hub.secret). Default sha256.
-    webSubSignatureAlgo: getConfig('WEBSUB_SIGNATURE_ALGO', 'sha256')
+    webSubSignatureAlgo: getConfig('WEBSUB_SIGNATURE_ALGO', 'sha256'),
+    // WebSub lease bounds (secs): the lease granted when hub.lease_seconds is
+    // omitted, and the [min, max] a requested lease is clamped to.
+    webSubLeaseDefaultSecs: getNumericConfig('WEBSUB_LEASE_DEFAULT_SECS', 86400),
+    webSubLeaseMinSecs: getNumericConfig('WEBSUB_LEASE_MIN_SECS', 300),
+    webSubLeaseMaxSecs: getNumericConfig('WEBSUB_LEASE_MAX_SECS', 864000)
 };

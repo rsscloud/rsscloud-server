@@ -29,7 +29,8 @@ function verifyContext(
     callbackUrl: string,
     resourceUrl: string,
     diffDomain: boolean,
-    mode?: 'subscribe' | 'unsubscribe'
+    mode?: 'subscribe' | 'unsubscribe',
+    leaseSeconds?: number
 ): VerifyContext {
     const ctx: VerifyContext = {
         subscription: subscription(callbackUrl),
@@ -38,6 +39,9 @@ function verifyContext(
     };
     if (mode !== undefined) {
         ctx.mode = mode;
+    }
+    if (leaseSeconds !== undefined) {
+        ctx.leaseSeconds = leaseSeconds;
     }
     return ctx;
 }
@@ -136,6 +140,60 @@ describe('createWebSubProtocolPlugin verify', () => {
             'http://feed.example/rss'
         );
         expect(url.searchParams.get('hub.challenge')).toBe('chal-123');
+    });
+
+    it('echoes hub.lease_seconds on the challenge GET when a lease is set', async () => {
+        const calls: string[] = [];
+        const fakeFetch = (async (url: string | URL) => {
+            calls.push(String(url));
+            const challenge = new URL(String(url)).searchParams.get(
+                'hub.challenge'
+            );
+            return new Response(challenge, { status: 200 });
+        }) as typeof fetch;
+
+        const plugin = createWebSubProtocolPlugin({
+            fetch: fakeFetch,
+            createChallenge: () => 'chal-123'
+        });
+
+        await plugin.verify(
+            verifyContext(
+                'https://sub.example/listener',
+                'http://feed.example/rss',
+                true,
+                'subscribe',
+                600
+            )
+        );
+
+        const url = new URL(calls[0] as string);
+        expect(url.searchParams.get('hub.lease_seconds')).toBe('600');
+    });
+
+    it('omits hub.lease_seconds when no lease is set', async () => {
+        const calls: string[] = [];
+        const fakeFetch = (async (url: string | URL) => {
+            calls.push(String(url));
+            const challenge = new URL(String(url)).searchParams.get(
+                'hub.challenge'
+            );
+            return new Response(challenge, { status: 200 });
+        }) as typeof fetch;
+
+        const plugin = createWebSubProtocolPlugin({ fetch: fakeFetch });
+
+        await plugin.verify(
+            verifyContext(
+                'https://sub.example/listener',
+                'http://feed.example/rss',
+                true
+            )
+        );
+
+        expect(
+            new URL(calls[0] as string).searchParams.has('hub.lease_seconds')
+        ).toBe(false);
     });
 
     it('rejects when the 2xx response does not echo the exact challenge', async () => {

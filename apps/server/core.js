@@ -18,7 +18,10 @@ const coreConfig = resolveConfig({
     maxConsecutiveErrors: config.maxConsecutiveErrors,
     maxResourceSize: config.maxResourceSize,
     requestTimeoutMs: config.requestTimeout,
-    feedsChangedWindowDays: config.feedsChangedWindowDays
+    feedsChangedWindowDays: config.feedsChangedWindowDays,
+    webSubLeaseDefaultSecs: config.webSubLeaseDefaultSecs,
+    webSubLeaseMinSecs: config.webSubLeaseMinSecs,
+    webSubLeaseMaxSecs: config.webSubLeaseMaxSecs
 });
 
 // Registers the 'websub' protocol so core.subscribe accepts WebSub subscriptions

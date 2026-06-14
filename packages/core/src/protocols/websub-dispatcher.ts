@@ -47,6 +47,22 @@ function parseHubCallbackTopic(
 }
 
 /**
+ * Parse a `hub.lease_seconds` form value to a positive integer, or `undefined`
+ * when absent/malformed (the hub then applies its default). Core clamps the
+ * requested value to the configured bounds.
+ */
+function parseLeaseSeconds(value: unknown): number | undefined {
+    if (typeof value !== 'string') {
+        return undefined;
+    }
+    const seconds = Number(value);
+    if (!Number.isInteger(seconds) || seconds <= 0) {
+        return undefined;
+    }
+    return seconds;
+}
+
+/**
  * Parse and validate a WebSub subscribe form body (`hub.mode` / `hub.callback` /
  * `hub.topic`). On success builds a `websub` {@link SubscribeRequest} *directly*
  * — the complete `hub.callback` is the callback URL and `hub.topic` the sole
@@ -68,9 +84,17 @@ export function parseSubscribe(
         callbackUrl: parsed.callback,
         protocol: 'websub'
     };
+    const details: Record<string, unknown> = {};
     const secret = body['hub.secret'];
     if (typeof secret === 'string') {
-        request.details = { secret };
+        details['secret'] = secret;
+    }
+    const leaseSeconds = parseLeaseSeconds(body['hub.lease_seconds']);
+    if (leaseSeconds !== undefined) {
+        details['leaseSeconds'] = leaseSeconds;
+    }
+    if (Object.keys(details).length > 0) {
+        request.details = details;
     }
     return { ok: true, request };
 }

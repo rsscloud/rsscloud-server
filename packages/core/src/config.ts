@@ -16,6 +16,12 @@ export interface RssCloudConfig {
     requestTimeoutMs: number;
     /** Window (days) used by stats and expiry housekeeping. */
     feedsChangedWindowDays: number;
+    /** WebSub lease (secs) granted when a subscriber omits `hub.lease_seconds`. */
+    webSubLeaseDefaultSecs: number;
+    /** Lower bound (secs) a requested WebSub lease is clamped up to. */
+    webSubLeaseMinSecs: number;
+    /** Upper bound (secs) a requested WebSub lease is clamped down to. */
+    webSubLeaseMaxSecs: number;
 }
 
 /**
@@ -34,7 +40,10 @@ export const DEFAULT_CONFIG: RssCloudConfig = {
     maxConsecutiveErrors: 3,
     maxResourceSize: 256000,
     requestTimeoutMs: 4000,
-    feedsChangedWindowDays: 7
+    feedsChangedWindowDays: 7,
+    webSubLeaseDefaultSecs: 86400,
+    webSubLeaseMinSecs: 300,
+    webSubLeaseMaxSecs: 864000
 };
 
 /** Fill a partial config with {@link DEFAULT_CONFIG} values. */
