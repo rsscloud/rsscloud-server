@@ -9,7 +9,10 @@ describe('resolveConfig', () => {
             maxConsecutiveErrors: 3,
             maxResourceSize: 256000,
             requestTimeoutMs: 4000,
-            feedsChangedWindowDays: 7
+            feedsChangedWindowDays: 7,
+            webSubLeaseDefaultSecs: 86400,
+            webSubLeaseMinSecs: 300,
+            webSubLeaseMaxSecs: 864000
         });
     });
 

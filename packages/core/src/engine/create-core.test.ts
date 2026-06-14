@@ -873,6 +873,77 @@ describe('createRssCloudCore acceptUnsubscription', () => {
     });
 });
 
+describe('createRssCloudCore websub leases', () => {
+    const NOW = new Date('2026-01-01T00:00:00.000Z');
+    const CALLBACK = 'https://sub.example/listener';
+
+    function leaseCore(verify: ProtocolPlugin['verify']) {
+        const store = createInMemoryStore();
+        const core = createRssCloudCore({
+            store,
+            plugins: [makePlugin({ protocols: ['websub'], verify })],
+            config: resolveConfig({
+                webSubLeaseDefaultSecs: 86400,
+                webSubLeaseMinSecs: 300,
+                webSubLeaseMaxSecs: 864000
+            }),
+            fetch: fetchReturning(RSS),
+            now: () => NOW
+        });
+        return { store, core };
+    }
+
+    async function subscribeWebSub(details?: Record<string, unknown>) {
+        const verify = vi.fn<(ctx: VerifyContext) => Promise<undefined>>(
+            async () => undefined
+        );
+        const { store, core } = leaseCore(verify);
+        await core.subscribe({
+            resourceUrls: [FEED],
+            callbackUrl: CALLBACK,
+            protocol: 'websub',
+            ...(details ? { details } : {})
+        });
+        const sub = (await store.getSubscriptions(FEED))[0];
+        return { sub, verify };
+    }
+
+    it('clamps a too-small requested lease up to the minimum and records it', async () => {
+        const { sub, verify } = await subscribeWebSub({ leaseSeconds: 5 });
+
+        expect(sub?.details).toEqual({ leaseSeconds: 300 });
+        expect(sub?.whenExpires).toEqual(new Date(NOW.getTime() + 300 * 1000));
+        expect(verify.mock.calls[0]?.[0]).toMatchObject({ leaseSeconds: 300 });
+    });
+
+    it('clamps a too-large requested lease down to the maximum', async () => {
+        const { sub } = await subscribeWebSub({ leaseSeconds: 99999999 });
+
+        expect(sub?.details).toEqual({ leaseSeconds: 864000 });
+        expect(sub?.whenExpires).toEqual(
+            new Date(NOW.getTime() + 864000 * 1000)
+        );
+    });
+
+    it('grants the default lease when none is requested', async () => {
+        const { sub } = await subscribeWebSub();
+
+        expect(sub?.details).toEqual({ leaseSeconds: 86400 });
+        expect(sub?.whenExpires).toEqual(
+            new Date(NOW.getTime() + 86400 * 1000)
+        );
+    });
+
+    it('preserves a supplied secret alongside the chosen lease', async () => {
+        const { sub } = await subscribeWebSub({
+            secret: 's3cr3t',
+            leaseSeconds: 3600
+        });
+
+        expect(sub?.details).toEqual({ secret: 's3cr3t', leaseSeconds: 3600 });
+    });
+});
+
 describe('createRssCloudCore initialization', () => {
     it('runs each plugin init hook once', () => {
         const init = vi.fn();

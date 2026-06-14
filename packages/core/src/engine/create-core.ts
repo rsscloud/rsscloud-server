@@ -16,7 +16,11 @@ import {
     generateStats as runGenerateStats,
     removeExpired as runRemoveExpired
 } from './maintenance.js';
-import type { ResourcePayload, ProtocolPlugin } from './plugin.js';
+import type {
+    ResourcePayload,
+    ProtocolPlugin,
+    VerifyContext
+} from './plugin.js';
 import type { Protocol } from './protocol.js';
 import type { Resource } from './resource.js';
 import type { Subscription } from './subscription.js';
@@ -96,6 +100,20 @@ export function createRssCloudCore(
 
     function expiryFrom(base: Date): Date {
         return new Date(base.getTime() + config.ctSecsResourceExpire * 1000);
+    }
+
+    /**
+     * Resolve a WebSub lease: the requested `hub.lease_seconds` clamped to the
+     * configured `[min, max]` bounds, or the default when none was requested.
+     */
+    function clampLease(requested: unknown): number {
+        if (typeof requested !== 'number') {
+            return config.webSubLeaseDefaultSecs;
+        }
+        return Math.min(
+            config.webSubLeaseMaxSecs,
+            Math.max(config.webSubLeaseMinSecs, requested)
+        );
     }
 
     function newResource(url: string): Resource {
@@ -350,8 +368,28 @@ export function createRssCloudCore(
         ).slice();
         const subscription = upsertSubscription(subscriptions, req);
 
+        // WebSub subscriptions carry a lease: the chosen value is recorded in
+        // details, echoed on the verification GET, and maps to whenExpires.
+        const leaseSeconds =
+            req.protocol === 'websub'
+                ? clampLease(req.details?.['leaseSeconds'])
+                : undefined;
+
+        const verifyContext: VerifyContext = {
+            subscription,
+            resourceUrl,
+            diffDomain
+        };
+        if (leaseSeconds !== undefined) {
+            subscription.details = {
+                ...(subscription.details ?? {}),
+                leaseSeconds
+            };
+            verifyContext.leaseSeconds = leaseSeconds;
+        }
+
         try {
-            await plugin.verify({ subscription, resourceUrl, diffDomain });
+            await plugin.verify(verifyContext);
         } catch {
             return {
                 resourceUrl,
@@ -363,7 +401,10 @@ export function createRssCloudCore(
         subscription.ctUpdates += 1;
         subscription.ctConsecutiveErrors = 0;
         subscription.whenLastUpdate = now();
-        subscription.whenExpires = expiryFrom(now());
+        subscription.whenExpires =
+            leaseSeconds !== undefined
+                ? new Date(now().getTime() + leaseSeconds * 1000)
+                : expiryFrom(now());
         await store.putSubscriptions(resourceUrl, subscriptions);
 
         events.emit('subscribe', {

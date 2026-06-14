@@ -29,6 +29,11 @@ export interface VerifyContext {
      * defaults to subscribe semantics.
      */
     mode?: 'subscribe' | 'unsubscribe';
+    /**
+     * The chosen WebSub lease (secs) to echo as `hub.lease_seconds` on the
+     * subscribe challenge GET. Absent for rssCloud and for unsubscribe.
+     */
+    leaseSeconds?: number;
 }
 
 /** Passed to `ProtocolPlugin.deliver` for each fan-out notification. */

@@ -65,6 +65,12 @@ export function createWebSubProtocolPlugin(
         verifyUrl.searchParams.set('hub.mode', ctx.mode ?? 'subscribe');
         verifyUrl.searchParams.set('hub.topic', ctx.resourceUrl);
         verifyUrl.searchParams.set('hub.challenge', challenge);
+        if (ctx.leaseSeconds !== undefined) {
+            verifyUrl.searchParams.set(
+                'hub.lease_seconds',
+                String(ctx.leaseSeconds)
+            );
+        }
 
         const res = await fetchWithTimeout(
             doFetch,

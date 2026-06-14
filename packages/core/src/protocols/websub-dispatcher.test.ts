@@ -89,6 +89,63 @@ describe('parseSubscribe', () => {
             }
         });
     });
+
+    it('parses hub.lease_seconds into details.leaseSeconds', () => {
+        const result = parseSubscribe({
+            'hub.mode': 'subscribe',
+            'hub.callback': 'https://sub.example.com/listener',
+            'hub.topic': 'http://feed.example/rss',
+            'hub.lease_seconds': '600'
+        });
+
+        expect(result).toEqual({
+            ok: true,
+            request: {
+                resourceUrls: ['http://feed.example/rss'],
+                callbackUrl: 'https://sub.example.com/listener',
+                protocol: 'websub',
+                details: { leaseSeconds: 600 }
+            }
+        });
+    });
+
+    it('carries both hub.secret and hub.lease_seconds in details', () => {
+        const result = parseSubscribe({
+            'hub.mode': 'subscribe',
+            'hub.callback': 'https://sub.example.com/listener',
+            'hub.topic': 'http://feed.example/rss',
+            'hub.secret': 's3cr3t',
+            'hub.lease_seconds': '3600'
+        });
+
+        expect(result).toEqual({
+            ok: true,
+            request: {
+                resourceUrls: ['http://feed.example/rss'],
+                callbackUrl: 'https://sub.example.com/listener',
+                protocol: 'websub',
+                details: { secret: 's3cr3t', leaseSeconds: 3600 }
+            }
+        });
+    });
+
+    it('ignores a non-numeric hub.lease_seconds', () => {
+        const result = parseSubscribe({
+            'hub.mode': 'subscribe',
+            'hub.callback': 'https://sub.example.com/listener',
+            'hub.topic': 'http://feed.example/rss',
+            'hub.lease_seconds': 'soon'
+        });
+
+        expect(result).toEqual({
+            ok: true,
+            request: {
+                resourceUrls: ['http://feed.example/rss'],
+                callbackUrl: 'https://sub.example.com/listener',
+                protocol: 'websub'
+            }
+        });
+    });
 });
 
 describe('parseUnsubscribe', () => {
