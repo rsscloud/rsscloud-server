@@ -13,6 +13,7 @@ import type { ProtocolPlugin } from './plugin.js';
 import type { MaintenanceResult, Stats } from './stats.js';
 import type { Resource } from './resource.js';
 import type { Subscription } from './subscription.js';
+import type { VerificationScheduler } from './verification-scheduler.js';
 import type { FeedEntry, Store } from '../store/store.js';
 
 /**
@@ -40,6 +41,12 @@ export interface RssCloudCoreOptions {
     now?: () => Date;
     /** Feed metadata parser; defaults to core's built-in. */
     feedParser?: FeedParser;
+    /**
+     * Runs WebSub's out-of-band verify→persist work after an async-`202` accept.
+     * Defaults to an in-process best-effort scheduler (see ADR-0002); a host may
+     * inject a persisted-queue implementation.
+     */
+    scheduler?: VerificationScheduler;
 }
 
 /**
@@ -50,6 +57,14 @@ export interface RssCloudCoreOptions {
 export interface RssCloudCore {
     /** Establish or renew subscriptions. */
     subscribe(req: SubscribeRequest): Promise<SubscribeResponse>;
+    /**
+     * Accept a subscription for async (WebSub-style) intent verification: returns
+     * immediately and schedules the verify→persist work via the
+     * {@link RssCloudCoreOptions.scheduler}. A successful verify persists the
+     * subscription; a failed one persists nothing. A new caller of
+     * {@link subscribe} — the synchronous rssCloud path is unchanged.
+     */
+    acceptSubscription(req: SubscribeRequest): void;
     /** Cancel subscriptions. */
     unsubscribe(req: UnsubscribeRequest): Promise<UnsubscribeResponse>;
     /**

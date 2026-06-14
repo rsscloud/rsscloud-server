@@ -2,6 +2,11 @@ export const version = '0.0.0';
 
 // Implementations
 export { createRssCloudCore } from './engine/create-core.js';
+export {
+    createInProcessVerificationScheduler,
+    type VerificationScheduler,
+    type InProcessVerificationSchedulerOptions
+} from './engine/verification-scheduler.js';
 export { DEFAULT_CONFIG, resolveConfig } from './config.js';
 export { createEventBus } from './events.js';
 export { RssCloudError } from './errors.js';
