@@ -28,13 +28,18 @@ function subscription(url: string): Subscription {
 function verifyContext(
     callbackUrl: string,
     resourceUrl: string,
-    diffDomain: boolean
+    diffDomain: boolean,
+    mode?: 'subscribe' | 'unsubscribe'
 ): VerifyContext {
-    return {
+    const ctx: VerifyContext = {
         subscription: subscription(callbackUrl),
         resourceUrl,
         diffDomain
     };
+    if (mode !== undefined) {
+        ctx.mode = mode;
+    }
+    return ctx;
 }
 
 function resource(url: string): Resource {
@@ -95,6 +100,38 @@ describe('createWebSubProtocolPlugin verify', () => {
         const url = new URL(calls[0] as string);
         expect(url.origin + url.pathname).toBe('https://sub.example/listener');
         expect(url.searchParams.get('hub.mode')).toBe('subscribe');
+        expect(url.searchParams.get('hub.topic')).toBe(
+            'http://feed.example/rss'
+        );
+        expect(url.searchParams.get('hub.challenge')).toBe('chal-123');
+    });
+
+    it('sends hub.mode=unsubscribe when the verify context is for an unsubscribe', async () => {
+        const calls: string[] = [];
+        const fakeFetch = (async (url: string | URL) => {
+            calls.push(String(url));
+            const challenge = new URL(String(url)).searchParams.get(
+                'hub.challenge'
+            );
+            return new Response(challenge, { status: 200 });
+        }) as typeof fetch;
+
+        const plugin = createWebSubProtocolPlugin({
+            fetch: fakeFetch,
+            createChallenge: () => 'chal-123'
+        });
+
+        await plugin.verify(
+            verifyContext(
+                'https://sub.example/listener',
+                'http://feed.example/rss',
+                true,
+                'unsubscribe'
+            )
+        );
+
+        const url = new URL(calls[0] as string);
+        expect(url.searchParams.get('hub.mode')).toBe('unsubscribe');
         expect(url.searchParams.get('hub.topic')).toBe(
             'http://feed.example/rss'
         );

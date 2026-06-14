@@ -23,6 +23,12 @@ export interface VerifyContext {
     subscription: Subscription;
     resourceUrl: string;
     diffDomain: boolean;
+    /**
+     * Which WebSub intent is being confirmed — sent as `hub.mode` on the
+     * challenge GET. Absent for the rssCloud handshake (which ignores it) and
+     * defaults to subscribe semantics.
+     */
+    mode?: 'subscribe' | 'unsubscribe';
 }
 
 /** Passed to `ProtocolPlugin.deliver` for each fan-out notification. */

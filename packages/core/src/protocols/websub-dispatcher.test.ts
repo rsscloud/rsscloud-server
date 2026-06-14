@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { SubscribeRequest } from '../engine/dto.js';
-import { createWebSubDispatcher, parseSubscribe } from './websub-dispatcher.js';
+import type { SubscribeRequest, UnsubscribeRequest } from '../engine/dto.js';
+import {
+    createWebSubDispatcher,
+    parseSubscribe,
+    parseUnsubscribe
+} from './websub-dispatcher.js';
 
 describe('parseSubscribe', () => {
     it('builds a websub SubscribeRequest directly from hub.callback and hub.topic', () => {
@@ -87,13 +91,59 @@ describe('parseSubscribe', () => {
     });
 });
 
+describe('parseUnsubscribe', () => {
+    it('builds a websub UnsubscribeRequest directly from hub.callback and hub.topic', () => {
+        const result = parseUnsubscribe({
+            'hub.mode': 'unsubscribe',
+            'hub.callback': 'https://sub.example.com/listener',
+            'hub.topic': 'http://feed.example/rss'
+        });
+
+        expect(result).toEqual({
+            ok: true,
+            request: {
+                resourceUrls: ['http://feed.example/rss'],
+                callbackUrl: 'https://sub.example.com/listener',
+                protocol: 'websub'
+            }
+        });
+    });
+
+    it('rejects a body whose mode is not unsubscribe as a 400', () => {
+        const result = parseUnsubscribe({
+            'hub.mode': 'subscribe',
+            'hub.callback': 'https://sub.example.com/listener',
+            'hub.topic': 'http://feed.example/rss'
+        });
+
+        expect(result).toEqual({ ok: false, status: 400 });
+    });
+
+    it('rejects a missing hub.topic as a 400', () => {
+        const result = parseUnsubscribe({
+            'hub.mode': 'unsubscribe',
+            'hub.callback': 'https://sub.example.com/listener'
+        });
+
+        expect(result).toEqual({ ok: false, status: 400 });
+    });
+});
+
 describe('createWebSubDispatcher', () => {
     function fakeCore(): {
         calls: SubscribeRequest[];
+        unsubscribeCalls: UnsubscribeRequest[];
         acceptSubscription: (req: SubscribeRequest) => void;
+        acceptUnsubscription: (req: UnsubscribeRequest) => void;
     } {
         const calls: SubscribeRequest[] = [];
-        return { calls, acceptSubscription: req => void calls.push(req) };
+        const unsubscribeCalls: UnsubscribeRequest[] = [];
+        return {
+            calls,
+            unsubscribeCalls,
+            acceptSubscription: req => void calls.push(req),
+            acceptUnsubscription: req => void unsubscribeCalls.push(req)
+        };
     }
 
     it('accepts a valid subscribe with 202 and hands core the built request', () => {
@@ -124,5 +174,51 @@ describe('createWebSubDispatcher', () => {
 
         expect(result).toEqual({ status: 400 });
         expect(core.calls).toEqual([]);
+    });
+
+    it('accepts a valid unsubscribe with 202 and hands core the built request', () => {
+        const core = fakeCore();
+        const dispatcher = createWebSubDispatcher({ core });
+
+        const result = dispatcher.dispatch({
+            'hub.mode': 'unsubscribe',
+            'hub.callback': 'https://sub.example/listener',
+            'hub.topic': 'http://feed.example/rss'
+        });
+
+        expect(result).toEqual({ status: 202 });
+        expect(core.unsubscribeCalls).toEqual([
+            {
+                resourceUrls: ['http://feed.example/rss'],
+                callbackUrl: 'https://sub.example/listener',
+                protocol: 'websub'
+            }
+        ]);
+        expect(core.calls).toEqual([]);
+    });
+
+    it('returns 400 for a malformed unsubscribe without accepting anything', () => {
+        const core = fakeCore();
+        const dispatcher = createWebSubDispatcher({ core });
+
+        const result = dispatcher.dispatch({ 'hub.mode': 'unsubscribe' });
+
+        expect(result).toEqual({ status: 400 });
+        expect(core.unsubscribeCalls).toEqual([]);
+    });
+
+    it('returns 400 for an unsupported hub.mode without accepting anything', () => {
+        const core = fakeCore();
+        const dispatcher = createWebSubDispatcher({ core });
+
+        const result = dispatcher.dispatch({
+            'hub.mode': 'publish',
+            'hub.callback': 'https://sub.example/listener',
+            'hub.topic': 'http://feed.example/rss'
+        });
+
+        expect(result).toEqual({ status: 400 });
+        expect(core.calls).toEqual([]);
+        expect(core.unsubscribeCalls).toEqual([]);
     });
 });

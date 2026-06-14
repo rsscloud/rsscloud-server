@@ -422,6 +422,48 @@ export function createRssCloudCore(
         });
     }
 
+    function acceptUnsubscription(req: UnsubscribeRequest): void {
+        // The unsubscribe counterpart to acceptSubscription: the scheduler runs
+        // the intent-verification challenge GET out of band so the front door
+        // answers 202 first, removing the subscription only once confirmed.
+        scheduler.schedule(async () => {
+            await verifiedUnsubscribe(req);
+        });
+    }
+
+    async function verifiedUnsubscribe(req: UnsubscribeRequest): Promise<void> {
+        const plugin = pluginByProtocol.get(req.protocol);
+        if (plugin === undefined) {
+            throw new RssCloudError(
+                'UNSUPPORTED_PROTOCOL',
+                `No plugin is registered for protocol "${req.protocol}".`
+            );
+        }
+
+        for (const resourceUrl of req.resourceUrls) {
+            const subscriptions = await store.getSubscriptions(resourceUrl);
+            const existing = subscriptions.find(
+                s => s.url === req.callbackUrl && s.protocol === req.protocol
+            );
+            if (existing === undefined) {
+                continue;
+            }
+            try {
+                await plugin.verify({
+                    subscription: existing,
+                    resourceUrl,
+                    diffDomain: false,
+                    mode: 'unsubscribe'
+                });
+            } catch {
+                // Intent not confirmed — leave the subscription in place.
+                return;
+            }
+        }
+
+        await unsubscribe(req);
+    }
+
     async function unsubscribe(
         req: UnsubscribeRequest
     ): Promise<UnsubscribeResponse> {
@@ -476,6 +518,7 @@ export function createRssCloudCore(
     return {
         subscribe,
         acceptSubscription,
+        acceptUnsubscription,
         unsubscribe,
         ping,
         events,
