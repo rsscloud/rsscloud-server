@@ -180,12 +180,14 @@ only the changed URL, Content distribution sends the content itself — so one r
 **Ping** can drive both, from the same already-fetched body.
 _Avoid_: notify (rssCloud's content-free signal), push, broadcast.
 
-**Fat ping**:
+**Fat ping** (out of scope — not implemented):
 A publish in which the **Publisher** POSTs the changed body itself, so the **Hub**
 distributes it verbatim *without* re-fetching the **Topic**. Non-standard (a PubSubHubbub
-0.4 extension), so its wire format is a project decision. Contrast a thin publish
-(`hub.mode=publish`), which names only the URL and triggers a re-fetch through `core.ping`.
-_Avoid_: publish (a thin publish re-fetches; a Fat ping carries the body), push.
+0.4 extension) with no WebSub wire format, so we **deliberately don't implement it**
+(decided 2026-06-15): the hub only ever does thin publishes — it names a **Topic** and
+re-fetches through `core.ping`, exactly as rssCloud's **Ping** already works. The term is
+kept here only to explain why our publish is called "thin."
+_Avoid_: using "publish" to mean Fat ping (our publish is always thin); push.
 
 **X-Hub-Signature**:
 The HMAC the **Hub** adds over a **Content distribution** body (`X-Hub-Signature: sha256=…`)
