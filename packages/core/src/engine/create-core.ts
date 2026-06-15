@@ -16,10 +16,15 @@ import {
     generateStats as runGenerateStats,
     removeExpired as runRemoveExpired
 } from './maintenance.js';
-import type { ResourcePayload, ProtocolPlugin } from './plugin.js';
+import type {
+    ResourcePayload,
+    ProtocolPlugin,
+    VerifyContext
+} from './plugin.js';
 import type { Protocol } from './protocol.js';
 import type { Resource } from './resource.js';
 import type { Subscription } from './subscription.js';
+import { createInProcessVerificationScheduler } from './verification-scheduler.js';
 import type { FeedEntry, Store } from '../store/store.js';
 import type {
     RssCloudCore,
@@ -69,6 +74,18 @@ export function createRssCloudCore(
     const events = options.events ?? createEventBus();
     const doFetch = options.fetch ?? fetch;
     const now = options.now ?? (() => new Date());
+    const scheduler =
+        options.scheduler ??
+        createInProcessVerificationScheduler({
+            onError: error =>
+                events.emit('error', {
+                    scope: 'websub-verification',
+                    error:
+                        error instanceof Error
+                            ? error
+                            : new Error(String(error))
+                })
+        });
     const feedParser =
         options.feedParser ??
         createDefaultFeedParser({ maxResourceSize: config.maxResourceSize });
@@ -83,6 +100,20 @@ export function createRssCloudCore(
 
     function expiryFrom(base: Date): Date {
         return new Date(base.getTime() + config.ctSecsResourceExpire * 1000);
+    }
+
+    /**
+     * Resolve a WebSub lease: the requested `hub.lease_seconds` clamped to the
+     * configured `[min, max]` bounds, or the default when none was requested.
+     */
+    function clampLease(requested: unknown): number {
+        if (typeof requested !== 'number') {
+            return config.webSubLeaseDefaultSecs;
+        }
+        return Math.min(
+            config.webSubLeaseMaxSecs,
+            Math.max(config.webSubLeaseMinSecs, requested)
+        );
     }
 
     function newResource(url: string): Resource {
@@ -337,8 +368,28 @@ export function createRssCloudCore(
         ).slice();
         const subscription = upsertSubscription(subscriptions, req);
 
+        // WebSub subscriptions carry a lease: the chosen value is recorded in
+        // details, echoed on the verification GET, and maps to whenExpires.
+        const leaseSeconds =
+            req.protocol === 'websub'
+                ? clampLease(req.details?.['leaseSeconds'])
+                : undefined;
+
+        const verifyContext: VerifyContext = {
+            subscription,
+            resourceUrl,
+            diffDomain
+        };
+        if (leaseSeconds !== undefined) {
+            subscription.details = {
+                ...(subscription.details ?? {}),
+                leaseSeconds
+            };
+            verifyContext.leaseSeconds = leaseSeconds;
+        }
+
         try {
-            await plugin.verify({ subscription, resourceUrl, diffDomain });
+            await plugin.verify(verifyContext);
         } catch {
             return {
                 resourceUrl,
@@ -350,7 +401,10 @@ export function createRssCloudCore(
         subscription.ctUpdates += 1;
         subscription.ctConsecutiveErrors = 0;
         subscription.whenLastUpdate = now();
-        subscription.whenExpires = expiryFrom(now());
+        subscription.whenExpires =
+            leaseSeconds !== undefined
+                ? new Date(now().getTime() + leaseSeconds * 1000)
+                : expiryFrom(now());
         await store.putSubscriptions(resourceUrl, subscriptions);
 
         events.emit('subscribe', {
@@ -396,6 +450,73 @@ export function createRssCloudCore(
                 : 'Subscription could not be confirmed for any resource.',
             results
         };
+    }
+
+    function acceptSubscription(req: SubscribeRequest): void {
+        // A new caller of the unchanged `subscribe`: the scheduler runs the
+        // verify→persist out of band so the front door can answer `202` first.
+        // `subscribe` persists only after `verify` succeeds and records nothing
+        // on a refusal, so no extra failure handling is needed here — only a
+        // genuine exception reaches the scheduler's onError.
+        scheduler.schedule(async () => {
+            await subscribe(req);
+        });
+    }
+
+    function acceptUnsubscription(req: UnsubscribeRequest): void {
+        // The unsubscribe counterpart to acceptSubscription: the scheduler runs
+        // the intent-verification challenge GET out of band so the front door
+        // answers 202 first, removing the subscription only once confirmed.
+        scheduler.schedule(async () => {
+            await verifiedUnsubscribe(req);
+        });
+    }
+
+    async function verifiedUnsubscribe(req: UnsubscribeRequest): Promise<void> {
+        const plugin = pluginByProtocol.get(req.protocol);
+        if (plugin === undefined) {
+            throw new RssCloudError(
+                'UNSUPPORTED_PROTOCOL',
+                `No plugin is registered for protocol "${req.protocol}".`
+            );
+        }
+
+        for (const resourceUrl of req.resourceUrls) {
+            const subscriptions = await store.getSubscriptions(resourceUrl);
+            const existing = subscriptions.find(
+                s => s.url === req.callbackUrl && s.protocol === req.protocol
+            );
+            if (existing === undefined) {
+                continue;
+            }
+            try {
+                await plugin.verify({
+                    subscription: existing,
+                    resourceUrl,
+                    diffDomain: false,
+                    mode: 'unsubscribe'
+                });
+            } catch {
+                // Intent not confirmed — leave the subscription in place.
+                return;
+            }
+        }
+
+        await unsubscribe(req);
+    }
+
+    function acceptPublish(req: PingRequest): void {
+        // A well-formed WebSub publish is acknowledged immediately (202) and the
+        // topic re-fetched out of band, reusing ping's fetch→payload→fanOut. Per
+        // the spec the publisher isn't told the fetch outcome, so a failure is
+        // surfaced on the error event rather than thrown.
+        void ping(req).catch(error =>
+            events.emit('error', {
+                scope: 'websub-publish',
+                error:
+                    error instanceof Error ? error : new Error(String(error))
+            })
+        );
     }
 
     async function unsubscribe(
@@ -451,6 +572,9 @@ export function createRssCloudCore(
 
     return {
         subscribe,
+        acceptSubscription,
+        acceptUnsubscription,
+        acceptPublish,
         unsubscribe,
         ping,
         events,

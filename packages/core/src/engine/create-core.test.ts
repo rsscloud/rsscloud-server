@@ -4,7 +4,7 @@ import { resolveConfig } from '../config.js';
 import { createEventBus } from '../events.js';
 import type { RssCloudEventMap } from '../events.js';
 import { createInMemoryStore } from '../store/memory-store.js';
-import type { ProtocolPlugin } from './plugin.js';
+import type { ProtocolPlugin, VerifyContext } from './plugin.js';
 import type { Resource } from './resource.js';
 import type { Store } from '../store/store.js';
 import type { Subscription } from './subscription.js';
@@ -740,6 +740,293 @@ describe('createRssCloudCore unsubscribe', () => {
     });
 });
 
+describe('createRssCloudCore acceptUnsubscription', () => {
+    function captureScheduler(): {
+        tasks: (() => Promise<void>)[];
+        schedule: (task: () => Promise<void>) => void;
+    } {
+        const tasks: (() => Promise<void>)[] = [];
+        return { tasks, schedule: task => void tasks.push(task) };
+    }
+
+    const CALLBACK = 'https://sub.example/listener';
+
+    it('schedules a verified unsubscribe that removes the sub on a confirmed intent', async () => {
+        const store = createInMemoryStore();
+        await store.putSubscriptions(FEED, [
+            subscription({ url: CALLBACK, protocol: 'websub' })
+        ]);
+        const scheduler = captureScheduler();
+        const verify = vi.fn<(ctx: VerifyContext) => Promise<undefined>>(
+            async () => undefined
+        );
+
+        const core = createRssCloudCore({
+            store,
+            plugins: [makePlugin({ protocols: ['websub'], verify })],
+            config: resolveConfig(),
+            fetch: fetchReturning(RSS),
+            scheduler
+        });
+
+        core.acceptUnsubscription({
+            resourceUrls: [FEED],
+            callbackUrl: CALLBACK,
+            protocol: 'websub'
+        });
+
+        // Returns immediately: queued, not run — still subscribed.
+        expect(scheduler.tasks).toHaveLength(1);
+        expect(await store.getSubscriptions(FEED)).toHaveLength(1);
+
+        await scheduler.tasks[0]?.();
+
+        expect(await store.getSubscriptions(FEED)).toEqual([]);
+        expect(verify).toHaveBeenCalledTimes(1);
+        expect(verify.mock.calls[0]?.[0]).toMatchObject({
+            mode: 'unsubscribe',
+            resourceUrl: FEED
+        });
+    });
+
+    it('keeps the subscription when the unsubscribe intent is not confirmed', async () => {
+        const store = createInMemoryStore();
+        await store.putSubscriptions(FEED, [
+            subscription({ url: CALLBACK, protocol: 'websub' })
+        ]);
+        const scheduler = captureScheduler();
+
+        const core = createRssCloudCore({
+            store,
+            plugins: [
+                makePlugin({
+                    protocols: ['websub'],
+                    verify: vi.fn(async () => {
+                        throw new Error('callback did not echo the challenge');
+                    })
+                })
+            ],
+            config: resolveConfig(),
+            fetch: fetchReturning(RSS),
+            scheduler
+        });
+
+        core.acceptUnsubscription({
+            resourceUrls: [FEED],
+            callbackUrl: CALLBACK,
+            protocol: 'websub'
+        });
+
+        // A refusal is expected, not an error: the task resolves cleanly.
+        await scheduler.tasks[0]?.();
+
+        expect(await store.getSubscriptions(FEED)).toHaveLength(1);
+    });
+
+    it('does not verify or remove anything when no matching subscription exists', async () => {
+        const store = createInMemoryStore();
+        await store.putSubscriptions(FEED, [
+            subscription({ url: 'https://other.example/listener', protocol: 'websub' })
+        ]);
+        const scheduler = captureScheduler();
+        const verify = vi.fn(async () => undefined);
+
+        const core = createRssCloudCore({
+            store,
+            plugins: [makePlugin({ protocols: ['websub'], verify })],
+            config: resolveConfig(),
+            fetch: fetchReturning(RSS),
+            scheduler
+        });
+
+        core.acceptUnsubscription({
+            resourceUrls: [FEED],
+            callbackUrl: CALLBACK,
+            protocol: 'websub'
+        });
+
+        await scheduler.tasks[0]?.();
+
+        expect(verify).not.toHaveBeenCalled();
+        expect(await store.getSubscriptions(FEED)).toHaveLength(1);
+    });
+
+    it('surfaces an error when no plugin is registered for the protocol', async () => {
+        const store = createInMemoryStore();
+        const scheduler = captureScheduler();
+
+        const core = createRssCloudCore({
+            store,
+            plugins: [makePlugin()],
+            config: resolveConfig(),
+            fetch: fetchReturning(RSS),
+            scheduler
+        });
+
+        core.acceptUnsubscription({
+            resourceUrls: [FEED],
+            callbackUrl: CALLBACK,
+            protocol: 'websub'
+        });
+
+        await expect(scheduler.tasks[0]?.()).rejects.toThrow();
+    });
+});
+
+describe('createRssCloudCore acceptPublish', () => {
+    it('re-fetches the topic and fans out to subscribers', async () => {
+        const store = createInMemoryStore();
+        await store.putSubscriptions(FEED, [
+            subscription({ protocol: 'websub' })
+        ]);
+        const deliver = vi.fn(async () => ({ ok: true }));
+
+        const core = createRssCloudCore({
+            store,
+            plugins: [deliverPlugin(deliver, ['websub'])],
+            config: resolveConfig(),
+            fetch: fetchReturning(RSS)
+        });
+
+        const result = core.acceptPublish({ resourceUrl: FEED });
+        expect(result).toBeUndefined();
+
+        // The publish is acknowledged immediately; the fetch runs out of band.
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(deliver).toHaveBeenCalledTimes(1);
+    });
+
+    it('routes a failed publish fetch to the error event', async () => {
+        const events = createEventBus();
+        const errors: RssCloudEventMap['error'][] = [];
+        events.on('error', payload => void errors.push(payload));
+
+        const core = createRssCloudCore({
+            store: createInMemoryStore(),
+            plugins: [
+                deliverPlugin(vi.fn(async () => ({ ok: true })), ['websub'])
+            ],
+            config: resolveConfig(),
+            fetch: fetchReturning('Not Found', 404),
+            events
+        });
+
+        core.acceptPublish({ resourceUrl: FEED });
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(errors).toHaveLength(1);
+        expect(errors[0]?.scope).toBe('websub-publish');
+        expect(errors[0]?.error).toBeInstanceOf(Error);
+    });
+
+    it('coerces a non-Error publish rejection into an Error on the error event', async () => {
+        const base = createInMemoryStore();
+        await base.putSubscriptions(FEED, [subscription({ protocol: 'websub' })]);
+        // A misbehaving store that rejects the fan-out write with a non-Error.
+        const store: Store = {
+            ...base,
+            putSubscriptions: async (feedUrl, subscriptions) => {
+                if (subscriptions.length > 0) {
+                    throw 'store exploded';
+                }
+                await base.putSubscriptions(feedUrl, subscriptions);
+            }
+        };
+        const events = createEventBus();
+        const errors: RssCloudEventMap['error'][] = [];
+        events.on('error', payload => void errors.push(payload));
+
+        const core = createRssCloudCore({
+            store,
+            plugins: [
+                deliverPlugin(vi.fn(async () => ({ ok: true })), ['websub'])
+            ],
+            config: resolveConfig(),
+            fetch: fetchReturning(RSS),
+            events
+        });
+
+        core.acceptPublish({ resourceUrl: FEED });
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(errors).toHaveLength(1);
+        expect(errors[0]?.error).toBeInstanceOf(Error);
+        expect(errors[0]?.error.message).toBe('store exploded');
+    });
+});
+
+describe('createRssCloudCore websub leases', () => {
+    const NOW = new Date('2026-01-01T00:00:00.000Z');
+    const CALLBACK = 'https://sub.example/listener';
+
+    function leaseCore(verify: ProtocolPlugin['verify']) {
+        const store = createInMemoryStore();
+        const core = createRssCloudCore({
+            store,
+            plugins: [makePlugin({ protocols: ['websub'], verify })],
+            config: resolveConfig({
+                webSubLeaseDefaultSecs: 86400,
+                webSubLeaseMinSecs: 300,
+                webSubLeaseMaxSecs: 864000
+            }),
+            fetch: fetchReturning(RSS),
+            now: () => NOW
+        });
+        return { store, core };
+    }
+
+    async function subscribeWebSub(details?: Record<string, unknown>) {
+        const verify = vi.fn<(ctx: VerifyContext) => Promise<undefined>>(
+            async () => undefined
+        );
+        const { store, core } = leaseCore(verify);
+        await core.subscribe({
+            resourceUrls: [FEED],
+            callbackUrl: CALLBACK,
+            protocol: 'websub',
+            ...(details ? { details } : {})
+        });
+        const sub = (await store.getSubscriptions(FEED))[0];
+        return { sub, verify };
+    }
+
+    it('clamps a too-small requested lease up to the minimum and records it', async () => {
+        const { sub, verify } = await subscribeWebSub({ leaseSeconds: 5 });
+
+        expect(sub?.details).toEqual({ leaseSeconds: 300 });
+        expect(sub?.whenExpires).toEqual(new Date(NOW.getTime() + 300 * 1000));
+        expect(verify.mock.calls[0]?.[0]).toMatchObject({ leaseSeconds: 300 });
+    });
+
+    it('clamps a too-large requested lease down to the maximum', async () => {
+        const { sub } = await subscribeWebSub({ leaseSeconds: 99999999 });
+
+        expect(sub?.details).toEqual({ leaseSeconds: 864000 });
+        expect(sub?.whenExpires).toEqual(
+            new Date(NOW.getTime() + 864000 * 1000)
+        );
+    });
+
+    it('grants the default lease when none is requested', async () => {
+        const { sub } = await subscribeWebSub();
+
+        expect(sub?.details).toEqual({ leaseSeconds: 86400 });
+        expect(sub?.whenExpires).toEqual(
+            new Date(NOW.getTime() + 86400 * 1000)
+        );
+    });
+
+    it('preserves a supplied secret alongside the chosen lease', async () => {
+        const { sub } = await subscribeWebSub({
+            secret: 's3cr3t',
+            leaseSeconds: 3600
+        });
+
+        expect(sub?.details).toEqual({ secret: 's3cr3t', leaseSeconds: 3600 });
+    });
+});
+
 describe('createRssCloudCore initialization', () => {
     it('runs each plugin init hook once', () => {
         const init = vi.fn();
@@ -888,5 +1175,171 @@ describe('createRssCloudCore feed seeding', () => {
         await core.clearFeeds();
 
         expect(await core.listFeeds()).toEqual([]);
+    });
+});
+
+describe('createRssCloudCore acceptSubscription', () => {
+    function captureScheduler(): {
+        tasks: (() => Promise<void>)[];
+        schedule: (task: () => Promise<void>) => void;
+    } {
+        const tasks: (() => Promise<void>)[] = [];
+        return { tasks, schedule: task => void tasks.push(task) };
+    }
+
+    it('schedules verify→persist and persists a websub subscription on success', async () => {
+        const store = createInMemoryStore();
+        const scheduler = captureScheduler();
+
+        const core = createRssCloudCore({
+            store,
+            plugins: [makePlugin({ protocols: ['websub'] })],
+            config: resolveConfig(),
+            fetch: fetchReturning(RSS),
+            scheduler
+        });
+
+        core.acceptSubscription({
+            resourceUrls: [FEED],
+            callbackUrl: 'https://sub.example/listener',
+            protocol: 'websub',
+            details: { leaseSeconds: 600 }
+        });
+
+        // Returns immediately: the task is queued, not run — nothing persisted.
+        expect(scheduler.tasks).toHaveLength(1);
+        expect(await store.getSubscriptions(FEED)).toEqual([]);
+
+        await scheduler.tasks[0]?.();
+
+        const subs = await store.getSubscriptions(FEED);
+        expect(subs).toHaveLength(1);
+        expect(subs[0]).toMatchObject({
+            url: 'https://sub.example/listener',
+            protocol: 'websub',
+            details: { leaseSeconds: 600 }
+        });
+    });
+
+    it('persists nothing when the scheduled verification fails', async () => {
+        const store = createInMemoryStore();
+        const scheduler = captureScheduler();
+
+        const core = createRssCloudCore({
+            store,
+            plugins: [
+                makePlugin({
+                    protocols: ['websub'],
+                    verify: vi.fn(async () => {
+                        throw new Error('callback did not echo the challenge');
+                    })
+                })
+            ],
+            config: resolveConfig(),
+            fetch: fetchReturning(RSS),
+            scheduler
+        });
+
+        core.acceptSubscription({
+            resourceUrls: [FEED],
+            callbackUrl: 'https://sub.example/listener',
+            protocol: 'websub'
+        });
+
+        await scheduler.tasks[0]?.();
+
+        expect(await store.getSubscriptions(FEED)).toEqual([]);
+    });
+
+    it('runs the verify→persist on the default in-process scheduler when none is injected', async () => {
+        const store = createInMemoryStore();
+
+        const core = createRssCloudCore({
+            store,
+            plugins: [makePlugin({ protocols: ['websub'] })],
+            config: resolveConfig(),
+            fetch: fetchReturning(RSS)
+        });
+
+        core.acceptSubscription({
+            resourceUrls: [FEED],
+            callbackUrl: 'https://sub.example/listener',
+            protocol: 'websub'
+        });
+
+        // The default scheduler runs out of band; let the microtask drain.
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        const subs = await store.getSubscriptions(FEED);
+        expect(subs).toHaveLength(1);
+        expect(subs[0]).toMatchObject({
+            url: 'https://sub.example/listener',
+            protocol: 'websub'
+        });
+    });
+
+    it('surfaces a thrown verify→persist task via the error event', async () => {
+        const events = createEventBus();
+        const errors: RssCloudEventMap['error'][] = [];
+        events.on('error', payload => void errors.push(payload));
+
+        // No 'websub' plugin registered → subscribe throws UNSUPPORTED_PROTOCOL.
+        const core = createRssCloudCore({
+            store: createInMemoryStore(),
+            plugins: [],
+            config: resolveConfig(),
+            fetch: fetchReturning(RSS),
+            events
+        });
+
+        core.acceptSubscription({
+            resourceUrls: [FEED],
+            callbackUrl: 'https://sub.example/listener',
+            protocol: 'websub'
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(errors).toHaveLength(1);
+        expect(errors[0]?.scope).toBe('websub-verification');
+        expect(errors[0]?.error).toBeInstanceOf(Error);
+    });
+
+    it('coerces a non-Error rejection into an Error on the error event', async () => {
+        const base = createInMemoryStore();
+        // A misbehaving store that rejects the success-path write (1 sub) with a
+        // non-Error value; the empty pre-ping write (0 subs) still succeeds.
+        const store: Store = {
+            ...base,
+            putSubscriptions: async (feedUrl, subscriptions) => {
+                if (subscriptions.length > 0) {
+                    throw 'store exploded';
+                }
+                await base.putSubscriptions(feedUrl, subscriptions);
+            }
+        };
+        const events = createEventBus();
+        const errors: RssCloudEventMap['error'][] = [];
+        events.on('error', payload => void errors.push(payload));
+
+        const core = createRssCloudCore({
+            store,
+            plugins: [makePlugin({ protocols: ['websub'] })],
+            config: resolveConfig(),
+            fetch: fetchReturning(RSS),
+            events
+        });
+
+        core.acceptSubscription({
+            resourceUrls: [FEED],
+            callbackUrl: 'https://sub.example/listener',
+            protocol: 'websub'
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(errors).toHaveLength(1);
+        expect(errors[0]?.error).toBeInstanceOf(Error);
+        expect(errors[0]?.error.message).toBe('store exploded');
     });
 });

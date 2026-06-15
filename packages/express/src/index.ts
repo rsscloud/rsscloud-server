@@ -9,3 +9,7 @@ export {
     rpc2,
     type XmlRpcMiddlewareOptions
 } from './xml-rpc-middleware.js';
+export {
+    websub,
+    type WebSubMiddlewareOptions
+} from './websub-middleware.js';

@@ -1,9 +1,10 @@
 const express = require('express'),
+    config = require('../config'),
     { createFeedsOpml } = require('../services/feeds-opml'),
     { createStats } = require('../services/stats'),
     { toFeedsJson } = require('../services/feeds-json'),
     { renderMarkdownDoc } = require('../services/markdown-doc'),
-    { ping, pleaseNotify, rpc2 } = require('@rsscloud/express'),
+    { ping, pleaseNotify, rpc2, websub } = require('@rsscloud/express'),
     { createTestController } = require('./test');
 
 // Render-only pages — identical Accept→render/406 shells, mounted from a table
@@ -45,6 +46,10 @@ function createControllers({ core }) {
     router.post('/ping', ping({ core }));
     router.post('/pleaseNotify', pleaseNotify({ core }));
     router.post('/RPC2', rpc2({ core }));
+
+    // WebSub hub front door: validates hub.* synchronously and answers 202,
+    // then verifies subscriber intent out of band (ADR-0002).
+    router.post(config.webSubPath, websub({ core }));
 
     for (const { path, view } of NEGOTIATED_VIEWS) {
         router.get(path, (req, res) => {

@@ -2,6 +2,11 @@ export const version = '0.0.0';
 
 // Implementations
 export { createRssCloudCore } from './engine/create-core.js';
+export {
+    createInProcessVerificationScheduler,
+    type VerificationScheduler,
+    type InProcessVerificationSchedulerOptions
+} from './engine/verification-scheduler.js';
 export { DEFAULT_CONFIG, resolveConfig } from './config.js';
 export { createEventBus } from './events.js';
 export { RssCloudError } from './errors.js';
@@ -27,6 +32,16 @@ export {
     type RestResponse,
     type RestResponseFormat
 } from './protocols/rest-dispatcher.js';
+export {
+    createWebSubDispatcher,
+    type WebSubDispatcher,
+    type WebSubDispatcherOptions,
+    type WebSubResponse
+} from './protocols/websub-dispatcher.js';
+export {
+    createWebSubProtocolPlugin,
+    type WebSubProtocolPluginOptions
+} from './protocols/websub-plugin.js';
 export {
     createDefaultFeedParser,
     type DefaultFeedParserOptions
