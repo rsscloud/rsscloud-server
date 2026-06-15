@@ -47,6 +47,57 @@ test('renders a channel with the cloud element and an item', async() => {
     assert.equal(rss.channel.item.pubDate, 'Fri, 02 Jan 2026 03:04:05 GMT');
 });
 
+test('advertises a WebSub hub via atom:link rel=hub and rel=self', async() => {
+    const xml = renderCloudFeed({
+        title: 'Test Feed',
+        link: 'http://sub.example:9000/rss-01.xml',
+        description: 'Test feed for rssCloud',
+        cloud: CLOUD,
+        hub: 'http://localhost:5337/websub',
+        items: [
+            {
+                title: 'Update one',
+                description: 'first',
+                pubDate: new Date('2026-01-02T03:04:05Z'),
+                guid: 'rss-01-0'
+            }
+        ]
+    });
+
+    const { rss } = await reparse(xml);
+    assert.equal(rss.$['xmlns:atom'], 'http://www.w3.org/2005/Atom');
+    assert.deepEqual(
+        rss.channel['atom:link'].map(link => link.$),
+        [
+            { rel: 'hub', href: 'http://localhost:5337/websub' },
+            { rel: 'self', href: 'http://sub.example:9000/rss-01.xml' }
+        ]
+    );
+    // the rssCloud <cloud> element is still emitted alongside the hub links
+    assert.equal(rss.channel.cloud.$.protocol, 'xml-rpc');
+});
+
+test('omits the atom namespace and links when no hub is given', async() => {
+    const xml = renderCloudFeed({
+        title: 'Test Feed',
+        link: 'http://sub.example:9000/rss-01.xml',
+        description: 'Test feed for rssCloud',
+        cloud: CLOUD,
+        items: [
+            {
+                title: 'Update one',
+                description: 'first',
+                pubDate: new Date('2026-01-02T03:04:05Z'),
+                guid: 'rss-01-0'
+            }
+        ]
+    });
+
+    const { rss } = await reparse(xml);
+    assert.equal(rss.$['xmlns:atom'], undefined);
+    assert.equal(rss.channel['atom:link'], undefined);
+});
+
 test('renders multiple items in order', async() => {
     const xml = renderCloudFeed({
         title: 'Test Feed',
