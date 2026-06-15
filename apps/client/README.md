@@ -6,8 +6,14 @@ notification protocol — the subscriber + publisher end, the mirror of `@rssclo
 by hand.
 
 The Express app ([`client.js`](client.js)) serves a **Subscribe/Ping UI** with a live
-**request log**, and hosts the callback endpoint a hub notifies. All the protocol wire
-work lives in [`lib/`](lib/) and is reusable on its own.
+**request log**, and hosts the callback endpoint a hub notifies. It speaks both the
+classic rssCloud protocol **and** [WebSub](https://www.w3.org/TR/websub/): the UI has a
+separate WebSub control set (subscribe/unsubscribe/publish, with optional
+`lease_seconds` and `secret`), the served feed advertises the hub via
+`<atom:link rel="hub">`, and the WebSub callback echoes the intent-verification
+challenge and reports the hub's `X-Hub-Signature` (with a valid/invalid verdict) on
+content distribution. All the protocol wire work lives in [`lib/`](lib/) and is
+reusable on its own.
 
 ## Running
 
@@ -34,14 +40,40 @@ It listens on `PORT`, advertises itself as `DOMAIN`, and targets a hub at
 
 ## The `lib/` API
 
-`require('./lib')` exposes three helpers (CommonJS):
+`require('./lib')` exposes these helpers (CommonJS):
 
 - **`createRssCloudClient({ serverUrl, fetch? })`** — send `pleaseNotify` (subscribe)
   and `ping` (publish) to a hub over an injectable `fetch`. Returns `{ pleaseNotify, ping }`.
+- **`createWebSubClient({ serverUrl, path?, fetch? })`** — send WebSub `hub.*` requests
+  to a hub's front door (`path` defaults to `/websub`). Returns
+  `{ subscribe, unsubscribe, publish }`; each resolves to the hub's raw reply
+  (`{ status, body }`) and does **not** throw on a non-2xx.
+- **`readVerification(query)`** — given a callback GET's query, return
+  `{ mode, topic, challenge, leaseSeconds }` when it's a WebSub intent-verification
+  request (the subscriber must echo `challenge` verbatim), else `null`.
 - **`renderCloudFeed(feed)`** — emit an RSS 2.0 document carrying the `<cloud>` element
-  that advertises a hub.
+  that advertises a hub. Pass `hub` (a URL) to also advertise a WebSub hub via
+  `<atom:link rel="hub">` plus a `rel="self"` link.
 - **`buildNotifyResponse(success)`** — build the XML-RPC notify acknowledgement a
   subscriber returns to the hub.
+
+### WebSub
+
+```js
+const { createWebSubClient } = require('./lib');
+
+const hub = createWebSubClient({ serverUrl: 'http://localhost:5337' });
+
+await hub.subscribe({
+    callbackUrl: 'http://localhost:9000/websub-callback',
+    topicUrl: 'http://localhost:9000/rss-01.xml',
+    leaseSeconds: 3600, // optional; the hub clamps to its configured bounds
+    secret: 's3cr3t' // optional; opts into a signed X-Hub-Signature delivery
+});
+
+await hub.publish({ topicUrl: 'http://localhost:9000/rss-01.xml' }); // hub.mode=publish
+await hub.unsubscribe({ callbackUrl: '…', topicUrl: '…' });
+```
 
 ### Subscribe
 
