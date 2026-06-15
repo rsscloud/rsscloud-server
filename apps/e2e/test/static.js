@@ -12,6 +12,25 @@ describe('Static Pages', function() {
         expect(res).status(200);
     });
 
+    for (const slug of [
+        'rsscloud-rest',
+        'rsscloud-xml-rpc',
+        'websub',
+        'cross-protocol'
+    ]) {
+        it(`docs/${slug} should return 200`, async function() {
+            let res = await chai.request(SERVER_URL).get(`/docs/${slug}`);
+
+            expect(res).status(200);
+        });
+    }
+
+    it('an unknown docs page should return 404', async function() {
+        let res = await chai.request(SERVER_URL).get('/docs/nonexistent');
+
+        expect(res).status(404);
+    });
+
     it('home should return 200', async function() {
         let res = await chai.request(SERVER_URL).get('/');
 

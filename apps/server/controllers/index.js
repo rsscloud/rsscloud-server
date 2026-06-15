@@ -15,15 +15,32 @@ const NEGOTIATED_VIEWS = [
     { path: '/pleaseNotifyForm', view: 'please-notify-form' }
 ];
 
+// Per-protocol documentation pages, rendered from docs/<slug>.md into the shared
+// `docs` view at /docs/<slug>. README.md is the index at /docs.
+const DOC_PAGES = [
+    { slug: 'rsscloud-rest', label: 'rssCloud over REST' },
+    { slug: 'rsscloud-xml-rpc', label: 'rssCloud over XML-RPC' },
+    { slug: 'websub', label: 'WebSub' },
+    { slug: 'cross-protocol', label: 'How It Fits Together' }
+];
+
+// Maps the relative `.md` basenames the Markdown links to (GitHub-relative) onto
+// their in-app routes, so renderMarkdownDoc can rewrite them: README → /docs,
+// each page → /docs/<slug>. Unmapped targets (LICENSE.md) are left untouched.
+const DOC_LINKS = DOC_PAGES.reduce(
+    (links, { slug }) => ({ ...links, [slug]: `/docs/${slug}` }),
+    { README: '/docs' }
+);
+
 // Render a Markdown file into the shared `docs` view, mapping a read failure to
-// a 500. The README/LICENSE routes differ only in source file, heading, and
-// whether the redundant leading H1 is dropped.
+// a 500. Routes differ only in source file, heading, and whether the redundant
+// leading H1 is dropped; all share the DOC_LINKS rewrite map.
 function sendMarkdownDoc(res, { file, label, stripH1 }) {
     try {
         res.render('docs', {
             title: `rssCloud Server: ${label}`,
             heading: `rssCloud Server: ${label}`,
-            htmltext: renderMarkdownDoc(file, { stripH1 })
+            htmltext: renderMarkdownDoc(file, { stripH1, docLinks: DOC_LINKS })
         });
     } catch (err) {
         console.error(`Error reading ${file}:`, err.message);
@@ -69,6 +86,25 @@ function createControllers({ core }) {
         sendMarkdownDoc(res, {
             file: 'README.md',
             label: 'Documentation',
+            stripH1: true
+        });
+    });
+
+    router.get('/docs/:page', (req, res) => {
+        if (req.accepts('html') !== 'html') {
+            res.status(406).send('Not Acceptable');
+            return;
+        }
+        // Only known slugs map to a file, so an unknown (or traversal) page is a
+        // plain 404 rather than a file read off disk.
+        const page = DOC_PAGES.find(p => p.slug === req.params.page);
+        if (page === undefined) {
+            res.status(404).send('Not Found');
+            return;
+        }
+        sendMarkdownDoc(res, {
+            file: `docs/${page.slug}.md`,
+            label: page.label,
             stripH1: true
         });
     });
