@@ -505,6 +505,20 @@ export function createRssCloudCore(
         await unsubscribe(req);
     }
 
+    function acceptPublish(req: PingRequest): void {
+        // A well-formed WebSub publish is acknowledged immediately (202) and the
+        // topic re-fetched out of band, reusing ping's fetch→payload→fanOut. Per
+        // the spec the publisher isn't told the fetch outcome, so a failure is
+        // surfaced on the error event rather than thrown.
+        void ping(req).catch(error =>
+            events.emit('error', {
+                scope: 'websub-publish',
+                error:
+                    error instanceof Error ? error : new Error(String(error))
+            })
+        );
+    }
+
     async function unsubscribe(
         req: UnsubscribeRequest
     ): Promise<UnsubscribeResponse> {
@@ -560,6 +574,7 @@ export function createRssCloudCore(
         subscribe,
         acceptSubscription,
         acceptUnsubscription,
+        acceptPublish,
         unsubscribe,
         ping,
         events,

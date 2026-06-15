@@ -1,5 +1,9 @@
 import type { RssCloudCore } from '../engine/core.js';
-import type { SubscribeRequest, UnsubscribeRequest } from '../engine/dto.js';
+import type {
+    PingRequest,
+    SubscribeRequest,
+    UnsubscribeRequest
+} from '../engine/dto.js';
 
 /**
  * Outcome of parsing a WebSub `hub.*` subscribe request: either a ready-to-drive
@@ -12,6 +16,11 @@ export type WebSubParseResult =
 /** Outcome of parsing a WebSub `hub.*` unsubscribe request (see {@link WebSubParseResult}). */
 export type WebSubUnsubscribeParseResult =
     | { ok: true; request: UnsubscribeRequest }
+    | { ok: false; status: number };
+
+/** Outcome of parsing a WebSub `hub.mode=publish` request (see {@link WebSubParseResult}). */
+export type WebSubPublishParseResult =
+    | { ok: true; request: PingRequest }
     | { ok: false; status: number };
 
 /** Any `hub.*` shape the hub can't act on is a malformed request. */
@@ -44,6 +53,23 @@ function parseHubCallbackTopic(
         return null;
     }
     return { callback, topic };
+}
+
+/**
+ * The updated topic a publish names: `hub.url` preferred, falling back to
+ * `hub.topic` for compatibility. Returns `null` when neither is a non-empty
+ * string.
+ */
+function publishTopic(body: Record<string, unknown>): string | null {
+    const url = body['hub.url'];
+    if (typeof url === 'string' && url !== '') {
+        return url;
+    }
+    const topic = body['hub.topic'];
+    if (typeof topic === 'string' && topic !== '') {
+        return topic;
+    }
+    return null;
 }
 
 /**
@@ -124,6 +150,23 @@ export function parseUnsubscribe(
     };
 }
 
+/**
+ * Parse and validate a WebSub publish form body. The updated topic is named by
+ * `hub.url` (or `hub.topic` for compatibility); the hub re-fetches it via ping.
+ */
+export function parsePublish(
+    body: Record<string, unknown>
+): WebSubPublishParseResult {
+    if (body['hub.mode'] !== 'publish') {
+        return MALFORMED;
+    }
+    const resourceUrl = publishTopic(body);
+    if (resourceUrl === null) {
+        return MALFORMED;
+    }
+    return { ok: true, request: { resourceUrl } };
+}
+
 /** A fully-resolved WebSub HTTP status the front door copies onto its reply. */
 export interface WebSubResponse {
     status: number;
@@ -131,7 +174,10 @@ export interface WebSubResponse {
 
 /** Construction-time dependencies for the WebSub front door. */
 export interface WebSubDispatcherOptions {
-    core: Pick<RssCloudCore, 'acceptSubscription' | 'acceptUnsubscription'>;
+    core: Pick<
+        RssCloudCore,
+        'acceptSubscription' | 'acceptUnsubscription' | 'acceptPublish'
+    >;
 }
 
 /** Parsed-body-in, status-out WebSub `hub.*` front door. */
@@ -142,9 +188,10 @@ export interface WebSubDispatcher {
 /**
  * Build the WebSub front door. A malformed `hub.*` body (or an unsupported
  * `hub.mode`) is rejected synchronously (`400`); a valid subscribe/unsubscribe
- * is accepted for async intent verification (`202` — see ADR-0002) by handing
- * the built request to {@link RssCloudCore.acceptSubscription} /
- * {@link RssCloudCore.acceptUnsubscription}.
+ * is accepted for async intent verification and a publish for an async topic
+ * re-fetch (`202` — see ADR-0002) by handing the built request to
+ * {@link RssCloudCore.acceptSubscription} / {@link RssCloudCore.acceptUnsubscription}
+ * / {@link RssCloudCore.acceptPublish}.
  */
 export function createWebSubDispatcher(
     options: WebSubDispatcherOptions
@@ -166,6 +213,14 @@ export function createWebSubDispatcher(
                 return { status: parsed.status };
             }
             core.acceptUnsubscription(parsed.request);
+            return { status: 202 };
+        }
+        if (body['hub.mode'] === 'publish') {
+            const parsed = parsePublish(body);
+            if (!parsed.ok) {
+                return { status: parsed.status };
+            }
+            core.acceptPublish(parsed.request);
             return { status: 202 };
         }
         return { status: 400 };

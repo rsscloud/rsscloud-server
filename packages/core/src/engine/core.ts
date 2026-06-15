@@ -75,6 +75,12 @@ export interface RssCloudCore {
     /** Cancel subscriptions. */
     unsubscribe(req: UnsubscribeRequest): Promise<UnsubscribeResponse>;
     /**
+     * Accept a WebSub-native publish: acknowledge immediately and re-fetch the
+     * topic out of band, reusing {@link ping}'s fetch→fan-out. The publisher is
+     * not told the fetch outcome (a failure is surfaced on the error event).
+     */
+    acceptPublish(req: PingRequest): void;
+    /**
      * Handle a change signal: re-fetch the resource, detect a change, and on a
      * change fan out to every subscriber via its protocol's plugin.
      */
