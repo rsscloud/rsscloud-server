@@ -873,6 +873,89 @@ describe('createRssCloudCore acceptUnsubscription', () => {
     });
 });
 
+describe('createRssCloudCore acceptPublish', () => {
+    it('re-fetches the topic and fans out to subscribers', async () => {
+        const store = createInMemoryStore();
+        await store.putSubscriptions(FEED, [
+            subscription({ protocol: 'websub' })
+        ]);
+        const deliver = vi.fn(async () => ({ ok: true }));
+
+        const core = createRssCloudCore({
+            store,
+            plugins: [deliverPlugin(deliver, ['websub'])],
+            config: resolveConfig(),
+            fetch: fetchReturning(RSS)
+        });
+
+        const result = core.acceptPublish({ resourceUrl: FEED });
+        expect(result).toBeUndefined();
+
+        // The publish is acknowledged immediately; the fetch runs out of band.
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(deliver).toHaveBeenCalledTimes(1);
+    });
+
+    it('routes a failed publish fetch to the error event', async () => {
+        const events = createEventBus();
+        const errors: RssCloudEventMap['error'][] = [];
+        events.on('error', payload => void errors.push(payload));
+
+        const core = createRssCloudCore({
+            store: createInMemoryStore(),
+            plugins: [
+                deliverPlugin(vi.fn(async () => ({ ok: true })), ['websub'])
+            ],
+            config: resolveConfig(),
+            fetch: fetchReturning('Not Found', 404),
+            events
+        });
+
+        core.acceptPublish({ resourceUrl: FEED });
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(errors).toHaveLength(1);
+        expect(errors[0]?.scope).toBe('websub-publish');
+        expect(errors[0]?.error).toBeInstanceOf(Error);
+    });
+
+    it('coerces a non-Error publish rejection into an Error on the error event', async () => {
+        const base = createInMemoryStore();
+        await base.putSubscriptions(FEED, [subscription({ protocol: 'websub' })]);
+        // A misbehaving store that rejects the fan-out write with a non-Error.
+        const store: Store = {
+            ...base,
+            putSubscriptions: async (feedUrl, subscriptions) => {
+                if (subscriptions.length > 0) {
+                    throw 'store exploded';
+                }
+                await base.putSubscriptions(feedUrl, subscriptions);
+            }
+        };
+        const events = createEventBus();
+        const errors: RssCloudEventMap['error'][] = [];
+        events.on('error', payload => void errors.push(payload));
+
+        const core = createRssCloudCore({
+            store,
+            plugins: [
+                deliverPlugin(vi.fn(async () => ({ ok: true })), ['websub'])
+            ],
+            config: resolveConfig(),
+            fetch: fetchReturning(RSS),
+            events
+        });
+
+        core.acceptPublish({ resourceUrl: FEED });
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(errors).toHaveLength(1);
+        expect(errors[0]?.error).toBeInstanceOf(Error);
+        expect(errors[0]?.error.message).toBe('store exploded');
+    });
+});
+
 describe('createRssCloudCore websub leases', () => {
     const NOW = new Date('2026-01-01T00:00:00.000Z');
     const CALLBACK = 'https://sub.example/listener';
