@@ -41,6 +41,25 @@ async function waitForWebSubSubscription(
     }
 }
 
+// A WebSub publish is acknowledged with 202 and the topic re-fetched out of
+// band, so the test polls the mock for the content-distribution POST.
+async function waitForDeliveryPost(
+    callbackPath,
+    { timeoutMs = 5000, intervalMs = 100 } = {}
+) {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+        const posts = mock.requests.POST[callbackPath] || [];
+        if (posts.length > 0) {
+            return posts[0];
+        }
+        if (Date.now() >= deadline) {
+            return null;
+        }
+        await new Promise(resolve => setTimeout(resolve, intervalMs));
+    }
+}
+
 // Unsubscribe is async too (202, then a verification GET, then removal), so the
 // test polls until the websub subscription is gone or the timeout lapses.
 async function waitForWebSubUnsubscription(
@@ -154,7 +173,7 @@ describe('WebSub subscribe', function() {
 
     it('rejects an unsupported hub.mode with 400', async function() {
         const res = await hubRequest({
-            'hub.mode': 'publish',
+            'hub.mode': 'bogus',
             'hub.callback': mock.serverUrl + '/websub-callback',
             'hub.topic': mock.serverUrl + '/websub-feed.xml'
         });
@@ -529,5 +548,65 @@ describe('WebSub leases', function() {
         const remaining = (await storeApi.findSubscription(topicUrl)) || [];
         const stillThere = remaining.find(s => s.protocol === 'websub');
         expect(stillThere, 'lapsed lease should be removed').to.be.undefined;
+    });
+});
+
+describe('WebSub native publish', function() {
+    before(async function() {
+        await storeApi.before();
+        await mock.before();
+    });
+
+    after(async function() {
+        await storeApi.after();
+        await mock.after();
+    });
+
+    beforeEach(async function() {
+        await storeApi.beforeEach();
+        await mock.beforeEach();
+    });
+
+    afterEach(async function() {
+        await storeApi.afterEach();
+        await mock.afterEach();
+    });
+
+    // A pure-WebSub publisher (no rssCloud ping) triggers the same fan-out by
+    // POSTing hub.mode=publish; the hub re-fetches the topic and distributes.
+    it('distributes content to a WebSub subscriber from a hub.mode=publish', async function() {
+        const feedPath = '/publish-feed.xml',
+            topicUrl = mock.serverUrl + feedPath,
+            callbackPath = '/publish-callback',
+            callbackUrl = mock.serverUrl + callbackPath,
+            changedFeed = '<rss>published-update</rss>';
+
+        mock.route('GET', feedPath, 200, '<rss>version-1</rss>');
+        mock.route('GET', callbackPath, 200, req => req.query['hub.challenge']);
+        mock.route('POST', callbackPath, 200, 'ok');
+
+        // Subscribe via WebSub (the pre-ping records version 1's hash).
+        const subRes = await hubRequest({
+            'hub.mode': 'subscribe',
+            'hub.callback': callbackUrl,
+            'hub.topic': topicUrl
+        });
+        expect(subRes).status(202);
+        const sub = await waitForWebSubSubscription(topicUrl);
+        expect(sub, 'websub subscription should be recorded').to.not.be.null;
+
+        // The feed changes, then a pure-WebSub publisher notifies the hub.
+        mock.route('GET', feedPath, 200, changedFeed);
+        const pubRes = await hubRequest({
+            'hub.mode': 'publish',
+            'hub.url': topicUrl
+        });
+        expect(pubRes).status(202);
+
+        // The re-fetch + fan-out run out of band, so poll for the delivery.
+        const delivery = await waitForDeliveryPost(callbackPath);
+        expect(delivery, 'WebSub subscriber should receive content').to.not.be
+            .null;
+        expect(delivery.body).to.equal(changedFeed);
     });
 });

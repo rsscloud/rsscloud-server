@@ -267,10 +267,16 @@ Flows that must have an e2e (happy path + the ★ negatives):
   100% coverage; 145 e2e passing.)
 
 **Phase 6 — WebSub-native publish front door (secondary — pure-WebSub publishers)**
-- [ ] **S6.1** dispatcher/express `hub.mode=publish` (thin: `hub.url`/`hub.topic`) →
+- [x] **S6.1** dispatcher/express `hub.mode=publish` (thin: `hub.url`/`hub.topic`) →
   `core.ping(topic)` → `2xx`/`204`. Lets a publisher with *no* rssCloud ping trigger the
   same fan-out. Reuses everything from Phase 2. **S6.2** e2e: WebSub publish → WebSub
   subscriber receives content.
+  (Done; new `core.acceptPublish` fire-and-forgets `ping` out of band — per WebSub §7 a
+  well-formed publish is acknowledged `202` and the topic re-fetched async (failures →
+  `error` event, scope `websub-publish`). Dispatcher branches `hub.mode=publish` via
+  `parsePublish` (`hub.url`, falling back to `hub.topic`); express/core Picks widened.
+  e2e `WebSub native publish` polls for the out-of-band delivery. 250 core + 20 express
+  tests, 100% coverage; 146 e2e passing.)
 
 **Phase 7 — Fat pings (secondary — publisher pushes the body)**
 - [ ] **S7.1** decide + document the (non-standard) fat-ping wire format — topic via
