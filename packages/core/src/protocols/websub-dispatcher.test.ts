@@ -76,6 +76,16 @@ describe('parseSubscribe', () => {
         expect(result).toEqual({ ok: false, status: 400 });
     });
 
+    it('rejects a non-URL hub.topic as a 400', () => {
+        const result = parseSubscribe({
+            'hub.mode': 'subscribe',
+            'hub.callback': 'https://sub.example.com/listener',
+            'hub.topic': 'not-a-url'
+        });
+
+        expect(result).toEqual({ ok: false, status: 400 });
+    });
+
     it('carries a supplied hub.secret through as details.secret', () => {
         const result = parseSubscribe({
             'hub.mode': 'subscribe',
@@ -227,6 +237,29 @@ describe('parsePublish', () => {
 
     it('rejects a publish missing both hub.url and hub.topic as a 400', () => {
         const result = parsePublish({ 'hub.mode': 'publish' });
+
+        expect(result).toEqual({ ok: false, status: 400 });
+    });
+
+    it('falls back to hub.topic when hub.url is not a valid URL', () => {
+        const result = parsePublish({
+            'hub.mode': 'publish',
+            'hub.url': 'not-a-url',
+            'hub.topic': 'http://feed.example/rss'
+        });
+
+        expect(result).toEqual({
+            ok: true,
+            request: { resourceUrl: 'http://feed.example/rss' }
+        });
+    });
+
+    it('rejects a publish whose hub.url and hub.topic are both invalid as a 400', () => {
+        const result = parsePublish({
+            'hub.mode': 'publish',
+            'hub.url': 'not-a-url',
+            'hub.topic': 'also-bad'
+        });
 
         expect(result).toEqual({ ok: false, status: 400 });
     });

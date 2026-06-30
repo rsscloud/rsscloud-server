@@ -38,8 +38,8 @@ function isAbsoluteUrl(value: string): boolean {
 
 /**
  * The two fields every actionable `hub.*` request shares: a valid absolute
- * `hub.callback` and a non-empty `hub.topic`. Returns `null` when either is
- * malformed.
+ * `hub.callback` and a valid absolute `hub.topic`. Returns `null` when either is
+ * malformed, so a bad URL is a synchronous 400 rather than a later async failure.
  */
 function parseHubCallbackTopic(
     body: Record<string, unknown>
@@ -49,7 +49,7 @@ function parseHubCallbackTopic(
         return null;
     }
     const topic = body['hub.topic'];
-    if (typeof topic !== 'string' || topic === '') {
+    if (typeof topic !== 'string' || !isAbsoluteUrl(topic)) {
         return null;
     }
     return { callback, topic };
@@ -57,16 +57,16 @@ function parseHubCallbackTopic(
 
 /**
  * The updated topic a publish names: `hub.url` preferred, falling back to
- * `hub.topic` for compatibility. Returns `null` when neither is a non-empty
- * string.
+ * `hub.topic` for compatibility. Returns `null` when neither is a valid absolute
+ * URL, so a bad URL is a synchronous 400 rather than a later async failure.
  */
 function publishTopic(body: Record<string, unknown>): string | null {
     const url = body['hub.url'];
-    if (typeof url === 'string' && url !== '') {
+    if (typeof url === 'string' && isAbsoluteUrl(url)) {
         return url;
     }
     const topic = body['hub.topic'];
-    if (typeof topic === 'string' && topic !== '') {
+    if (typeof topic === 'string' && isAbsoluteUrl(topic)) {
         return topic;
     }
     return null;
