@@ -12,7 +12,7 @@ services:
       # Keep SSRF egress protection ON so the suite exercises the guarded fetch,
       # but exempt the Docker-network private ranges the mock servers live on so
       # legitimate topic/callback traffic to rsscloud-tests still flows.
-      WEBSUB_FETCH_ALLOW_CIDRS: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.0/8"
+      WEBSUB_FETCH_ALLOW_CIDRS: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
     expose:
       - 5337
 
