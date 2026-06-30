@@ -1,0 +1,50 @@
+# rssCloud server — example stack for Dockge (https://github.com/louislam/dockge)
+#
+# Usage:
+#   1. In Dockge, create a new stack (e.g. "rsscloud") and paste this file.
+#   2. Edit DOMAIN and HUB_URL below to your public hostname.
+#   3. Deploy. Subscriptions + stats persist in the named volume `rsscloud-data`.
+#
+# This pulls the published image rather than building, so it deploys without the
+# source tree. To pin a release, replace `:latest` with a version tag
+# (e.g. andrewshell/rsscloud-server:4.0.0).
+
+services:
+  rsscloud:
+    image: andrewshell/rsscloud-server:latest
+    container_name: rsscloud-server
+    restart: unless-stopped
+    ports:
+      # host:container — change the host side if 5337 is taken; usually you'd
+      # also front this with a reverse proxy terminating HTTPS.
+      - "5337:5337"
+    environment:
+      # Externally-reachable hostname for this hub (no scheme, no port).
+      DOMAIN: cloud.example.com
+      # Public WebSub hub URL advertised to subscribers — point it at your
+      # HTTPS endpoint. Must match how subscribers reach the /websub route.
+      HUB_URL: https://cloud.example.com/websub
+      # Optional: change the listen port (then update the ports mapping above).
+      # PORT: "5337"
+      #
+      # SSRF egress protection is ON by default (recommended) and refuses
+      # outbound requests to private/loopback addresses. Only relax it if your
+      # feeds or subscribers genuinely live on a private LAN:
+      #   WEBSUB_FETCH_ALLOW_CIDRS: "10.0.0.0/8,192.168.0.0/16"     # topic fetch
+      #   WEBSUB_CALLBACK_ALLOW_CIDRS: "10.0.0.0/8,192.168.0.0/16"  # delivery
+    volumes:
+      # Persist on-disk state across restarts/redeploys.
+      - rsscloud-data:/app/apps/server/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('http').get('http://localhost:5337/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  rsscloud-data:
