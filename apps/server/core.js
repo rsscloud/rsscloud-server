@@ -8,6 +8,8 @@ const {
     createXmlRpcProtocolPlugin,
     createWebSubProtocolPlugin,
     createFileStore,
+    createSafeFetch,
+    createCidrAllowList,
     resolveConfig
 } = require('@rsscloud/core');
 const config = require('./config');
@@ -24,17 +26,40 @@ const coreConfig = resolveConfig({
     webSubLeaseMaxSecs: config.webSubLeaseMaxSecs
 });
 
+// SSRF egress guard for every outbound call. Built once and injected into the
+// engine's topic re-fetch and each plugin's deliveries/verification GETs, so a
+// subscriber- or publisher-supplied URL that resolves to an internal address
+// (loopback, private, link-local / cloud-metadata) is refused at connect time.
+// When protection is off (dev/CI against loopback or private hosts), `fetch` is
+// left unset so callers fall back to the platform's global fetch.
+const fetchOption = config.webSubSsrfProtection
+    ? {
+        fetch: createSafeFetch(
+            config.webSubFetchAllowCidrs.length > 0
+                ? { allow: createCidrAllowList(config.webSubFetchAllowCidrs) }
+                : {}
+        )
+    }
+    : {};
+
 // Registers the 'websub' protocol so core.subscribe accepts WebSub subscriptions
 // (without it, core.subscribe → UNSUPPORTED_PROTOCOL). The plugin verifies
 // subscriber intent and, on fan-out, distributes the feed body to WebSub
 // callbacks — advertising this hub's public URL in the Link rel="hub" header.
 const plugins = [
-    createRestProtocolPlugin({ requestTimeoutMs: config.requestTimeout }),
-    createXmlRpcProtocolPlugin({ requestTimeoutMs: config.requestTimeout }),
+    createRestProtocolPlugin({
+        requestTimeoutMs: config.requestTimeout,
+        ...fetchOption
+    }),
+    createXmlRpcProtocolPlugin({
+        requestTimeoutMs: config.requestTimeout,
+        ...fetchOption
+    }),
     createWebSubProtocolPlugin({
         requestTimeoutMs: config.requestTimeout,
         hubUrl: config.hubUrl,
-        signatureAlgo: config.webSubSignatureAlgo
+        signatureAlgo: config.webSubSignatureAlgo,
+        ...fetchOption
     })
 ];
 
@@ -53,7 +78,8 @@ const core = createRssCloudCore({
             )
     }),
     plugins,
-    config: coreConfig
+    config: coreConfig,
+    ...fetchOption
 });
 
 module.exports = { core, events: core.events };

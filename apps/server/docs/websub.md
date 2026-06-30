@@ -92,6 +92,25 @@ The hub answers `202`, then re-fetches the topic and fans the change out. This i
 exactly the path an rssCloud `/ping` takes, so a WebSub publish also reaches rssCloud
 subscribers — see [How it fits together](cross-protocol.md).
 
+## SSRF egress protection
+
+Both `hub.topic`/`hub.url` (which the hub **fetches**) and `hub.callback` (which the hub
+**delivers** the fetched body to) are supplied by untrusted clients. To stop them being
+pointed at the hub's own network, every outbound request — topic re-fetch, the intent
+verification GET, and content delivery — is screened: the destination is rejected at
+connect time if its host resolves to a non-public address (loopback, private, link-local
+incl. cloud-metadata `169.254.169.254`, unique-local, CGNAT). Screening is done on the
+resolved IP and re-applied on every redirect hop, so a hostname or redirect that points
+inward is refused, not followed.
+
+| Config key                  | Default | Meaning                                                                                   |
+| --------------------------- | ------- | ----------------------------------------------------------------------------------------- |
+| `WEBSUB_SSRF_PROTECTION`    | `on`    | Set to `off` (or `false`/`0`/`no`) to disable screening — only for trusted/loopback test setups. |
+| `WEBSUB_FETCH_ALLOW_CIDRS`  | _(none)_| Comma-separated CIDRs exempted from screening, for a hub that legitimately serves feeds on a private LAN (e.g. `10.0.0.0/8,192.168.0.0/16`). |
+
+A blocked request surfaces as a failed fetch: the topic re-fetch reports a read failure
+and a blocked callback counts as a failed delivery.
+
 ## Using WebSub with your feed
 
 So that subscribers can **discover** this hub, advertise it from the resource you want
