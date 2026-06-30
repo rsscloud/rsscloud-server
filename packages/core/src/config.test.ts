@@ -16,6 +16,13 @@ describe('resolveConfig', () => {
         });
     });
 
+    it('keeps the lease bounds ordered (min <= default <= max)', () => {
+        const { webSubLeaseMinSecs, webSubLeaseDefaultSecs, webSubLeaseMaxSecs } =
+            resolveConfig();
+        expect(webSubLeaseMinSecs).toBeLessThanOrEqual(webSubLeaseDefaultSecs);
+        expect(webSubLeaseDefaultSecs).toBeLessThanOrEqual(webSubLeaseMaxSecs);
+    });
+
     it('overrides only the provided keys', () => {
         const resolved = resolveConfig({ maxConsecutiveErrors: 5 });
         expect(resolved.maxConsecutiveErrors).toBe(5);
