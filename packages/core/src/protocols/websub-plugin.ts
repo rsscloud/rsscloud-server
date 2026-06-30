@@ -98,6 +98,12 @@ export function createWebSubProtocolPlugin(
         ctx: DeliveryContext,
         redirectsLeft = MAX_REDIRECTS
     ): Promise<void> {
+        if (hubUrl === undefined) {
+            // The Link rel="hub" advertisement needs the hub's own URL; without
+            // it we'd POST a malformed `<undefined>` header. Fail the delivery
+            // instead (a host always injects hubUrl — see apps/server).
+            throw new Error('WebSub hub URL is not configured');
+        }
         const headers: Record<string, string> = {
             'Content-Type':
                 ctx.payload.contentType ?? 'application/octet-stream',

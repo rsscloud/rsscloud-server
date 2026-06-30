@@ -425,6 +425,26 @@ describe('createWebSubProtocolPlugin deliver', () => {
         expect(calls[1]?.init?.body).toBe('<rss>updated</rss>');
     });
 
+    it('reports failure when no hub URL is configured', async () => {
+        let called = false;
+        const fakeFetch = (async () => {
+            called = true;
+            return new Response(null, { status: 204 });
+        }) as typeof fetch;
+        const plugin = createWebSubProtocolPlugin({ fetch: fakeFetch });
+
+        const result = await plugin.deliver(
+            deliveryContext(
+                'https://sub.example/listener',
+                'http://feed.example/rss'
+            )
+        );
+
+        expect(result.ok).toBe(false);
+        expect(result.error).toBeInstanceOf(Error);
+        expect(called).toBe(false);
+    });
+
     it('reports failure when a callback redirects past the hop limit', async () => {
         let calls = 0;
         const fakeFetch = (async () => {
