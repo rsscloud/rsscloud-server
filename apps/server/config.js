@@ -16,7 +16,12 @@ function getNumericConfig(key, defaultValue) {
 // (consumed when content distribution lands), defaulting to domain/port/path.
 const domain = getConfig('DOMAIN', 'localhost');
 const port = getNumericConfig('PORT', 5337);
-const webSubPath = getConfig('WEBSUB_PATH', '/websub');
+// Normalize to a leading slash so the route mount and the hubUrl composition
+// stay well-formed even if WEBSUB_PATH is set without one (e.g. "websub").
+const rawWebSubPath = getConfig('WEBSUB_PATH', '/websub');
+const webSubPath = rawWebSubPath.startsWith('/')
+    ? rawWebSubPath
+    : `/${rawWebSubPath}`;
 
 module.exports = {
     appName: 'rssCloudServer',
