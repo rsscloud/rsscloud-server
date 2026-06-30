@@ -37,4 +37,20 @@ describe('createInProcessVerificationScheduler', () => {
 
         expect(seen).toEqual([boom]);
     });
+
+    it('routes a synchronous throw from a task to onError', async () => {
+        const seen: unknown[] = [];
+        const scheduler = createInProcessVerificationScheduler({
+            onError: error => seen.push(error)
+        });
+
+        const boom = new Error('sync boom');
+        scheduler.schedule(() => {
+            throw boom;
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(seen).toEqual([boom]);
+    });
 });
