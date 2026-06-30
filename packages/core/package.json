@@ -45,6 +45,8 @@
     "sideEffects": false,
     "dependencies": {
         "@rsscloud/xml-rpc": "workspace:*",
+        "ipaddr.js": "^2.4.0",
+        "undici": "^7.28.0",
         "xml2js": "^0.6.2"
     },
     "scripts": {
