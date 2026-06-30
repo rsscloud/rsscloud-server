@@ -31,7 +31,13 @@ export function createInProcessVerificationScheduler(
     return {
         schedule(task) {
             queueMicrotask(() => {
-                void task().catch(options.onError);
+                // Absorb both a synchronous throw (a non-async task can throw
+                // before returning its promise) and an async rejection.
+                try {
+                    void task().catch(options.onError);
+                } catch (error) {
+                    options.onError(error);
+                }
             });
         }
     };
