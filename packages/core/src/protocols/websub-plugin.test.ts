@@ -425,6 +425,34 @@ describe('createWebSubProtocolPlugin deliver', () => {
         expect(calls[1]?.init?.body).toBe('<rss>updated</rss>');
     });
 
+    it('reports failure when a callback redirects past the hop limit', async () => {
+        let calls = 0;
+        const fakeFetch = (async () => {
+            calls += 1;
+            return new Response(null, {
+                status: 302,
+                headers: { location: 'https://sub.example/loop' }
+            });
+        }) as typeof fetch;
+
+        const plugin = createWebSubProtocolPlugin({
+            fetch: fakeFetch,
+            hubUrl: 'https://hub.example/websub'
+        });
+
+        const result = await plugin.deliver(
+            deliveryContext(
+                'https://sub.example/loop',
+                'http://feed.example/rss'
+            )
+        );
+
+        expect(result.ok).toBe(false);
+        expect(result.error).toBeInstanceOf(Error);
+        // Bounded: the initial POST plus a fixed number of redirect hops, not ∞.
+        expect(calls).toBe(6);
+    });
+
     it('reports failure when the callback responds non-2xx', async () => {
         const fakeFetch = (async () =>
             new Response('nope', { status: 404 })) as typeof fetch;

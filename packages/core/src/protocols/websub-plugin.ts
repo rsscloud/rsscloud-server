@@ -35,6 +35,9 @@ const WEBSUB_PROTOCOLS: Protocol[] = ['websub'];
 /** Fallback request timeout when none is supplied (mirrors the server default). */
 const DEFAULT_REQUEST_TIMEOUT_MS = 4000;
 
+/** Max redirect hops a single content-distribution delivery will follow. */
+const MAX_REDIRECTS = 5;
+
 /** Portable, hard-to-guess token for the intent-verification challenge. */
 function defaultCreateChallenge(): string {
     const bytes = new Uint8Array(16);
@@ -85,10 +88,15 @@ export function createWebSubProtocolPlugin(
         }
     }
 
-    /** POST the feed body to one callback, following redirects like rssCloud notify. */
+    /**
+     * POST the feed body to one callback, following redirects like rssCloud
+     * notify, but bounded by `redirectsLeft` so a self-redirecting callback
+     * can't loop the delivery task forever.
+     */
     async function distribute(
         targetUrl: string,
-        ctx: DeliveryContext
+        ctx: DeliveryContext,
+        redirectsLeft = MAX_REDIRECTS
     ): Promise<void> {
         const headers: Record<string, string> = {
             'Content-Type':
@@ -119,7 +127,16 @@ export function createWebSubProtocolPlugin(
         if (res.status >= 300 && res.status < 400) {
             const location = res.headers.get('location');
             if (location) {
-                await distribute(new URL(location, targetUrl).toString(), ctx);
+                if (redirectsLeft <= 0) {
+                    throw new Error(
+                        'WebSub content distribution exceeded the redirect limit'
+                    );
+                }
+                await distribute(
+                    new URL(location, targetUrl).toString(),
+                    ctx,
+                    redirectsLeft - 1
+                );
                 return;
             }
         }
