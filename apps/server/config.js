@@ -11,6 +11,14 @@ function getNumericConfig(key, defaultValue) {
     return value ? parseInt(value, 10) : defaultValue;
 }
 
+// Parse a comma-separated CIDR list, dropping blank entries.
+function getCidrListConfig(key) {
+    return String(getConfig(key, ''))
+        .split(',')
+        .map(value => value.trim())
+        .filter(Boolean);
+}
+
 // The hub's public base URL and mount path. The WebSub endpoint mounts at
 // webSubPath; hubUrl is the externally-reachable URL advertised to subscribers
 // (consumed when content distribution lands), defaulting to domain/port/path.
@@ -56,10 +64,14 @@ module.exports = {
     webSubSsrfProtection: !['off', 'false', '0', 'no'].includes(
         String(getConfig('WEBSUB_SSRF_PROTECTION', 'on')).toLowerCase()
     ),
-    // CIDRs exempted from SSRF protection — for a hub that legitimately serves
-    // feeds on a private LAN. Comma-separated, e.g. "10.0.0.0/8,192.168.0.0/16".
-    webSubFetchAllowCidrs: String(getConfig('WEBSUB_FETCH_ALLOW_CIDRS', ''))
-        .split(',')
-        .map(value => value.trim())
-        .filter(Boolean)
+    // CIDRs exempted from SSRF protection on the TOPIC-fetch path only — for a
+    // hub that legitimately fetches feeds on a private LAN. Comma-separated,
+    // e.g. "10.0.0.0/8,192.168.0.0/16". Deliberately does NOT apply to callback
+    // delivery/verification, so a trusted-feed exemption can't be abused to make
+    // the hub deliver to an attacker-chosen internal hub.callback.
+    webSubFetchAllowCidrs: getCidrListConfig('WEBSUB_FETCH_ALLOW_CIDRS'),
+    // CIDRs exempted on the CALLBACK path (delivery + verification GET) only —
+    // for a hub with genuine subscribers on a private LAN. Default empty (strict):
+    // attacker-supplied callbacks never inherit the topic-fetch allowlist above.
+    webSubCallbackAllowCidrs: getCidrListConfig('WEBSUB_CALLBACK_ALLOW_CIDRS')
 };

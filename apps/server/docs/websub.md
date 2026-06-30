@@ -103,10 +103,17 @@ incl. cloud-metadata `169.254.169.254`, unique-local, CGNAT). Screening is done 
 resolved IP and re-applied on every redirect hop, so a hostname or redirect that points
 inward is refused, not followed.
 
-| Config key                  | Default | Meaning                                                                                   |
-| --------------------------- | ------- | ----------------------------------------------------------------------------------------- |
-| `WEBSUB_SSRF_PROTECTION`    | `on`    | Set to `off` (or `false`/`0`/`no`) to disable screening — only for trusted/loopback test setups. |
-| `WEBSUB_FETCH_ALLOW_CIDRS`  | _(none)_| Comma-separated CIDRs exempted from screening, for a hub that legitimately serves feeds on a private LAN (e.g. `10.0.0.0/8,192.168.0.0/16`). |
+The exemption allowlist is **split by trust** so a trusted-feed exemption can't be turned
+into a callback-SSRF: the topic-fetch path and the callback path (delivery + verification
+GET, both to attacker-supplied `hub.callback` URLs) have separate allowlists. Exempting a
+private range for your feeds does **not** let an attacker register a `hub.callback` in that
+range.
+
+| Config key                    | Default | Meaning                                                                                   |
+| ----------------------------- | ------- | ----------------------------------------------------------------------------------------- |
+| `WEBSUB_SSRF_PROTECTION`      | `on`    | Set to `off` (or `false`/`0`/`no`) to disable screening — only for trusted/loopback test setups. |
+| `WEBSUB_FETCH_ALLOW_CIDRS`    | _(none)_| Comma-separated CIDRs exempted on the **topic-fetch** path only, for a hub that fetches feeds on a private LAN (e.g. `10.0.0.0/8,192.168.0.0/16`). |
+| `WEBSUB_CALLBACK_ALLOW_CIDRS` | _(none)_| Comma-separated CIDRs exempted on the **callback** path (delivery + verification), for a hub with genuine subscribers on a private LAN. Strict by default. |
 
 A blocked request surfaces as a failed fetch: the topic re-fetch reports a read failure
 and a blocked callback counts as a failed delivery.

@@ -31,18 +31,22 @@ accepted
    connection the dispatcher opens, so each **redirect hop** is re-screened and there is no
    resolve-then-connect TOCTOU window.
 
-3. **One guard, injected everywhere outbound.** `createSafeFetch` lives in `@rsscloud/core`
-   and is injected as the `fetch` for the engine's topic re-fetch **and** every protocol
-   plugin's deliveries / verification GETs. So topic fetch, the WebSub challenge GET, WebSub
-   content delivery, and the rssCloud REST/XML-RPC notifies are all covered uniformly — the
-   pre-existing rssCloud blind fetch is hardened for free.
+3. **One guard, injected on every outbound path.** `createSafeFetch` lives in
+   `@rsscloud/core` and is injected as the `fetch` for the engine's topic re-fetch **and**
+   every protocol plugin's deliveries / verification GETs. So topic fetch, the WebSub
+   challenge GET, WebSub content delivery, and the rssCloud REST/XML-RPC notifies are all
+   covered uniformly — the pre-existing rssCloud blind fetch is hardened for free.
 
-4. **Secure by default, with an operator escape hatch.** Protection is **on** by default
-   (`WEBSUB_SSRF_PROTECTION`); a hub that legitimately serves feeds on a private LAN exempts
-   specific ranges via `WEBSUB_FETCH_ALLOW_CIDRS` rather than disabling protection wholesale.
-   Local dev and the e2e suite (whose targets are loopback / private Docker IPs) keep working
-   by allowlisting those ranges — the e2e suite runs with protection on so the guarded fetch
-   is exercised end-to-end.
+4. **Secure by default, with trust-split operator escape hatches.** Protection is **on** by
+   default (`WEBSUB_SSRF_PROTECTION`). The exemption allowlist is **split by trust** so a
+   trusted-feed exemption can't reopen SSRF for callbacks: the topic-fetch path honors
+   `WEBSUB_FETCH_ALLOW_CIDRS`, while the callback path (delivery + verification GET, both to
+   attacker-supplied `hub.callback` URLs) is strict by default and honors only the separate
+   `WEBSUB_CALLBACK_ALLOW_CIDRS`. The engine takes the topic policy (its sole outbound call
+   is the feed re-fetch); the plugins take the callback policy (they only ever reach
+   subscriber callbacks). Local dev and the e2e suite (whose targets are loopback / private
+   Docker IPs) keep working by allowlisting those ranges on both paths — the e2e suite runs
+   with protection on so the guarded fetch is exercised end-to-end.
 
 ## Why connector-level, not just a custom lookup
 
@@ -64,7 +68,8 @@ every redirect.
   read failure (`RESOURCE_READ_FAILED`), and a blocked callback counts as a failed delivery
   (`notifyFailed`). Nothing new is thrown to the front door.
 - A hub deployed on a network whose feeds live on private addresses must opt those ranges in
-  via `WEBSUB_FETCH_ALLOW_CIDRS`, or fetches to them will be refused. This is the intended
+  via `WEBSUB_FETCH_ALLOW_CIDRS` (and, for subscribers on private addresses, separately via
+  `WEBSUB_CALLBACK_ALLOW_CIDRS`), or those requests will be refused. This is the intended
   secure-by-default trade-off.
 - The highest-value target is cloud instance metadata; operators should still defend it at
   the infrastructure layer too (e.g. IMDSv2 with a hop limit), so the guard is defence in

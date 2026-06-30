@@ -26,40 +26,50 @@ const coreConfig = resolveConfig({
     webSubLeaseMaxSecs: config.webSubLeaseMaxSecs
 });
 
-// SSRF egress guard for every outbound call. Built once and injected into the
-// engine's topic re-fetch and each plugin's deliveries/verification GETs, so a
-// subscriber- or publisher-supplied URL that resolves to an internal address
-// (loopback, private, link-local / cloud-metadata) is refused at connect time.
-// When protection is off (dev/CI against loopback or private hosts), `fetch` is
-// left unset so callers fall back to the platform's global fetch.
-const fetchOption = config.webSubSsrfProtection
-    ? {
+// SSRF egress guard for every outbound call: any URL whose host resolves to an
+// internal address (loopback, private, link-local / cloud-metadata) is refused
+// at connect time. The exemption allowlist is split by trust so a trusted-feed
+// exemption can't be abused: the TOPIC path (the engine's feed re-fetch) honors
+// WEBSUB_FETCH_ALLOW_CIDRS, while the CALLBACK path (each plugin's delivery and
+// verification GET, both to attacker-supplied hub.callback URLs) is strict by
+// default and only honors the separate WEBSUB_CALLBACK_ALLOW_CIDRS. When
+// protection is off (dev/CI against loopback or private hosts), `fetch` is left
+// unset so callers fall back to the platform's global fetch.
+function guardedFetchOption(allowCidrs) {
+    if (!config.webSubSsrfProtection) {
+        return {};
+    }
+    return {
         fetch: createSafeFetch(
-            config.webSubFetchAllowCidrs.length > 0
-                ? { allow: createCidrAllowList(config.webSubFetchAllowCidrs) }
+            allowCidrs.length > 0
+                ? { allow: createCidrAllowList(allowCidrs) }
                 : {}
         )
-    }
-    : {};
+    };
+}
+
+const topicFetchOption = guardedFetchOption(config.webSubFetchAllowCidrs);
+const callbackFetchOption = guardedFetchOption(config.webSubCallbackAllowCidrs);
 
 // Registers the 'websub' protocol so core.subscribe accepts WebSub subscriptions
 // (without it, core.subscribe → UNSUPPORTED_PROTOCOL). The plugin verifies
 // subscriber intent and, on fan-out, distributes the feed body to WebSub
 // callbacks — advertising this hub's public URL in the Link rel="hub" header.
+// Plugins only ever reach subscriber callbacks, so they take the callback policy.
 const plugins = [
     createRestProtocolPlugin({
         requestTimeoutMs: config.requestTimeout,
-        ...fetchOption
+        ...callbackFetchOption
     }),
     createXmlRpcProtocolPlugin({
         requestTimeoutMs: config.requestTimeout,
-        ...fetchOption
+        ...callbackFetchOption
     }),
     createWebSubProtocolPlugin({
         requestTimeoutMs: config.requestTimeout,
         hubUrl: config.hubUrl,
         signatureAlgo: config.webSubSignatureAlgo,
-        ...fetchOption
+        ...callbackFetchOption
     })
 ];
 
@@ -79,7 +89,8 @@ const core = createRssCloudCore({
     }),
     plugins,
     config: coreConfig,
-    ...fetchOption
+    // The engine's only outbound call is the topic/feed re-fetch.
+    ...topicFetchOption
 });
 
 module.exports = { core, events: core.events };
