@@ -22,6 +22,9 @@ const REST_PROTOCOLS: Protocol[] = ['http-post', 'https-post'];
 /** Fallback request timeout when none is supplied (mirrors the server default). */
 const DEFAULT_REQUEST_TIMEOUT_MS = 4000;
 
+/** Max redirect hops a single notification will follow. */
+const MAX_REDIRECTS = 5;
+
 /** Portable, hard-to-guess token for the cross-domain challenge handshake. */
 function defaultCreateChallenge(): string {
     const bytes = new Uint8Array(16);
@@ -50,10 +53,14 @@ export function createRestProtocolPlugin(
         return body;
     }
 
-    /** POST the notification, following redirects; throws on timeout or non-2xx. */
+    /**
+     * POST the notification, following redirects (bounded by `redirectsLeft` so a
+     * self-redirecting callback can't loop forever); throws on timeout or non-2xx.
+     */
     async function sendNotify(
         targetUrl: string,
-        body: URLSearchParams
+        body: URLSearchParams,
+        redirectsLeft = MAX_REDIRECTS
     ): Promise<void> {
         const res = await fetchWithTimeout(doFetch, requestTimeoutMs, targetUrl, {
             method: 'POST',
@@ -65,9 +72,13 @@ export function createRestProtocolPlugin(
         if (res.status >= 300 && res.status < 400) {
             const location = res.headers.get('location');
             if (location) {
+                if (redirectsLeft <= 0) {
+                    throw new Error('Notification Failed: too many redirects');
+                }
                 await sendNotify(
                     new URL(location, targetUrl).toString(),
-                    body
+                    body,
+                    redirectsLeft - 1
                 );
                 return;
             }

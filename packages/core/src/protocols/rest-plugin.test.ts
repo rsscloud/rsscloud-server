@@ -126,6 +126,31 @@ describe('createRestProtocolPlugin deliver', () => {
         ]);
     });
 
+    it('reports failure when a callback redirects past the hop limit', async () => {
+        let calls = 0;
+        const fakeFetch = (async () => {
+            calls += 1;
+            return new Response('', {
+                status: 302,
+                headers: { location: '/loop' }
+            });
+        }) as typeof fetch;
+
+        const plugin = createRestProtocolPlugin({ fetch: fakeFetch });
+
+        const result = await plugin.deliver(
+            deliveryContext(
+                'https://subscriber.example/loop',
+                'https://feed.example/rss'
+            )
+        );
+
+        expect(result.ok).toBe(false);
+        expect(result.error).toBeInstanceOf(Error);
+        // Bounded: the initial POST plus a fixed number of redirect hops, not ∞.
+        expect(calls).toBe(6);
+    });
+
     it('treats a 3xx without a Location header as a failure', async () => {
         const fakeFetch = (async () =>
             new Response('', { status: 302 })) as typeof fetch;
