@@ -43,6 +43,14 @@ export {
     type WebSubProtocolPluginOptions
 } from './protocols/websub-plugin.js';
 export {
+    createSafeFetch,
+    createCidrAllowList,
+    classifyBlockedAddress,
+    SsrfBlockedError,
+    type SafeFetchOptions,
+    type GuardedLookupFn
+} from './safe-fetch.js';
+export {
     createDefaultFeedParser,
     type DefaultFeedParserOptions
 } from './feed/feed-parser.js';

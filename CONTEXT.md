@@ -196,6 +196,19 @@ delivery. The algorithm is a config knob (default `sha256`); no `hub.secret` →
 _Avoid_: HMAC (that's the algorithm; the header is the wire artifact), auth token, signature
 (ambiguous — name the header).
 
+**Egress guard** (`createSafeFetch`):
+The screen on every outbound fetch — **Topic** re-fetch, **Intent verification** GET, and
+**Content distribution** — that refuses a destination resolving to a non-public address
+(loopback, private, link-local incl. cloud-metadata, ULA, CGNAT) or a non-`http(s)` scheme.
+It exists because **Callback** and **Topic** are attacker-supplied, and Content distribution
+relays a fetched body to the Callback (an SSRF exfiltration path absent from rssCloud's
+URL-only **Notification**). Screens the *resolved IP* and pins the connection to it, so a
+rebinding name or redirect that points inward is refused on every hop (see
+[ADR-0003](docs/adr/0003-ssrf-egress-guard-on-outbound-fetch.md)). On by default; LAN feeds
+opt in via `WEBSUB_FETCH_ALLOW_CIDRS`.
+_Avoid_: firewall (that's the network layer), allowlist (the guard is deny-by-default; the
+CIDR list is only the exemption), sanitizer.
+
 ## Example dialogue
 
 > **Dev:** When a `pleaseNotify` comes in over XML-RPC, who decides the callback is `diffDomain`?
