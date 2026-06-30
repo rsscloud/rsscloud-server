@@ -33,4 +33,10 @@ COPY --from=build /app/packages/express/dist packages/express/dist
 
 WORKDIR /app/apps/server
 
+# Default listen port (config.js PORT default). Documentation only — override
+# PORT at runtime and publish the matching port if you change it. Persistence of
+# ./data (subscriptions + stats) is handled by the runtime volume mount, e.g.
+# the `volumes:` entry in examples/dockge/compose.yaml — not declared here.
+EXPOSE 5337
+
 CMD ["node", "--use_strict", "app.js"]
