@@ -5,22 +5,20 @@ import type {
     VerifyContext
 } from '../engine/plugin.js';
 import type { Protocol } from '../engine/protocol.js';
-import { fetchWithTimeout } from '../fetch-with-timeout.js';
 
 /** Construction-time dependencies for the rssCloud REST protocol plugin. */
 export interface RestProtocolPluginOptions {
-    /** Injectable fetch (tests, edge runtimes); defaults to global fetch. */
+    /**
+     * Injectable fetch (tests, edge runtimes); defaults to global fetch. A host
+     * should inject a fetch that carries its own outbound timeout and SSRF guard
+     * (see the server's createSafeFetch wiring).
+     */
     fetch?: typeof fetch;
-    /** Per-request timeout (ms) for outbound calls. */
-    requestTimeoutMs?: number;
     /** Challenge generator for the cross-domain handshake (injectable for tests). */
     createChallenge?: () => string;
 }
 
 const REST_PROTOCOLS: Protocol[] = ['http-post', 'https-post'];
-
-/** Fallback request timeout when none is supplied (mirrors the server default). */
-const DEFAULT_REQUEST_TIMEOUT_MS = 4000;
 
 /** Max redirect hops a single notification will follow. */
 const MAX_REDIRECTS = 5;
@@ -43,8 +41,6 @@ export function createRestProtocolPlugin(
     options: RestProtocolPluginOptions = {}
 ): ProtocolPlugin {
     const doFetch = options.fetch ?? fetch;
-    const requestTimeoutMs =
-        options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
     const createChallenge = options.createChallenge ?? defaultCreateChallenge;
 
     function notifyBody(resourceUrl: string): URLSearchParams {
@@ -62,7 +58,7 @@ export function createRestProtocolPlugin(
         body: URLSearchParams,
         redirectsLeft = MAX_REDIRECTS
     ): Promise<void> {
-        const res = await fetchWithTimeout(doFetch, requestTimeoutMs, targetUrl, {
+        const res = await doFetch(targetUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body,
@@ -91,7 +87,10 @@ export function createRestProtocolPlugin(
 
     async function deliver(ctx: DeliveryContext): Promise<DeliveryResult> {
         try {
-            await sendNotify(ctx.subscription.url, notifyBody(ctx.resource.url));
+            await sendNotify(
+                ctx.subscription.url,
+                notifyBody(ctx.resource.url)
+            );
             return { ok: true };
         } catch (err) {
             return { ok: false, error: err as Error };
@@ -106,7 +105,7 @@ export function createRestProtocolPlugin(
         const query = new URLSearchParams({ url: resourceUrl, challenge });
         const testUrl = apiurl + '?' + query.toString();
 
-        const res = await fetchWithTimeout(doFetch, requestTimeoutMs, testUrl, {
+        const res = await doFetch(testUrl, {
             method: 'GET'
         });
         const body = await res.text();

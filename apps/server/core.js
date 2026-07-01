@@ -19,33 +19,29 @@ const coreConfig = resolveConfig({
     ctSecsResourceExpire: config.ctSecsResourceExpire,
     maxConsecutiveErrors: config.maxConsecutiveErrors,
     maxResourceSize: config.maxResourceSize,
-    requestTimeoutMs: config.requestTimeout,
     feedsChangedWindowDays: config.feedsChangedWindowDays,
     webSubLeaseDefaultSecs: config.webSubLeaseDefaultSecs,
     webSubLeaseMinSecs: config.webSubLeaseMinSecs,
     webSubLeaseMaxSecs: config.webSubLeaseMaxSecs
 });
 
-// SSRF egress guard for every outbound call: any URL whose host resolves to an
-// internal address (loopback, private, link-local / cloud-metadata) is refused
-// at connect time. The exemption allowlist is split by trust so a trusted-feed
-// exemption can't be abused: the TOPIC path (the engine's feed re-fetch) honors
-// WEBSUB_FETCH_ALLOW_CIDRS, while the CALLBACK path (each plugin's delivery and
-// verification GET, both to attacker-supplied hub.callback URLs) is strict by
-// default and only honors the separate WEBSUB_CALLBACK_ALLOW_CIDRS. When
-// protection is off (dev/CI against loopback or private hosts), `fetch` is left
-// unset so callers fall back to the platform's global fetch.
+// The single outbound fetch for every core caller: SSRF-guarded and carrying the
+// request timeout, so a caller can never get one protection without the other.
+// Any URL whose host resolves to an internal address (loopback, private,
+// link-local / cloud-metadata) is refused at connect time. The exemption
+// allowlist is split by trust so a trusted-feed exemption can't be abused: the
+// TOPIC path (the engine's feed re-fetch) honors WEBSUB_FETCH_ALLOW_CIDRS, while
+// the CALLBACK path (each plugin's delivery and verification GET, both to
+// attacker-supplied hub.callback URLs) is strict by default and only honors the
+// separate WEBSUB_CALLBACK_ALLOW_CIDRS. For loopback/private test setups, add the
+// relevant range to those allowlists (e.g. 127.0.0.0/8) rather than disabling the
+// guard — there is no full bypass switch.
 function guardedFetchOption(allowCidrs) {
-    if (!config.webSubSsrfProtection) {
-        return {};
+    const safeFetchOptions = { timeoutMs: config.requestTimeout };
+    if (allowCidrs.length > 0) {
+        safeFetchOptions.allow = createCidrAllowList(allowCidrs);
     }
-    return {
-        fetch: createSafeFetch(
-            allowCidrs.length > 0
-                ? { allow: createCidrAllowList(allowCidrs) }
-                : {}
-        )
-    };
+    return { fetch: createSafeFetch(safeFetchOptions) };
 }
 
 const topicFetchOption = guardedFetchOption(config.webSubFetchAllowCidrs);
@@ -57,16 +53,9 @@ const callbackFetchOption = guardedFetchOption(config.webSubCallbackAllowCidrs);
 // callbacks — advertising this hub's public URL in the Link rel="hub" header.
 // Plugins only ever reach subscriber callbacks, so they take the callback policy.
 const plugins = [
-    createRestProtocolPlugin({
-        requestTimeoutMs: config.requestTimeout,
-        ...callbackFetchOption
-    }),
-    createXmlRpcProtocolPlugin({
-        requestTimeoutMs: config.requestTimeout,
-        ...callbackFetchOption
-    }),
+    createRestProtocolPlugin({ ...callbackFetchOption }),
+    createXmlRpcProtocolPlugin({ ...callbackFetchOption }),
     createWebSubProtocolPlugin({
-        requestTimeoutMs: config.requestTimeout,
         hubUrl: config.hubUrl,
         signatureAlgo: config.webSubSignatureAlgo,
         ...callbackFetchOption

@@ -90,6 +90,12 @@ export interface SafeFetchOptions {
     lookup?: GuardedLookupFn;
     /** Optional allow predicate exempting specific addresses (e.g. a LAN range). */
     allow?: (ip: string) => boolean;
+    /**
+     * Per-request timeout (ms). When set, each request is aborted if it has not
+     * settled within this many ms — folding the outbound timeout into the guarded
+     * fetch so every caller gets both protections from one object. Omit for none.
+     */
+    timeoutMs?: number;
 }
 
 const SUPPORTED_PROTOCOLS = new Set(['http:', 'https:']);
@@ -207,6 +213,7 @@ export function createSafeFetch(options: SafeFetchOptions = {}): typeof fetch {
             build
         })
     );
+    const timeoutMs = options.timeoutMs;
 
     return (input: FetchInput, init?: FetchInit): Promise<Response> => {
         const url = urlOf(input);
@@ -219,7 +226,19 @@ export function createSafeFetch(options: SafeFetchOptions = {}): typeof fetch {
         }
         // `dispatcher` is undici's per-request agent hook, absent from the DOM
         // RequestInit the global fetch type advertises; the base fetch is undici's.
-        const guardedInit = { ...init, dispatcher } as unknown as FetchInit;
-        return baseFetch(input, guardedInit);
+        if (timeoutMs === undefined) {
+            const guardedInit = { ...init, dispatcher } as unknown as FetchInit;
+            return baseFetch(input, guardedInit);
+        }
+        // Abort the request if it hasn't settled within timeoutMs, always clearing
+        // the timer once it does so a completed request is never aborted.
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        const guardedInit = {
+            ...init,
+            dispatcher,
+            signal: controller.signal
+        } as unknown as FetchInit;
+        return baseFetch(input, guardedInit).finally(() => clearTimeout(timer));
     };
 }

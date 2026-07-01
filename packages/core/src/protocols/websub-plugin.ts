@@ -6,14 +6,15 @@ import type {
     VerifyContext
 } from '../engine/plugin.js';
 import type { Protocol } from '../engine/protocol.js';
-import { fetchWithTimeout } from '../fetch-with-timeout.js';
 
 /** Construction-time dependencies for the WebSub protocol plugin. */
 export interface WebSubProtocolPluginOptions {
-    /** Injectable fetch (tests, edge runtimes); defaults to global fetch. */
+    /**
+     * Injectable fetch (tests, edge runtimes); defaults to global fetch. A host
+     * should inject a fetch that carries its own outbound timeout and SSRF guard
+     * (see the server's createSafeFetch wiring).
+     */
     fetch?: typeof fetch;
-    /** Per-request timeout (ms) for outbound calls. */
-    requestTimeoutMs?: number;
     /** Challenge generator for the intent-verification GET (injectable for tests). */
     createChallenge?: () => string;
     /**
@@ -31,9 +32,6 @@ export interface WebSubProtocolPluginOptions {
 }
 
 const WEBSUB_PROTOCOLS: Protocol[] = ['websub'];
-
-/** Fallback request timeout when none is supplied (mirrors the server default). */
-const DEFAULT_REQUEST_TIMEOUT_MS = 4000;
 
 /** Max redirect hops a single content-distribution delivery will follow. */
 const MAX_REDIRECTS = 5;
@@ -56,8 +54,6 @@ export function createWebSubProtocolPlugin(
     options: WebSubProtocolPluginOptions = {}
 ): ProtocolPlugin {
     const doFetch = options.fetch ?? fetch;
-    const requestTimeoutMs =
-        options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
     const createChallenge = options.createChallenge ?? defaultCreateChallenge;
     const hubUrl = options.hubUrl;
     const signatureAlgo = options.signatureAlgo ?? 'sha256';
@@ -75,12 +71,7 @@ export function createWebSubProtocolPlugin(
             );
         }
 
-        const res = await fetchWithTimeout(
-            doFetch,
-            requestTimeoutMs,
-            verifyUrl.toString(),
-            { method: 'GET' }
-        );
+        const res = await doFetch(verifyUrl.toString(), { method: 'GET' });
         const body = await res.text();
 
         if (!res.ok || body !== challenge) {
@@ -118,17 +109,12 @@ export function createWebSubProtocolPlugin(
             headers['X-Hub-Signature'] = `${signatureAlgo}=${digest}`;
         }
 
-        const res = await fetchWithTimeout(
-            doFetch,
-            requestTimeoutMs,
-            targetUrl,
-            {
-                method: 'POST',
-                headers,
-                body: ctx.payload.body,
-                redirect: 'manual'
-            }
-        );
+        const res = await doFetch(targetUrl, {
+            method: 'POST',
+            headers,
+            body: ctx.payload.body,
+            redirect: 'manual'
+        });
 
         if (res.status >= 300 && res.status < 400) {
             const location = res.headers.get('location');

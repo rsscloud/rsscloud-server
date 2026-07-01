@@ -12,8 +12,6 @@ export interface RssCloudConfig {
     maxConsecutiveErrors: number;
     /** Largest feed body (bytes) core will parse. */
     maxResourceSize: number;
-    /** Per-request timeout (ms) for outbound fetches. */
-    requestTimeoutMs: number;
     /** Window (days) used by stats and expiry housekeeping. */
     feedsChangedWindowDays: number;
     /** WebSub lease (secs) granted when a subscriber omits `hub.lease_seconds`. */
@@ -39,7 +37,6 @@ export const DEFAULT_CONFIG: RssCloudConfig = {
     ctSecsResourceExpire: 90000,
     maxConsecutiveErrors: 3,
     maxResourceSize: 256000,
-    requestTimeoutMs: 4000,
     feedsChangedWindowDays: 7,
     webSubLeaseDefaultSecs: 86400,
     webSubLeaseMinSecs: 300,
