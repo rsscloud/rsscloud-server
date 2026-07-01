@@ -29,11 +29,9 @@ const config = resolveConfig();
 
 const core = createRssCloudCore({
     store: createInMemoryStore(),
-    plugins: [
-        createRestProtocolPlugin({
-            requestTimeoutMs: config.requestTimeoutMs
-        })
-    ],
+    // Inject a fetch to carry an outbound timeout + SSRF guard, e.g.
+    // `createRestProtocolPlugin({ fetch: createSafeFetch({ timeoutMs: 4000 }) })`.
+    plugins: [createRestProtocolPlugin()],
     config
 });
 

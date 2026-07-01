@@ -19,7 +19,7 @@ import { pleaseNotify, ping, rpc2 } from '@rsscloud/express';
 const config = resolveConfig();
 const core = createRssCloudCore({
     store: createInMemoryStore(),
-    plugins: [createRestProtocolPlugin({ requestTimeoutMs: config.requestTimeoutMs })],
+    plugins: [createRestProtocolPlugin()],
     config
 });
 

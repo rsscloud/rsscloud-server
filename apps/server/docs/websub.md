@@ -15,13 +15,13 @@ path is configurable via `WEBSUB_PATH`; `/websub` is the default.)
 
 ## Subscribe and unsubscribe
 
-| Field              | Required | Meaning                                                                 |
-| ------------------ | -------- | ----------------------------------------------------------------------- |
-| `hub.mode`         | yes      | `subscribe` or `unsubscribe`.                                           |
-| `hub.callback`     | yes      | Absolute URL the hub delivers to (and verifies against).                |
-| `hub.topic`        | yes      | Absolute URL of the feed you want.                                      |
-| `hub.lease_seconds`| no       | Requested subscription lifetime; the hub clamps it (see [Leases](#leases)). |
-| `hub.secret`       | no       | Shared secret that opts you into [signed delivery](#authenticated-delivery). |
+| Field               | Required | Meaning                                                                      |
+| ------------------- | -------- | ---------------------------------------------------------------------------- |
+| `hub.mode`          | yes      | `subscribe` or `unsubscribe`.                                                |
+| `hub.callback`      | yes      | Absolute URL the hub delivers to (and verifies against).                     |
+| `hub.topic`         | yes      | Absolute URL of the feed you want.                                           |
+| `hub.lease_seconds` | no       | Requested subscription lifetime; the hub clamps it (see [Leases](#leases)).  |
+| `hub.secret`        | no       | Shared secret that opts you into [signed delivery](#authenticated-delivery). |
 
 A well-formed request is acknowledged immediately with **`202 Accepted`**; a malformed
 one (missing/relative `hub.callback`, empty `hub.topic`, unknown `hub.mode`) returns
@@ -33,12 +33,12 @@ active until intent verification succeeds.
 After a `202`, the hub confirms the request out of band by sending a `GET` to your
 `hub.callback` with these query parameters:
 
-| Parameter           | Meaning                                                        |
-| ------------------- | -------------------------------------------------------------- |
-| `hub.mode`          | `subscribe` or `unsubscribe` (echoes the request).             |
-| `hub.topic`         | The topic URL.                                                 |
-| `hub.challenge`     | A random token.                                                |
-| `hub.lease_seconds` | The lease the hub actually granted (subscribe only; see below).|
+| Parameter           | Meaning                                                         |
+| ------------------- | --------------------------------------------------------------- |
+| `hub.mode`          | `subscribe` or `unsubscribe` (echoes the request).              |
+| `hub.topic`         | The topic URL.                                                  |
+| `hub.challenge`     | A random token.                                                 |
+| `hub.lease_seconds` | The lease the hub actually granted (subscribe only; see below). |
 
 To confirm, respond **`2xx`** with a body that is **exactly** the `hub.challenge`
 value. Any other status, or a body that doesn't match, and the hub discards the
@@ -83,9 +83,9 @@ reject spoofed deliveries.
 
 A publisher can notify the hub natively over WebSub instead of an rssCloud ping:
 
-| Field      | Required | Meaning                                             |
-| ---------- | -------- | --------------------------------------------------- |
-| `hub.mode` | yes      | `publish`.                                          |
+| Field      | Required | Meaning                                                              |
+| ---------- | -------- | -------------------------------------------------------------------- |
+| `hub.mode` | yes      | `publish`.                                                           |
 | `hub.url`  | yes\*    | The topic URL that changed. (`hub.topic` is accepted as a fallback.) |
 
 The hub answers `202`, then re-fetches the topic and fans the change out. This is
@@ -103,17 +103,20 @@ incl. cloud-metadata `169.254.169.254`, unique-local, CGNAT). Screening is done 
 resolved IP and re-applied on every redirect hop, so a hostname or redirect that points
 inward is refused, not followed.
 
+The guard is **always on** — there is no disable switch. For a loopback or private test
+target, allowlist the range (e.g. `127.0.0.0/8`) on the path(s) below rather than turning
+screening off.
+
 The exemption allowlist is **split by trust** so a trusted-feed exemption can't be turned
 into a callback-SSRF: the topic-fetch path and the callback path (delivery + verification
 GET, both to attacker-supplied `hub.callback` URLs) have separate allowlists. Exempting a
 private range for your feeds does **not** let an attacker register a `hub.callback` in that
 range.
 
-| Config key                    | Default | Meaning                                                                                   |
-| ----------------------------- | ------- | ----------------------------------------------------------------------------------------- |
-| `WEBSUB_SSRF_PROTECTION`      | `on`    | Set to `off` (or `false`/`0`/`no`) to disable screening — only for trusted/loopback test setups. |
-| `WEBSUB_FETCH_ALLOW_CIDRS`    | _(none)_| Comma-separated CIDRs exempted on the **topic-fetch** path only, for a hub that fetches feeds on a private LAN (e.g. `10.0.0.0/8,192.168.0.0/16`). |
-| `WEBSUB_CALLBACK_ALLOW_CIDRS` | _(none)_| Comma-separated CIDRs exempted on the **callback** path (delivery + verification), for a hub with genuine subscribers on a private LAN. Strict by default. |
+| Config key                    | Default  | Meaning                                                                                                                                                    |
+| ----------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `WEBSUB_FETCH_ALLOW_CIDRS`    | _(none)_ | Comma-separated CIDRs exempted on the **topic-fetch** path only, for a hub that fetches feeds on a private LAN (e.g. `10.0.0.0/8,192.168.0.0/16`).         |
+| `WEBSUB_CALLBACK_ALLOW_CIDRS` | _(none)_ | Comma-separated CIDRs exempted on the **callback** path (delivery + verification), for a hub with genuine subscribers on a private LAN. Strict by default. |
 
 A blocked request surfaces as a failed fetch: the topic re-fetch reports a read failure
 and a blocked callback counts as a failed delivery.
@@ -125,27 +128,27 @@ watched. Per the WebSub spec, advertise it two ways, in priority order:
 
 1. **HTTP `Link` header (primary).** When your server returns the feed, include:
 
-   ```http
-   Link: <https://hub.example/websub>; rel="hub"
-   Link: <https://feed.example/rss>; rel="self"
-   ```
+    ```http
+    Link: <https://hub.example/websub>; rel="hub"
+    Link: <https://feed.example/rss>; rel="self"
+    ```
 
-   The header is authoritative and works for any content type, so it's the preferred
-   mechanism.
+    The header is authoritative and works for any content type, so it's the preferred
+    mechanism.
 
 2. **`<atom:link>` in the feed (backup).** Inside the feed document, declare the Atom
    namespace and add the hub and self links — useful for consumers that only read the
    body:
 
-   ```xml
-   <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
-     <channel>
-       <atom:link rel="hub" href="https://hub.example/websub"/>
-       <atom:link rel="self" href="https://feed.example/rss"/>
-       <!-- … -->
-     </channel>
-   </rss>
-   ```
+    ```xml
+    <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+      <channel>
+        <atom:link rel="hub" href="https://hub.example/websub"/>
+        <atom:link rel="self" href="https://feed.example/rss"/>
+        <!-- … -->
+      </channel>
+    </rss>
+    ```
 
 A subscriber reads the `rel="hub"` link to find this endpoint and the `rel="self"`
 link to learn the canonical topic URL, then subscribes as above. (Note: discovery is a

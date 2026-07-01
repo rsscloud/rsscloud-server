@@ -4,7 +4,7 @@ The hub fetches and delivers to URLs supplied by untrusted clients. A subscriber
 `hub.callback` (where WebSub content distribution **sends the fetched feed body**) and a
 publisher's `hub.topic` / `hub.url` (which the hub **fetches**) are both attacker-controlled
 and were validated only for shape (absolute URL / non-empty string). With WebSub content
-distribution, that turned a pre-existing *blind* fetch of an arbitrary URL into a *full-read*
+distribution, that turned a pre-existing _blind_ fetch of an arbitrary URL into a _full-read_
 SSRF: an attacker subscribes a callback they control, names an internal `hub.topic` (e.g.
 `http://169.254.169.254/…`), and the hub relays the internal response body to the callback.
 This ADR records the egress guard added to close it.
@@ -74,3 +74,19 @@ every redirect.
 - The highest-value target is cloud instance metadata; operators should still defend it at
   the infrastructure layer too (e.g. IMDSv2 with a hop limit), so the guard is defence in
   depth rather than the only control.
+
+## Amendment (2026-07-01)
+
+Two refinements were made after this ADR was accepted, tightening decisions 3 and 4:
+
+- **No full-off switch.** The `WEBSUB_SSRF_PROTECTION` toggle was removed. The guard is now
+  always on; the only exemptions are the trust-split `WEBSUB_FETCH_ALLOW_CIDRS` /
+  `WEBSUB_CALLBACK_ALLOW_CIDRS` allowlists. A loopback/private test setup allowlists the
+  range (e.g. `127.0.0.0/8`) instead of disabling screening, so there is no longer a config
+  path that reaches an unguarded global `fetch`.
+- **Timeout folded into the guarded fetch.** The per-request outbound timeout, previously a
+  separate `fetchWithTimeout` wrapper applied by the engine and each plugin (with a
+  `requestTimeoutMs` option), now lives inside `createSafeFetch` as `timeoutMs`. Outbound
+  callers hold a single fetch that is both SSRF-guarded and time-bounded, so neither
+  protection can be applied without the other. `createSafeFetch` is the one outbound object;
+  the plugins/engine no longer take `requestTimeoutMs`.
