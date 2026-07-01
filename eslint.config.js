@@ -65,5 +65,23 @@ module.exports = [
             'no-underscore-dangle': 'off',
             'no-continue': 'off'
         }
+    },
+    // apps/client/public is browser-loaded (<script type="module">), not
+    // Node — scoped here rather than added to the shared globals above so
+    // Node-side no-undef checking stays strict everywhere else.
+    {
+        files: ['apps/client/public/**/*.js'],
+        languageOptions: {
+            sourceType: 'module',
+            globals: {
+                window: 'readonly',
+                document: 'readonly',
+                alert: 'readonly',
+                navigator: 'readonly',
+                location: 'readonly',
+                localStorage: 'readonly',
+                sessionStorage: 'readonly'
+            }
+        }
     }
 ];
