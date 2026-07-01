@@ -2,12 +2,12 @@
     "name": "@rsscloud/client-app",
     "version": "0.0.0",
     "private": true,
-    "description": "Interactive dev harness for the rssCloud client (Subscribe/Ping UI + request log)",
-    "main": "client.js",
+    "description": "Interactive rssCloud/WebSub test harness (unified subscribe/publish UI, feed discovery, live traffic log, session-isolated for public deployment)",
+    "main": "index.js",
     "scripts": {
-        "start": "node --use_strict client.js",
-        "dev": "nodemon --use_strict client.js",
-        "test": "node --test lib/*.test.js",
+        "start": "node --use_strict index.js",
+        "dev": "nodemon --use_strict index.js",
+        "test": "node --test lib/*.test.js *.test.js",
         "lint": "eslint --fix *.js lib/"
     },
     "engines": {
@@ -16,15 +16,19 @@
     "author": "Andrew Shell <andrew@andrewshell.org>",
     "license": "MIT",
     "dependencies": {
+        "@rsscloud/core": "workspace:*",
         "@rsscloud/xml-rpc": "workspace:*",
         "body-parser": "^2.2.2",
+        "dotenv": "^17.4.2",
         "express": "^4.22.2",
         "morgan": "^1.10.1",
+        "ws": "^8.21.0",
         "xml2js": "^0.6.2"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
         "eslint": "^10.4.0",
-        "nodemon": "3.1.14"
+        "nodemon": "3.1.14",
+        "supertest": "^7.2.2"
     }
 }

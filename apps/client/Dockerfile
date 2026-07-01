@@ -1,0 +1,38 @@
+FROM node:22 AS base
+
+RUN corepack enable
+
+WORKDIR /app
+
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY apps/client/package.json apps/client/
+COPY packages/xml-rpc/package.json packages/xml-rpc/
+COPY packages/core/package.json packages/core/
+
+# Build the workspace packages (TS → CJS/ESM dist) the harness consumes.
+FROM base AS build
+
+COPY packages/xml-rpc packages/xml-rpc
+COPY packages/core packages/core
+RUN pnpm install --frozen-lockfile --filter "@rsscloud/core..."
+RUN pnpm --filter "@rsscloud/core..." run build
+
+FROM base AS dependencies
+
+RUN pnpm install --frozen-lockfile --filter "@rsscloud/client-app..." --prod --ignore-scripts
+
+FROM dependencies AS runtime
+
+COPY apps/client apps/client
+COPY --from=build /app/packages/xml-rpc/dist packages/xml-rpc/dist
+COPY --from=build /app/packages/core/dist packages/core/dist
+
+WORKDIR /app/apps/client
+
+# Default listen port (config.js's PORT default). Documentation only —
+# override PORT at runtime and publish the matching port if you change it.
+# This harness holds no persistent state to volume-mount: sessions live only
+# in memory for the process lifetime.
+EXPOSE 9000
+
+CMD ["node", "--use_strict", "index.js"]
