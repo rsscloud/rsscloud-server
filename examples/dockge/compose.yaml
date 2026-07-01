@@ -1,13 +1,20 @@
-# rssCloud server — example stack for Dockge (https://github.com/louislam/dockge)
+# rssCloud server + test harness — example stack for Dockge (https://github.com/louislam/dockge)
 #
 # Usage:
 #   1. In Dockge, create a new stack (e.g. "rsscloud") and paste this file.
 #   2. Edit DOMAIN and HUB_URL below to your public hostname.
 #   3. Deploy. Subscriptions + stats persist in the named volume `rsscloud-data`.
 #
-# This pulls the published image rather than building, so it deploys without the
-# source tree. To pin a release, replace `:latest` with a version tag
-# (e.g. andrewshell/rsscloud-server:4.0.0).
+# The `rsscloud` service pulls the published image rather than building, so it
+# deploys without the source tree. To pin a release, replace `:latest` with a
+# version tag (e.g. andrewshell/rsscloud-server:4.0.0).
+#
+# The `client` service (the rssCloud/WebSub test harness, apps/client) has no
+# published image yet, so it builds from source instead — this stack must be
+# deployed from a checkout of the repo for that service to build. Point a
+# browser at it to test the paired hub, or edit its HUB_SERVER_URL/CLIENT_FETCH_ALLOW_CIDRS
+# to test a different one. Remove the `client` service entirely if you only
+# want the hub.
 
 services:
   rsscloud:
@@ -45,6 +52,32 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  client:
+    build:
+      context: ../..
+      dockerfile: apps/client/Dockerfile
+    container_name: rsscloud-client
+    restart: unless-stopped
+    depends_on:
+      - rsscloud
+    ports:
+      - "9000:9000"
+    environment:
+      # Externally-reachable hostname/port this harness advertises for its
+      # own callbacks and test feeds.
+      DOMAIN: cloud.example.com
+      # PORT: "9000"
+      # Reach the sibling `rsscloud` service by its Compose service name —
+      # override at runtime (the UI's server/hub override field) to test a
+      # different hub instead.
+      HUB_SERVER_URL: http://rsscloud:5337
+      # SSRF egress protection is ON by default (recommended) and refuses
+      # outbound requests to private addresses — including the Docker
+      # network's own subnet, which is how `rsscloud` above is reached. This
+      # allowlist is scoped to Docker's default bridge range; narrow it to
+      # this stack's actual subnet if you need tighter isolation.
+      CLIENT_FETCH_ALLOW_CIDRS: "172.16.0.0/12"
 
 volumes:
   rsscloud-data:

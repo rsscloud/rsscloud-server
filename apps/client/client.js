@@ -2,62 +2,38 @@ const bodyParser = require('body-parser'),
     crypto = require('crypto'),
     express = require('express'),
     morgan = require('morgan'),
-    packageJson = require('./package.json'),
+    config = require('./config'),
+    { createSessionStore } = require('./lib/session-store'),
+    { createGuardedFetch } = require('./lib/guarded-fetch'),
+    { createSessionSockets } = require('./session-sockets'),
     {
         createRssCloudClient,
         createWebSubClient,
         readVerification,
         buildNotifyResponse,
-        renderCloudFeed
+        renderCloudFeed,
+        discoverFeed
     } = require('./lib'),
     textParser = bodyParser.text({ type: '*/xml' }),
     // Content distribution arrives with the origin feed's Content-Type relayed
     // verbatim, so the callback parses any media type as a raw string to log it.
     rawTextParser = bodyParser.text({ type: () => true }),
-    urlencodedParser = bodyParser.urlencoded({ extended: false });
-
-// Simple config utility
-function getConfig(key, defaultValue) {
-    return process.env[key] ?? defaultValue;
-}
-
-function getNumericConfig(key, defaultValue) {
-    const value = process.env[key];
-    return value ? parseInt(value, 10) : defaultValue;
-}
-
-const clientConfig = {
-    appName: 'rssCloudClient',
-    appVersion: packageJson.version,
-    domain: getConfig('DOMAIN', 'localhost'),
-    port: getNumericConfig('PORT', 9000),
-    rsscloudServer: 'http://localhost:5337'
-};
+    urlencodedParser = bodyParser.urlencoded({ extended: false }),
+    jsonParser = bodyParser.json();
 
 // The hub's WebSub front door, advertised in feeds via <atom:link rel="hub">.
-clientConfig.hubUrl = `${clientConfig.rsscloudServer}/websub`;
-// The path the hub verifies and delivers WebSub content to on this harness.
-const WEBSUB_CALLBACK_PATH = '/websub-callback';
+const hubUrl = `${config.hubServerUrl}/websub`;
 
-// All protocol wire work (pleaseNotify/ping calls, WebSub hub.* calls, the
-// XML-RPC notify ack, and <cloud>/atom feed rendering) lives in ./lib; this file
-// is just the UI.
-const client = createRssCloudClient({ serverUrl: clientConfig.rsscloudServer });
-const webSubClient = createWebSubClient({
-    serverUrl: clientConfig.rsscloudServer
-});
+// This session's callback URL the hub notifies for WebSub content
+// distribution and intent verification.
+function webSubCallbackUrl(sessionId) {
+    return `http://${config.domain}:${config.port}/s/${sessionId}/websub-callback`;
+}
 
-// In-memory data stores (reset on restart)
-const requestLog = [];
-const feedItems = {};
-// Secrets supplied on WebSub subscribe, keyed by topic URL, so the callback can
-// check the hub's X-Hub-Signature on delivery.
-const webSubSecrets = {};
-const MAX_LOG_ENTRIES = 100;
-
-// The callback URL this harness registers with the hub for a feed.
-function webSubCallbackUrl() {
-    return `http://${clientConfig.domain}:${clientConfig.port}${WEBSUB_CALLBACK_PATH}`;
+// Build the feed URL an action targets: the caller's own external feedUrl
+// when given (subscriber mode), else this session's own test feed.
+function resolveFeedUrl(sessionId, { feedUrl, feedName }) {
+    return feedUrl || `http://${config.domain}:${config.port}/s/${sessionId}/${feedName || 'rss-01.xml'}`;
 }
 
 // Pull the topic URL out of a delivery's Link header (`<url>; rel="self"`).
@@ -67,9 +43,10 @@ function selfLink(link) {
 }
 
 // Verify a relayed X-Hub-Signature (`<algo>=<hex>`) against the body using the
-// secret we subscribed with. Returns a human-readable verdict for the log.
-function checkSignature(topicUrl, signature, body) {
-    const secret = webSubSecrets[topicUrl];
+// secret this session subscribed with. Returns a human-readable verdict for
+// the log.
+function checkSignature(session, topicUrl, signature, body) {
+    const secret = session.webSubSecrets[topicUrl];
     if (!secret) {
         return 'no stored secret — not verified';
     }
@@ -86,93 +63,6 @@ function checkSignature(topicUrl, signature, body) {
     return expected === digest ? 'valid ✓' : 'INVALID ✗';
 }
 
-let app, server;
-
-console.log(`${clientConfig.appName} ${clientConfig.appVersion}`);
-
-morgan.format('mydate', () => {
-    return new Date()
-        .toLocaleTimeString('en-US', {
-            hour12: false,
-            fractionalSecondDigits: 3
-        })
-        .replace(/:/g, ':');
-});
-
-app = express();
-
-app.use(
-    morgan(
-        '[:mydate] :method :url :status :res[content-length] - :remote-addr - :response-time ms'
-    )
-);
-
-// Handle static files in public directory
-app.use(
-    express.static('public', {
-        dotfiles: 'ignore',
-        maxAge: '1d'
-    })
-);
-
-// Request logging middleware - captures all incoming requests
-app.use((req, res, next) => {
-    // Log request after body is parsed
-    res.on('finish', () => {
-        // Don't log client UI requests to keep log clean
-        if (req.path === '/' && req.method === 'GET') {
-            return;
-        }
-        if (req.path === '/subscribe' || req.path === '/ping-feed') {
-            return;
-        }
-        // WebSub UI actions are outbound; only hub -> harness traffic is logged.
-        if (
-            req.path === '/websub-subscribe' ||
-            req.path === '/websub-unsubscribe' ||
-            req.path === '/websub-publish'
-        ) {
-            return;
-        }
-        if (req.path.startsWith('/.well-known/')) {
-            return;
-        }
-
-        // Surface the WebSub delivery headers so the hub/self links and the
-        // signature (with our verdict) are visible in the log.
-        const headers = {};
-        if (req.headers.link) {
-            headers.Link = req.headers.link;
-        }
-        if (req.headers['x-hub-signature']) {
-            const topic = selfLink(req.headers.link);
-            headers['X-Hub-Signature'] =
-                `${req.headers['x-hub-signature']} (${checkSignature(
-                    topic,
-                    req.headers['x-hub-signature'],
-                    req.body
-                )})`;
-        }
-
-        const logEntry = {
-            timestamp: new Date().toISOString(),
-            method: req.method,
-            url: req.originalUrl,
-            headers: Object.keys(headers).length ? headers : null,
-            body: req.body || null
-        };
-
-        requestLog.unshift(logEntry);
-
-        // Cap the log size
-        if (requestLog.length > MAX_LOG_ENTRIES) {
-            requestLog.pop();
-        }
-    });
-
-    next();
-});
-
 // Helper function to escape HTML entities
 function escapeHtml(text) {
     return text
@@ -183,484 +73,668 @@ function escapeHtml(text) {
         .replace(/'/g, '&#039;');
 }
 
-// Helper function to format request body for display
-function formatBody(body) {
-    if (!body) return '';
-    // If it's a string (e.g., XML), display as-is (escaped)
-    if (typeof body === 'string') {
-        return escapeHtml(body);
-    }
-    // If it's an object (e.g., form data), display as JSON
-    return escapeHtml(JSON.stringify(body));
-}
-
-// Helper function to generate HTML page
-function generateHtmlPage() {
-    const logHtml = requestLog
-        .map(entry => {
-            const bodyDisplay = formatBody(entry.body);
-            const headersDisplay = entry.headers
-                ? Object.entries(entry.headers)
-                    .map(
-                        ([key, value]) =>
-                            `<div class="header"><strong>${escapeHtml(
-                                key
-                            )}:</strong> ${escapeHtml(String(value))}</div>`
-                    )
-                    .join('')
-                : '';
-            return `<div class="log-entry">
-            <span class="method">${entry.method}</span>
-            <span class="url">${escapeHtml(entry.url)}</span>
-            ${headersDisplay ? `<div class="headers">${headersDisplay}</div>` : ''}
-            ${bodyDisplay ? `<pre class="body">${bodyDisplay}</pre>` : ''}
-            <span class="timestamp">${entry.timestamp}</span>
-        </div>`;
-        })
-        .join('\n');
-
+// Render the unified control box + live traffic log for a session.
+// `hubServerUrl`/`hubUrl` prefill the server/hub override field with this
+// harness's own defaults; the Discover action overwrites it client-side.
+function renderPage(sessionId, wsUrl) {
     return `<!DOCTYPE html>
 <html>
 <head>
     <title>rssCloud Test Client</title>
+    <link href="/css/style.css" rel="stylesheet" />
     <style>
-        body {
-            font-family: monospace;
-            max-width: 900px;
-            margin: 20px auto;
-            padding: 0 20px;
+        /* Client-specific additions layered on the shared server stylesheet. */
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            background: white;
         }
-        h1 { margin-bottom: 20px; }
         .controls {
-            background: #f5f5f5;
-            padding: 15px;
+            background: #f8f9fa;
+            padding: 20px;
             border-radius: 5px;
-            margin-bottom: 20px;
+            margin: 20px 0;
         }
-        .controls form {
+        .controls fieldset {
+            border: none;
+            padding: 0;
+            margin: 0 0 20px;
+        }
+        .controls fieldset:last-of-type {
+            margin-bottom: 0;
+        }
+        .controls legend {
+            font-weight: bold;
+            color: #2c3e50;
+            padding: 0;
+            margin-bottom: 10px;
+        }
+        .form-row {
             display: flex;
-            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .form-row > label {
+            flex: 1;
+            min-width: 220px;
+        }
+        .input-with-button {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .input-with-button input {
+            flex: 1;
+            margin-bottom: 0;
+        }
+        .actions {
+            display: flex;
             gap: 10px;
             flex-wrap: wrap;
         }
-        .controls label {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .controls input[type="text"] {
-            padding: 8px;
-            font-family: monospace;
-            width: 200px;
-        }
-        .controls button {
-            padding: 8px 16px;
-            cursor: pointer;
-            font-family: monospace;
-        }
-        .log-container {
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-        .log-entry {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-        }
-        .log-entry:last-child {
-            border-bottom: none;
-        }
-        .method {
-            display: inline-block;
-            width: 50px;
-            font-weight: bold;
-            color: #0066cc;
-        }
-        .url {
-            color: #333;
-        }
-        .body {
-            margin: 5px 0 5px 55px;
-            padding: 5px;
-            background: #f9f9f9;
-            font-size: 12px;
-            overflow-x: auto;
-        }
-        .timestamp {
-            display: block;
-            margin-left: 55px;
-            color: #999;
-            font-size: 11px;
-        }
-        .empty-log {
-            padding: 20px;
-            text-align: center;
-            color: #999;
-        }
-        .result {
-            margin-top: 10px;
-            padding: 10px;
-            border-radius: 5px;
-        }
-        .result.success { background: #d4edda; }
-        .result.error { background: #f8d7da; }
-        .headers {
-            margin: 5px 0 5px 55px;
-            font-size: 11px;
-            color: #555;
-        }
-        .header { word-break: break-all; }
-        .controls h3 {
-            margin: 0 0 10px;
-            font-size: 13px;
-            color: #666;
-        }
-        .controls + .controls { margin-top: -10px; }
     </style>
 </head>
-<body>
+<body data-session-id="${escapeHtml(sessionId)}">
     <h1>rssCloud Test Client</h1>
 
     <div class="controls">
-        <h3>rssCloud</h3>
-        <form method="POST" id="actionForm">
-            <label>
-                <input type="checkbox" name="xmlrpc" id="xmlrpc">
-                XML-RPC
+        <fieldset>
+            <legend>Target</legend>
+            <div class="form-row">
+                <label for="protocol">
+                    Protocol
+                    <select id="protocol">
+                        <option value="rsscloud-rest">rssCloud REST</option>
+                        <option value="rsscloud-xml-rpc">rssCloud XML-RPC</option>
+                        <option value="websub">WebSub</option>
+                    </select>
+                </label>
+                <label for="serverOverride">
+                    Server/hub override
+                    <input type="text" id="serverOverride" placeholder="${escapeHtml(config.hubServerUrl)}">
+                </label>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Feed</legend>
+            <label for="feedUrl">
+                Feed URL (external — leave blank to use this harness's own test feed)
             </label>
-            <input type="text" name="feedName" id="feedName" value="rss-01.xml" placeholder="Feed name">
-            <button type="submit" formaction="/subscribe">Subscribe</button>
-            <button type="submit" formaction="/ping-feed">Ping</button>
-        </form>
+            <div class="input-with-button">
+                <input type="text" id="feedUrl" placeholder="https://example.com/feed.xml">
+                <button type="button" id="discoverButton">Discover</button>
+            </div>
+            <label for="feedName">
+                Feed name (own test feed)
+                <input type="text" id="feedName" value="rss-01.xml">
+            </label>
+        </fieldset>
+
+        <fieldset class="websub-only">
+            <legend>WebSub options</legend>
+            <div class="form-row">
+                <label for="leaseSeconds">
+                    lease_seconds
+                    <input type="text" id="leaseSeconds" placeholder="optional">
+                </label>
+                <label for="secret">
+                    secret
+                    <input type="text" id="secret" placeholder="optional">
+                </label>
+            </div>
+        </fieldset>
+
+        <div class="actions">
+            <button type="button" id="subscribeButton">Subscribe</button>
+            <button type="button" id="unsubscribeButton" class="websub-only">Unsubscribe</button>
+            <button type="button" id="pingButton" class="rsscloud-only">Ping</button>
+            <button type="button" id="publishButton" class="websub-only">Publish</button>
+        </div>
     </div>
 
-    <div class="controls">
-        <h3>WebSub</h3>
-        <form method="POST" id="websubForm">
-            <input type="text" name="feedName" value="rss-01.xml" placeholder="Feed name">
-            <input type="text" name="leaseSeconds" placeholder="lease_seconds (optional)">
-            <input type="text" name="secret" placeholder="secret (optional)">
-            <button type="submit" formaction="/websub-subscribe">Subscribe</button>
-            <button type="submit" formaction="/websub-unsubscribe">Unsubscribe</button>
-            <button type="submit" formaction="/websub-publish">Publish</button>
-        </form>
+    <h2>Traffic Log</h2>
+    <p class="feed-url">Log stream: <code>${escapeHtml(wsUrl)}</code></p>
+    <script type="module">
+        import 'https://esm.sh/@andrewshell/socklog';
+        const viewer = document.getElementById('viewer');
+        const controls = document.getElementById('controls');
+        controls.store = viewer.getStore();
+    </script>
+    <div class="log-panel">
+        <socklog-controls id="controls"></socklog-controls>
+        <socklog-viewer id="viewer" url="${escapeHtml(wsUrl)}"></socklog-viewer>
     </div>
 
-    <h2>Incoming Requests</h2>
-    <div class="log-container">
-        ${logHtml || '<div class="empty-log">No requests logged yet. Subscribe to a feed and ping it to see activity.</div>'}
-    </div>
-
-    <p style="margin-top: 20px; color: #666;">
-        Refresh page to see new requests. Server: ${clientConfig.rsscloudServer}
-    </p>
+    <script type="module" src="/app.js"></script>
 </body>
 </html>`;
 }
 
-// Route: Home page with UI
-app.get('/', (req, res) => {
-    res.type('html').send(generateHtmlPage());
-});
+// Build the Express app. `fetch` is injected into the rssCloud/WebSub clients
+// (defaults to the global fetch); `sessionStore` defaults to a fresh
+// in-memory store (defaults let tests inject fakes without touching real
+// process state).
+function createApp({
+    fetch = createGuardedFetch({
+        allowCidrs: config.clientFetchAllowCidrs,
+        timeoutMs: config.requestTimeout
+    }),
+    sessionStore = createSessionStore(),
+    sessionCallbackIdleMs = config.sessionCallbackIdleMs
+} = {}) {
+    const { attach, broadcast } = createSessionSockets({ sessionStore });
 
-// Route: Subscribe to feed notifications
-app.post('/subscribe', urlencodedParser, async(req, res) => {
-    const feedName = req.body.feedName || 'rss-01.xml';
-    const useXmlRpc = req.body.xmlrpc === 'on';
-    const feedUrl = `http://${clientConfig.domain}:${clientConfig.port}/${feedName}`;
-
-    try {
-        const { status, body } = await client.pleaseNotify({
-            protocol: useXmlRpc ? 'xml-rpc' : 'http-post',
-            callback: {
-                domain: clientConfig.domain,
-                port: clientConfig.port,
-                path: useXmlRpc ? '/RPC2' : '/notify'
-            },
-            feedUrl
-        });
-
-        res.type('html').send(`
-            <!DOCTYPE html>
-            <html>
-            <head><title>Subscribe Result</title></head>
-            <body style="font-family: monospace; padding: 20px;">
-                <h2>Subscribe Result</h2>
-                <p><strong>Feed:</strong> ${escapeHtml(feedUrl)}</p>
-                <p><strong>Protocol:</strong> ${useXmlRpc ? 'XML-RPC' : 'REST'}</p>
-                <p><strong>Status:</strong> ${status}</p>
-                <pre style="background: #f5f5f5; padding: 10px; overflow: auto;">${escapeHtml(body)}</pre>
-                <p><a href="/">Back to client</a></p>
-            </body>
-            </html>
-        `);
-    } catch (error) {
-        res.type('html').send(`
-            <!DOCTYPE html>
-            <html>
-            <head><title>Subscribe Error</title></head>
-            <body style="font-family: monospace; padding: 20px;">
-                <h2>Subscribe Error</h2>
-                <p style="color: red;">${escapeHtml(error.message)}</p>
-                <p><a href="/">Back to client</a></p>
-            </body>
-            </html>
-        `);
-    }
-});
-
-// Route: Ping feed (add item and notify)
-app.post('/ping-feed', urlencodedParser, async(req, res) => {
-    const feedName = req.body.feedName || 'rss-01.xml';
-    const useXmlRpc = req.body.xmlrpc === 'on';
-    const feedUrl = `http://${clientConfig.domain}:${clientConfig.port}/${feedName}`;
-
-    // Initialize feed if not exists
-    if (!feedItems[feedName]) {
-        feedItems[feedName] = [{ title: 'initialized', timestamp: new Date() }];
+    // UI/action routes create a session on demand.
+    function ensureSession(req, res, next) {
+        req.session = sessionStore.getOrCreate(req.params.sessionId);
+        next();
     }
 
-    // Add new item with timestamp
-    const now = new Date();
-    feedItems[feedName].unshift({
-        title: `Update at ${now.toISOString()}`,
-        timestamp: now
+    // Machine-to-machine callback/feed routes never create a session, and go
+    // dark (404) once it's idle past sessionCallbackIdleMs — a hub that never
+    // stops probing a long-abandoned subscription shouldn't get a response.
+    // A connected socklog socket overrides this (see session-store.js's
+    // isIdle) — a tab left open overnight watching an external feed is
+    // itself a sign of active use, not abandonment.
+    function requireLiveSession(req, res, next) {
+        if (sessionStore.isIdle(req.params.sessionId, sessionCallbackIdleMs)) {
+            res.status(404).send('Not found');
+            return;
+        }
+        next();
+    }
+
+    const app = express();
+
+    morgan.format('mydate', () => {
+        return new Date()
+            .toLocaleTimeString('en-US', {
+                hour12: false,
+                fractionalSecondDigits: 3
+            })
+            .replace(/:/g, ':');
     });
 
-    try {
-        const { status, body } = await client.ping({
-            feedUrl,
-            transport: useXmlRpc ? 'xml-rpc' : 'rest'
-        });
+    app.use(
+        morgan(
+            '[:mydate] :method :url :status :res[content-length] - :remote-addr - :response-time ms'
+        )
+    );
 
-        res.type('html').send(`
-            <!DOCTYPE html>
-            <html>
-            <head><title>Ping Result</title></head>
-            <body style="font-family: monospace; padding: 20px;">
-                <h2>Ping Result</h2>
-                <p><strong>Feed:</strong> ${escapeHtml(feedUrl)}</p>
-                <p><strong>Protocol:</strong> ${useXmlRpc ? 'XML-RPC' : 'REST'}</p>
-                <p><strong>Items in feed:</strong> ${feedItems[feedName].length}</p>
-                <p><strong>Status:</strong> ${status}</p>
-                <pre style="background: #f5f5f5; padding: 10px; overflow: auto;">${escapeHtml(body)}</pre>
-                <p><a href="/">Back to client</a></p>
-            </body>
-            </html>
-        `);
-    } catch (error) {
-        res.type('html').send(`
-            <!DOCTYPE html>
-            <html>
-            <head><title>Ping Error</title></head>
-            <body style="font-family: monospace; padding: 20px;">
-                <h2>Ping Error</h2>
-                <p style="color: red;">${escapeHtml(error.message)}</p>
-                <p><a href="/">Back to client</a></p>
-            </body>
-            </html>
-        `);
-    }
-});
+    // Handle static files in public directory
+    app.use(
+        express.static('public', {
+            dotfiles: 'ignore',
+            maxAge: '1d'
+        })
+    );
 
-// Render a simple result/error page for a WebSub UI action.
-function webSubResultPage(action, feedUrl, status, body) {
-    return `
-        <!DOCTYPE html>
-        <html>
-        <head><title>WebSub ${action} Result</title></head>
-        <body style="font-family: monospace; padding: 20px;">
-            <h2>WebSub ${action} Result</h2>
-            <p><strong>Topic:</strong> ${escapeHtml(feedUrl)}</p>
-            <p><strong>Status:</strong> ${status} ${status === 202 ? '(accepted — verification/fan-out is async)' : ''}</p>
-            ${body ? `<pre style="background: #f5f5f5; padding: 10px; overflow: auto;">${escapeHtml(body)}</pre>` : ''}
-            <p><a href="/">Back to client</a></p>
-        </body>
-        </html>
-    `;
-}
-
-function webSubErrorPage(action, error) {
-    return `
-        <!DOCTYPE html>
-        <html>
-        <head><title>WebSub ${action} Error</title></head>
-        <body style="font-family: monospace; padding: 20px;">
-            <h2>WebSub ${action} Error</h2>
-            <p style="color: red;">${escapeHtml(error.message)}</p>
-            <p><a href="/">Back to client</a></p>
-        </body>
-        </html>
-    `;
-}
-
-// Parse an optional positive-integer lease from the form, else undefined.
-function parseLease(value) {
-    const seconds = parseInt(value, 10);
-    return Number.isInteger(seconds) && seconds > 0 ? seconds : undefined;
-}
-
-// Route: WebSub subscribe (hub.mode=subscribe)
-app.post('/websub-subscribe', urlencodedParser, async(req, res) => {
-    const feedName = req.body.feedName || 'rss-01.xml';
-    const feedUrl = `http://${clientConfig.domain}:${clientConfig.port}/${feedName}`;
-    const secret = req.body.secret || undefined;
-
-    // Remember the secret so the callback can verify the delivery signature.
-    if (secret) {
-        webSubSecrets[feedUrl] = secret;
-    } else {
-        delete webSubSecrets[feedUrl];
-    }
-
-    try {
-        const { status, body } = await webSubClient.subscribe({
-            callbackUrl: webSubCallbackUrl(),
-            topicUrl: feedUrl,
-            leaseSeconds: parseLease(req.body.leaseSeconds),
-            secret
-        });
-        res.type('html').send(
-            webSubResultPage('Subscribe', feedUrl, status, body)
-        );
-    } catch (error) {
-        res.type('html').send(webSubErrorPage('Subscribe', error));
-    }
-});
-
-// Route: WebSub unsubscribe (hub.mode=unsubscribe)
-app.post('/websub-unsubscribe', urlencodedParser, async(req, res) => {
-    const feedName = req.body.feedName || 'rss-01.xml';
-    const feedUrl = `http://${clientConfig.domain}:${clientConfig.port}/${feedName}`;
-    delete webSubSecrets[feedUrl];
-
-    try {
-        const { status, body } = await webSubClient.unsubscribe({
-            callbackUrl: webSubCallbackUrl(),
-            topicUrl: feedUrl
-        });
-        res.type('html').send(
-            webSubResultPage('Unsubscribe', feedUrl, status, body)
-        );
-    } catch (error) {
-        res.type('html').send(webSubErrorPage('Unsubscribe', error));
-    }
-});
-
-// Route: WebSub publish (hub.mode=publish) — mutate the feed, then notify the
-// hub so it re-fetches and fans the change out to subscribers.
-app.post('/websub-publish', urlencodedParser, async(req, res) => {
-    const feedName = req.body.feedName || 'rss-01.xml';
-    const feedUrl = `http://${clientConfig.domain}:${clientConfig.port}/${feedName}`;
-
-    if (!feedItems[feedName]) {
-        feedItems[feedName] = [{ title: 'initialized', timestamp: new Date() }];
-    }
-    const now = new Date();
-    feedItems[feedName].unshift({
-        title: `Update at ${now.toISOString()}`,
-        timestamp: now
+    // Route: mint a session id and hand the browser off to it.
+    app.get('/', (req, res) => {
+        res.redirect(302, `/s/${crypto.randomUUID()}`);
     });
 
-    try {
-        const { status, body } = await webSubClient.publish({
-            topicUrl: feedUrl
-        });
-        res.type('html').send(
-            webSubResultPage('Publish', feedUrl, status, body)
-        );
-    } catch (error) {
-        res.type('html').send(webSubErrorPage('Publish', error));
-    }
-});
+    const sessionRouter = express.Router({ mergeParams: true });
 
-// Route: WebSub intent verification — the hub GETs the callback with a
-// hub.challenge the subscriber must echo verbatim to confirm the subscription.
-app.get(WEBSUB_CALLBACK_PATH, (req, res) => {
-    const verification = readVerification(req.query);
-    if (verification) {
-        res.send(verification.challenge);
-        return;
-    }
-    res.status(404).send('Not a WebSub verification');
-});
-
-// Route: WebSub content distribution — the hub POSTs the full feed body here.
-// The request-logging middleware records the body, the hub/self Link header, and
-// the signature verdict; we just acknowledge with a 2xx.
-app.post(WEBSUB_CALLBACK_PATH, rawTextParser, (req, res) => {
-    res.status(204).end();
-});
-
-// Route: Handle challenge verification for http-post subscriptions
-app.get('/notify', (req, res) => {
-    const challenge = req.query.challenge || '';
-    res.send(challenge);
-});
-
-// Route: Handle HTTP-POST notifications
-app.post('/notify', urlencodedParser, (req, res) => {
-    // Body is already logged by middleware
-    res.send('');
-});
-
-// Route: Handle XML-RPC notifications
-app.post('/RPC2', textParser, (req, res) => {
-    // Body is already logged by middleware; acknowledge with the boolean reply.
-    res.type('text/xml').send(buildNotifyResponse());
-});
-
-// Route: Serve RSS feeds (must be after specific routes)
-app.get('/:feedName', (req, res) => {
-    const feedName = req.params.feedName;
-
-    // Only serve .xml files as RSS feeds
-    if (!feedName.endsWith('.xml')) {
-        res.status(404).send('Not found');
-        return;
-    }
-
-    const items = feedItems[feedName] || [
-        { title: 'initialized', timestamp: new Date() }
-    ];
-    const feedUrl = `http://${clientConfig.domain}:${clientConfig.port}/${feedName}`;
-
-    const rssXml = renderCloudFeed({
-        title: `Test Feed: ${feedName}`,
-        link: feedUrl,
-        description: 'Test feed for rssCloud',
-        cloud: {
-            domain: 'localhost',
-            port: 5337,
-            path: '/RPC2',
-            registerProcedure: 'rssCloud.pleaseNotify',
-            protocol: 'xml-rpc'
-        },
-        hub: clientConfig.hubUrl,
-        items: items.map((item, index) => ({
-            title: item.title,
-            description: `Feed item: ${item.title}`,
-            pubDate: item.timestamp,
-            guid: `${feedName}-${index}`
-        }))
+    // Attach this request's session state, if it exists — never creates one
+    // (ensureSession does that for UI/action routes). May leave req.session
+    // undefined for a callback/feed route on an unknown id; requireLiveSession
+    // gates those routes before their handler or the logging middleware below
+    // ever reads it.
+    sessionRouter.use((req, res, next) => {
+        req.session = sessionStore.get(req.params.sessionId);
+        next();
     });
-    res.type('application/rss+xml').send(rssXml);
-});
 
-server = app
-    .listen(clientConfig.port, () => {
-        const host = clientConfig.domain,
-            port = server.address().port;
+    // Request logging middleware - captures all incoming requests
+    sessionRouter.use((req, res, next) => {
+        res.on('finish', () => {
+            // No session (unknown/idle id on a callback route, already 404'd
+            // by requireLiveSession) — nothing to log against.
+            if (!req.session) {
+                return;
+            }
+            // Don't log client UI requests to keep log clean
+            if (req.path === '/' && req.method === 'GET') {
+                return;
+            }
+            // The browser's own action-trigger POSTs are outbound; the real
+            // hub-bound request/response they cause is already logged
+            // explicitly (with direction: 'outgoing') by the handler itself.
+            if (req.path.startsWith('/actions/')) {
+                return;
+            }
+            if (req.path.startsWith('/.well-known/')) {
+                return;
+            }
 
-        console.log(`Listening at http://${host}:${port}`);
-    })
-    .on('error', error => {
-        switch (error.code) {
-        case 'EADDRINUSE':
-            console.log(
-                `Error: Port ${clientConfig.port} is already in use.`
-            );
-            break;
-        default:
-            console.log(error.code);
+            // Surface the WebSub delivery headers so the hub/self links and
+            // the signature (with our verdict) are visible in the log.
+            const headers = {};
+            if (req.headers.link) {
+                headers.Link = req.headers.link;
+            }
+            if (req.headers['x-hub-signature']) {
+                const topic = selfLink(req.headers.link);
+                headers['X-Hub-Signature'] =
+                    `${req.headers['x-hub-signature']} (${checkSignature(
+                        req.session,
+                        topic,
+                        req.headers['x-hub-signature'],
+                        req.body
+                    )})`;
+            }
+
+            broadcast(req.params.sessionId, {
+                id: crypto.randomUUID(),
+                direction: 'incoming',
+                timestamp: new Date().toISOString(),
+                method: req.method,
+                url: req.originalUrl,
+                headers: Object.keys(headers).length ? headers : null,
+                body: req.body || null
+            });
+        });
+
+        next();
+    });
+
+    // Route: Home page with UI
+    sessionRouter.get('/', ensureSession, (req, res) => {
+        const wsProtocol = req.protocol === 'https' ? 'wss' : 'ws';
+        const wsUrl = `${wsProtocol}://${req.get('host')}/s/${req.params.sessionId}/logs`;
+        res.type('html').send(renderPage(req.params.sessionId, wsUrl));
+    });
+
+    // Route: parse an arbitrary feed URL for rssCloud/WebSub support. Feeds
+    // this outbound fetch through the same SSRF-guarded fetch as every other
+    // action, since the URL is user-supplied.
+    sessionRouter.post('/actions/discover', ensureSession, jsonParser, async(req, res) => {
+        const sessionId = req.params.sessionId;
+        const { feedUrl } = req.body;
+        const logId = crypto.randomUUID();
+
+        broadcast(sessionId, {
+            id: logId,
+            direction: 'outgoing',
+            phase: 'request',
+            timestamp: new Date().toISOString(),
+            method: 'GET',
+            url: feedUrl,
+            body: { action: 'discover', feedUrl }
+        });
+
+        try {
+            const result = await discoverFeed({ url: feedUrl, fetch });
+            broadcast(sessionId, {
+                id: logId,
+                direction: 'outgoing',
+                phase: 'response',
+                timestamp: new Date().toISOString(),
+                body: result
+            });
+            res.json(result);
+        } catch (error) {
+            broadcast(sessionId, {
+                id: logId,
+                direction: 'outgoing',
+                phase: 'response',
+                timestamp: new Date().toISOString(),
+                error: error.message
+            });
+            res.json({ rssCloud: null, webSub: null, error: error.message });
         }
     });
+
+    // Route: unified Subscribe action — branches by the selected protocol.
+    // `server` optionally overrides the target: for rssCloud this is the hub
+    // origin (pleaseNotify/RPC2 base); for WebSub it's the full hub front-door
+    // URL (path defaults to '' so it isn't double-appended).
+    sessionRouter.post('/actions/subscribe', ensureSession, jsonParser, async(req, res) => {
+        const sessionId = req.params.sessionId;
+        const { protocol, server: serverOverride, leaseSeconds, secret } =
+            req.body;
+        const feedUrl = resolveFeedUrl(sessionId, req.body);
+        const logId = crypto.randomUUID();
+
+        async function logAndRespond(action, targetUrl, requestBody, call) {
+            broadcast(sessionId, {
+                id: logId,
+                direction: 'outgoing',
+                phase: 'request',
+                timestamp: new Date().toISOString(),
+                method: 'POST',
+                url: targetUrl,
+                body: { action, ...requestBody }
+            });
+            try {
+                const result = await call();
+                broadcast(sessionId, {
+                    id: logId,
+                    direction: 'outgoing',
+                    phase: 'response',
+                    timestamp: new Date().toISOString(),
+                    ...result
+                });
+                res.json(result);
+            } catch (error) {
+                broadcast(sessionId, {
+                    id: logId,
+                    direction: 'outgoing',
+                    phase: 'response',
+                    timestamp: new Date().toISOString(),
+                    error: error.message
+                });
+                res.json({ error: error.message });
+            }
+        }
+
+        if (protocol === 'websub') {
+            const hub = createWebSubClient({
+                serverUrl: serverOverride || config.hubServerUrl,
+                path: serverOverride ? '' : undefined,
+                fetch
+            });
+            await logAndRespond(
+                'websub-subscribe',
+                serverOverride || hubUrl,
+                { topicUrl: feedUrl, leaseSeconds, secret },
+                () => {
+                    if (secret) {
+                        req.session.webSubSecrets[feedUrl] = secret;
+                    } else {
+                        delete req.session.webSubSecrets[feedUrl];
+                    }
+                    return hub.subscribe({
+                        callbackUrl: webSubCallbackUrl(sessionId),
+                        topicUrl: feedUrl,
+                        leaseSeconds,
+                        secret
+                    });
+                }
+            );
+            return;
+        }
+
+        const useXmlRpc = protocol === 'rsscloud-xml-rpc';
+        const rssCloudClient = createRssCloudClient({
+            serverUrl: serverOverride || config.hubServerUrl,
+            fetch
+        });
+        const subscribeParams = {
+            protocol: useXmlRpc ? 'xml-rpc' : 'http-post',
+            callback: {
+                domain: config.domain,
+                port: config.port,
+                path: useXmlRpc
+                    ? `/s/${sessionId}/RPC2`
+                    : `/s/${sessionId}/notify`
+            },
+            feedUrl
+        };
+        await logAndRespond(
+            'pleaseNotify',
+            serverOverride || config.hubServerUrl,
+            subscribeParams,
+            () => rssCloudClient.pleaseNotify(subscribeParams)
+        );
+    });
+
+    // Route: unified Unsubscribe action (WebSub only).
+    sessionRouter.post('/actions/unsubscribe', ensureSession, jsonParser, async(req, res) => {
+        const sessionId = req.params.sessionId;
+        const { server: serverOverride } = req.body;
+        const feedUrl = resolveFeedUrl(sessionId, req.body);
+        const logId = crypto.randomUUID();
+
+        delete req.session.webSubSecrets[feedUrl];
+
+        const hub = createWebSubClient({
+            serverUrl: serverOverride || config.hubServerUrl,
+            path: serverOverride ? '' : undefined,
+            fetch
+        });
+
+        broadcast(sessionId, {
+            id: logId,
+            direction: 'outgoing',
+            phase: 'request',
+            timestamp: new Date().toISOString(),
+            method: 'POST',
+            url: serverOverride || hubUrl,
+            body: { action: 'websub-unsubscribe', topicUrl: feedUrl }
+        });
+
+        try {
+            const result = await hub.unsubscribe({
+                callbackUrl: webSubCallbackUrl(sessionId),
+                topicUrl: feedUrl
+            });
+            broadcast(sessionId, {
+                id: logId,
+                direction: 'outgoing',
+                phase: 'response',
+                timestamp: new Date().toISOString(),
+                ...result
+            });
+            res.json(result);
+        } catch (error) {
+            broadcast(sessionId, {
+                id: logId,
+                direction: 'outgoing',
+                phase: 'response',
+                timestamp: new Date().toISOString(),
+                error: error.message
+            });
+            res.json({ error: error.message });
+        }
+    });
+
+    // Route: unified Publish action (WebSub only). Deliberately accepts only
+    // `feedName` — see the comment on /actions/ping for why.
+    sessionRouter.post('/actions/publish', ensureSession, jsonParser, async(req, res) => {
+        const sessionId = req.params.sessionId;
+        const { feedName = 'rss-01.xml', server: serverOverride } = req.body;
+        const feedUrl = `http://${config.domain}:${config.port}/s/${sessionId}/${feedName}`;
+        const logId = crypto.randomUUID();
+
+        if (!req.session.feedItems[feedName]) {
+            req.session.feedItems[feedName] = [
+                { title: 'initialized', timestamp: new Date() }
+            ];
+        }
+        const now = new Date();
+        req.session.feedItems[feedName].unshift({
+            title: `Update at ${now.toISOString()}`,
+            timestamp: now
+        });
+
+        const hub = createWebSubClient({
+            serverUrl: serverOverride || config.hubServerUrl,
+            path: serverOverride ? '' : undefined,
+            fetch
+        });
+
+        broadcast(sessionId, {
+            id: logId,
+            direction: 'outgoing',
+            phase: 'request',
+            timestamp: new Date().toISOString(),
+            method: 'POST',
+            url: serverOverride || hubUrl,
+            body: { action: 'websub-publish', topicUrl: feedUrl }
+        });
+
+        try {
+            const result = await hub.publish({ topicUrl: feedUrl });
+            broadcast(sessionId, {
+                id: logId,
+                direction: 'outgoing',
+                phase: 'response',
+                timestamp: new Date().toISOString(),
+                ...result
+            });
+            res.json(result);
+        } catch (error) {
+            broadcast(sessionId, {
+                id: logId,
+                direction: 'outgoing',
+                phase: 'response',
+                timestamp: new Date().toISOString(),
+                error: error.message
+            });
+            res.json({ error: error.message });
+        }
+    });
+
+    // Route: unified Ping action. Deliberately accepts only `feedName` (never
+    // an arbitrary feedUrl) — this session can only ever ping/publish a feed
+    // it itself serves, never someone else's; that's the actual enforcement
+    // point for "don't ping/publish someone else's feed" (the UI hiding
+    // these controls in subscriber mode is a client-side mirror of this).
+    sessionRouter.post('/actions/ping', ensureSession, jsonParser, async(req, res) => {
+        const sessionId = req.params.sessionId;
+        const { protocol, feedName = 'rss-01.xml', server: serverOverride } =
+            req.body;
+        const feedUrl = `http://${config.domain}:${config.port}/s/${sessionId}/${feedName}`;
+        const logId = crypto.randomUUID();
+
+        if (!req.session.feedItems[feedName]) {
+            req.session.feedItems[feedName] = [
+                { title: 'initialized', timestamp: new Date() }
+            ];
+        }
+        const now = new Date();
+        req.session.feedItems[feedName].unshift({
+            title: `Update at ${now.toISOString()}`,
+            timestamp: now
+        });
+
+        const rssCloudClient = createRssCloudClient({
+            serverUrl: serverOverride || config.hubServerUrl,
+            fetch
+        });
+        const pingParams = {
+            feedUrl,
+            transport: protocol === 'rsscloud-xml-rpc' ? 'xml-rpc' : 'rest'
+        };
+
+        broadcast(sessionId, {
+            id: logId,
+            direction: 'outgoing',
+            phase: 'request',
+            timestamp: new Date().toISOString(),
+            method: 'POST',
+            url: serverOverride || config.hubServerUrl,
+            body: { action: 'ping', ...pingParams }
+        });
+
+        try {
+            const result = await rssCloudClient.ping(pingParams);
+            broadcast(sessionId, {
+                id: logId,
+                direction: 'outgoing',
+                phase: 'response',
+                timestamp: new Date().toISOString(),
+                ...result
+            });
+            res.json(result);
+        } catch (error) {
+            broadcast(sessionId, {
+                id: logId,
+                direction: 'outgoing',
+                phase: 'response',
+                timestamp: new Date().toISOString(),
+                error: error.message
+            });
+            res.json({ error: error.message });
+        }
+    });
+
+    // Route: WebSub intent verification — the hub GETs the callback with a
+    // hub.challenge the subscriber must echo verbatim to confirm the subscription.
+    sessionRouter.get('/websub-callback', requireLiveSession, (req, res) => {
+        const verification = readVerification(req.query);
+        if (verification) {
+            res.send(verification.challenge);
+            return;
+        }
+        res.status(404).send('Not a WebSub verification');
+    });
+
+    // Route: WebSub content distribution — the hub POSTs the full feed body
+    // here. The request-logging middleware records the body, the hub/self
+    // Link header, and the signature verdict; we just acknowledge with a 2xx.
+    sessionRouter.post('/websub-callback', requireLiveSession, rawTextParser, (req, res) => {
+        res.status(204).end();
+    });
+
+    // Route: Handle challenge verification for http-post subscriptions
+    sessionRouter.get('/notify', requireLiveSession, (req, res) => {
+        const challenge = req.query.challenge || '';
+        res.send(challenge);
+    });
+
+    // Route: Handle HTTP-POST notifications
+    sessionRouter.post('/notify', requireLiveSession, urlencodedParser, (req, res) => {
+        // Body is already logged by middleware
+        res.send('');
+    });
+
+    // Route: Handle XML-RPC notifications
+    sessionRouter.post('/RPC2', requireLiveSession, textParser, (req, res) => {
+        // Body is already logged by middleware; acknowledge with the boolean reply.
+        res.type('text/xml').send(buildNotifyResponse());
+    });
+
+    // Route: Serve RSS feeds (must be after specific routes)
+    sessionRouter.get('/:feedName', requireLiveSession, (req, res) => {
+        const sessionId = req.params.sessionId;
+        const feedName = req.params.feedName;
+
+        // Only serve .xml files as RSS feeds
+        if (!feedName.endsWith('.xml')) {
+            res.status(404).send('Not found');
+            return;
+        }
+
+        const items = req.session.feedItems[feedName] || [
+            { title: 'initialized', timestamp: new Date() }
+        ];
+        const feedUrl = `http://${config.domain}:${config.port}/s/${sessionId}/${feedName}`;
+
+        const rssXml = renderCloudFeed({
+            title: `Test Feed: ${feedName}`,
+            link: feedUrl,
+            description: 'Test feed for rssCloud',
+            cloud: {
+                domain: 'localhost',
+                port: 5337,
+                path: '/RPC2',
+                registerProcedure: 'rssCloud.pleaseNotify',
+                protocol: 'xml-rpc'
+            },
+            hub: hubUrl,
+            items: items.map((item, index) => ({
+                title: item.title,
+                description: `Feed item: ${item.title}`,
+                pubDate: item.timestamp,
+                guid: `${feedName}-${index}`
+            }))
+        });
+        res.type('application/rss+xml').send(rssXml);
+    });
+
+    app.use('/s/:sessionId', sessionRouter);
+
+    app.locals.attachSessionSockets = attach;
+
+    return app;
+}
+
+module.exports = { createApp };
