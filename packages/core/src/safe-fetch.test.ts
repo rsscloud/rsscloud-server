@@ -361,4 +361,72 @@ describe('createSafeFetch timeout', () => {
         vi.advanceTimersByTime(5000);
         expect(signal?.aborted).toBe(false);
     });
+
+    it('propagates a caller-provided init signal alongside the timeout', () => {
+        vi.useFakeTimers();
+        let signal: AbortSignal | undefined;
+        const baseFetch = vi.fn((_input: unknown, init: RequestInit) => {
+            signal = init.signal as AbortSignal;
+            return new Promise<Response>(() => {});
+        });
+        const safeFetch = createSafeFetch({
+            baseFetch: baseFetch as unknown as typeof fetch,
+            agentFactory: () => ({}) as never,
+            lookup: () => {},
+            timeoutMs: 1000
+        });
+
+        const caller = new AbortController();
+        void safeFetch('https://feed.example/rss', { signal: caller.signal });
+
+        expect(signal?.aborted).toBe(false);
+        caller.abort();
+        expect(signal?.aborted).toBe(true);
+    });
+
+    it('propagates a Request input signal alongside the timeout', () => {
+        vi.useFakeTimers();
+        let signal: AbortSignal | undefined;
+        const baseFetch = vi.fn((_input: unknown, init: RequestInit) => {
+            signal = init.signal as AbortSignal;
+            return new Promise<Response>(() => {});
+        });
+        const safeFetch = createSafeFetch({
+            baseFetch: baseFetch as unknown as typeof fetch,
+            agentFactory: () => ({}) as never,
+            lookup: () => {},
+            timeoutMs: 1000
+        });
+
+        const caller = new AbortController();
+        void safeFetch(
+            new Request('https://feed.example/rss', { signal: caller.signal })
+        );
+
+        expect(signal?.aborted).toBe(false);
+        caller.abort();
+        expect(signal?.aborted).toBe(true);
+    });
+
+    it('still aborts on timeout when a caller signal is combined in', () => {
+        vi.useFakeTimers();
+        let signal: AbortSignal | undefined;
+        const baseFetch = vi.fn((_input: unknown, init: RequestInit) => {
+            signal = init.signal as AbortSignal;
+            return new Promise<Response>(() => {});
+        });
+        const safeFetch = createSafeFetch({
+            baseFetch: baseFetch as unknown as typeof fetch,
+            agentFactory: () => ({}) as never,
+            lookup: () => {},
+            timeoutMs: 1000
+        });
+
+        const caller = new AbortController();
+        void safeFetch('https://feed.example/rss', { signal: caller.signal });
+
+        expect(signal?.aborted).toBe(false);
+        vi.advanceTimersByTime(1000);
+        expect(signal?.aborted).toBe(true);
+    });
 });
