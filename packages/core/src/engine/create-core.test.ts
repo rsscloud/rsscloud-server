@@ -151,35 +151,6 @@ describe('createRssCloudCore ping', () => {
         });
     });
 
-    it('rejects when reading the resource times out', async () => {
-        vi.useFakeTimers();
-        const fetchMock = vi.fn(
-            (_url: string | URL, init?: RequestInit) =>
-                new Promise<Response>((_resolve, reject) => {
-                    init?.signal?.addEventListener('abort', () => {
-                        reject(
-                            Object.assign(new Error('aborted'), {
-                                name: 'AbortError'
-                            })
-                        );
-                    });
-                })
-        ) as unknown as typeof fetch;
-
-        const core = createRssCloudCore({
-            store: createInMemoryStore(),
-            plugins: [],
-            config: resolveConfig({ requestTimeoutMs: 50 }),
-            fetch: fetchMock
-        });
-
-        const assertion = expect(
-            core.ping({ resourceUrl: FEED })
-        ).rejects.toMatchObject({ code: 'RESOURCE_READ_FAILED' });
-        await vi.advanceTimersByTimeAsync(50);
-        await assertion;
-    });
-
     it('does not re-notify when the feed is unchanged', async () => {
         const store = createInMemoryStore();
         const core = createRssCloudCore({
@@ -826,7 +797,10 @@ describe('createRssCloudCore acceptUnsubscription', () => {
     it('does not verify or remove anything when no matching subscription exists', async () => {
         const store = createInMemoryStore();
         await store.putSubscriptions(FEED, [
-            subscription({ url: 'https://other.example/listener', protocol: 'websub' })
+            subscription({
+                url: 'https://other.example/listener',
+                protocol: 'websub'
+            })
         ]);
         const scheduler = captureScheduler();
         const verify = vi.fn(async () => undefined);
@@ -905,7 +879,10 @@ describe('createRssCloudCore acceptPublish', () => {
         const core = createRssCloudCore({
             store: createInMemoryStore(),
             plugins: [
-                deliverPlugin(vi.fn(async () => ({ ok: true })), ['websub'])
+                deliverPlugin(
+                    vi.fn(async () => ({ ok: true })),
+                    ['websub']
+                )
             ],
             config: resolveConfig(),
             fetch: fetchReturning('Not Found', 404),
@@ -922,7 +899,9 @@ describe('createRssCloudCore acceptPublish', () => {
 
     it('coerces a non-Error publish rejection into an Error on the error event', async () => {
         const base = createInMemoryStore();
-        await base.putSubscriptions(FEED, [subscription({ protocol: 'websub' })]);
+        await base.putSubscriptions(FEED, [
+            subscription({ protocol: 'websub' })
+        ]);
         // A misbehaving store that rejects the fan-out write with a non-Error.
         const store: Store = {
             ...base,
@@ -940,7 +919,10 @@ describe('createRssCloudCore acceptPublish', () => {
         const core = createRssCloudCore({
             store,
             plugins: [
-                deliverPlugin(vi.fn(async () => ({ ok: true })), ['websub'])
+                deliverPlugin(
+                    vi.fn(async () => ({ ok: true })),
+                    ['websub']
+                )
             ],
             config: resolveConfig(),
             fetch: fetchReturning(RSS),
@@ -1131,7 +1113,11 @@ describe('createRssCloudCore listFeeds', () => {
         const feeds = await core.listFeeds();
 
         expect(feeds).toEqual([
-            { feedUrl: FEED, resource: resource(), subscriptions: [subscription()] }
+            {
+                feedUrl: FEED,
+                resource: resource(),
+                subscriptions: [subscription()]
+            }
         ]);
     });
 });

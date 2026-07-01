@@ -185,41 +185,6 @@ describe('createRestProtocolPlugin deliver', () => {
         expect(result.ok).toBe(false);
         expect(result.error).toBeInstanceOf(Error);
     });
-
-    it('aborts and fails when the callback exceeds the timeout', async () => {
-        vi.useFakeTimers();
-        let abortedWith: unknown;
-        const fakeFetch = ((_url: string | URL, init?: RequestInit) =>
-            new Promise((_resolve, reject) => {
-                init?.signal?.addEventListener('abort', () => {
-                    abortedWith = init.signal?.reason;
-                    reject(
-                        Object.assign(new Error('aborted'), {
-                            name: 'AbortError'
-                        })
-                    );
-                });
-            })) as typeof fetch;
-
-        const plugin = createRestProtocolPlugin({
-            fetch: fakeFetch,
-            requestTimeoutMs: 50
-        });
-
-        const promise = plugin.deliver(
-            deliveryContext(
-                'https://subscriber.example/notify',
-                'https://feed.example/rss'
-            )
-        );
-
-        await vi.advanceTimersByTimeAsync(50);
-        const result = await promise;
-
-        expect(result.ok).toBe(false);
-        expect(result.error).toBeInstanceOf(Error);
-        expect(abortedWith).toBeDefined();
-    });
 });
 
 describe('createRestProtocolPlugin verify', () => {

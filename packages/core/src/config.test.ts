@@ -8,7 +8,6 @@ describe('resolveConfig', () => {
             ctSecsResourceExpire: 90000,
             maxConsecutiveErrors: 3,
             maxResourceSize: 256000,
-            requestTimeoutMs: 4000,
             feedsChangedWindowDays: 7,
             webSubLeaseDefaultSecs: 86400,
             webSubLeaseMinSecs: 300,
@@ -26,7 +25,7 @@ describe('resolveConfig', () => {
     it('overrides only the provided keys', () => {
         const resolved = resolveConfig({ maxConsecutiveErrors: 5 });
         expect(resolved.maxConsecutiveErrors).toBe(5);
-        expect(resolved.requestTimeoutMs).toBe(DEFAULT_CONFIG.requestTimeoutMs);
+        expect(resolved.maxResourceSize).toBe(DEFAULT_CONFIG.maxResourceSize);
     });
 
     it('preserves explicit zero values', () => {

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
     classifyBlockedAddress,
     createCidrAllowList,
@@ -123,9 +123,7 @@ describe('createSafeFetch', () => {
             baseFetch: baseFetch as unknown as typeof fetch
         });
 
-        await expect(safeFetch('file:///etc/passwd')).rejects.toThrow(
-            /http/i
-        );
+        await expect(safeFetch('file:///etc/passwd')).rejects.toThrow(/http/i);
         expect(baseFetch).not.toHaveBeenCalled();
     });
 
@@ -292,5 +290,75 @@ describe('createSafeFetch', () => {
         guardedConnector({ hostname: 'feed.example' }, cb);
 
         expect(base).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('createSafeFetch timeout', () => {
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('forwards the request to the base fetch under an abort signal when timeoutMs is set', async () => {
+        const response = new Response('ok');
+        let signal: AbortSignal | undefined;
+        const baseFetch = vi.fn(async (_input: unknown, init: RequestInit) => {
+            signal = init.signal as AbortSignal;
+            return response;
+        });
+        const safeFetch = createSafeFetch({
+            baseFetch: baseFetch as unknown as typeof fetch,
+            agentFactory: () => ({}) as never,
+            lookup: () => {},
+            timeoutMs: 1000
+        });
+
+        const res = await safeFetch('https://feed.example/rss', {
+            method: 'GET'
+        });
+
+        expect(res).toBe(response);
+        expect(signal).toBeInstanceOf(AbortSignal);
+        expect(signal?.aborted).toBe(false);
+    });
+
+    it('aborts the request once the timeout elapses', () => {
+        vi.useFakeTimers();
+        let signal: AbortSignal | undefined;
+        const baseFetch = vi.fn((_input: unknown, init: RequestInit) => {
+            signal = init.signal as AbortSignal;
+            return new Promise<Response>(() => {});
+        });
+        const safeFetch = createSafeFetch({
+            baseFetch: baseFetch as unknown as typeof fetch,
+            agentFactory: () => ({}) as never,
+            lookup: () => {},
+            timeoutMs: 1000
+        });
+
+        void safeFetch('https://feed.example/rss');
+
+        expect(signal?.aborted).toBe(false);
+        vi.advanceTimersByTime(1000);
+        expect(signal?.aborted).toBe(true);
+    });
+
+    it('clears the timer once settled, so a completed request is never aborted', async () => {
+        vi.useFakeTimers();
+        let signal: AbortSignal | undefined;
+        const baseFetch = vi.fn(async (_input: unknown, init: RequestInit) => {
+            signal = init.signal as AbortSignal;
+            return new Response('ok');
+        });
+        const safeFetch = createSafeFetch({
+            baseFetch: baseFetch as unknown as typeof fetch,
+            agentFactory: () => ({}) as never,
+            lookup: () => {},
+            timeoutMs: 1000
+        });
+
+        await safeFetch('https://feed.example/rss');
+
+        vi.advanceTimersByTime(5000);
+        expect(signal?.aborted).toBe(false);
     });
 });

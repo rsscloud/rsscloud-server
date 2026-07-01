@@ -52,18 +52,19 @@ module.exports = {
     webSubSignatureAlgo: getConfig('WEBSUB_SIGNATURE_ALGO', 'sha256'),
     // WebSub lease bounds (secs): the lease granted when hub.lease_seconds is
     // omitted, and the [min, max] a requested lease is clamped to.
-    webSubLeaseDefaultSecs: getNumericConfig('WEBSUB_LEASE_DEFAULT_SECS', 86400),
+    webSubLeaseDefaultSecs: getNumericConfig(
+        'WEBSUB_LEASE_DEFAULT_SECS',
+        86400
+    ),
     webSubLeaseMinSecs: getNumericConfig('WEBSUB_LEASE_MIN_SECS', 300),
     webSubLeaseMaxSecs: getNumericConfig('WEBSUB_LEASE_MAX_SECS', 864000),
-    // SSRF egress protection for outbound fetches (topic re-fetch, the WebSub
-    // verification GET, and content delivery). On by default; an outbound
-    // request whose host resolves to a non-public address (loopback, private,
-    // link-local / cloud-metadata, etc.) is refused. Set
-    // WEBSUB_SSRF_PROTECTION=off for local or containerised testing where
-    // targets are loopback/private.
-    webSubSsrfProtection: !['off', 'false', '0', 'no'].includes(
-        String(getConfig('WEBSUB_SSRF_PROTECTION', 'on')).toLowerCase()
-    ),
+    // SSRF egress protection guards every outbound fetch (topic re-fetch, the
+    // WebSub verification GET, and content delivery): a request whose host
+    // resolves to a non-public address (loopback, private, link-local /
+    // cloud-metadata, etc.) is refused. It is always on — the only exemptions are
+    // the allowlists below, so a loopback/private test setup adds the relevant
+    // range (e.g. 127.0.0.0/8) rather than disabling the guard.
+    //
     // CIDRs exempted from SSRF protection on the TOPIC-fetch path only — for a
     // hub that legitimately fetches feeds on a private LAN. Comma-separated,
     // e.g. "10.0.0.0/8,192.168.0.0/16". Deliberately does NOT apply to callback

@@ -10,7 +10,6 @@ import type {
 } from './dto.js';
 import { RssCloudError } from '../errors.js';
 import { createEventBus } from '../events.js';
-import { fetchWithTimeout } from '../fetch-with-timeout.js';
 import { createDefaultFeedParser } from '../feed/feed-parser.js';
 import {
     generateStats as runGenerateStats,
@@ -26,10 +25,7 @@ import type { Resource } from './resource.js';
 import type { Subscription } from './subscription.js';
 import { createInProcessVerificationScheduler } from './verification-scheduler.js';
 import type { FeedEntry, Store } from '../store/store.js';
-import type {
-    RssCloudCore,
-    RssCloudCoreOptions
-} from './core.js';
+import type { RssCloudCore, RssCloudCoreOptions } from './core.js';
 
 const EPOCH = new Date(0);
 
@@ -51,9 +47,7 @@ function isClosable(store: Store): store is Store & ClosableStore {
  * exposes the housekeeping jobs the host schedules; transports are supplied as
  * plugins and persistence as a {@link RssCloudCoreOptions.store}.
  */
-export function createRssCloudCore(
-    options: RssCloudCoreOptions
-): RssCloudCore {
+export function createRssCloudCore(options: RssCloudCoreOptions): RssCloudCore {
     const { plugins, config } = options;
     // Construction may be async (e.g. a file- or DB-backed store): normalize the
     // injected store to a resolve-once promise and front it with a Store facade
@@ -157,12 +151,9 @@ export function createRssCloudCore(
         let ok = false;
 
         try {
-            const res = await fetchWithTimeout(
-                doFetch,
-                config.requestTimeoutMs,
-                resourceUrl,
-                { method: 'GET' }
-            );
+            // The injected fetch carries its own outbound timeout (see the host's
+            // createSafeFetch wiring); the engine just issues the request.
+            const res = await doFetch(resourceUrl, { method: 'GET' });
             ok = res.ok;
             if (ok) {
                 body = await res.text();
@@ -513,8 +504,7 @@ export function createRssCloudCore(
         void ping(req).catch(error =>
             events.emit('error', {
                 scope: 'websub-publish',
-                error:
-                    error instanceof Error ? error : new Error(String(error))
+                error: error instanceof Error ? error : new Error(String(error))
             })
         );
     }
@@ -525,11 +515,7 @@ export function createRssCloudCore(
         for (const resourceUrl of req.resourceUrls) {
             const subscriptions = await store.getSubscriptions(resourceUrl);
             const remaining = subscriptions.filter(
-                s =>
-                    !(
-                        s.url === req.callbackUrl &&
-                        s.protocol === req.protocol
-                    )
+                s => !(s.url === req.callbackUrl && s.protocol === req.protocol)
             );
             if (remaining.length !== subscriptions.length) {
                 await store.putSubscriptions(resourceUrl, remaining);
@@ -550,10 +536,7 @@ export function createRssCloudCore(
         return store.list();
     }
 
-    function seedResource(
-        feedUrl: string,
-        resource: Resource
-    ): Promise<void> {
+    function seedResource(feedUrl: string, resource: Resource): Promise<void> {
         return store.putResource(feedUrl, resource);
     }
 

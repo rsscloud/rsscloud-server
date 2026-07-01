@@ -9,9 +9,9 @@ services:
       PORT: 5337
       NODE_TLS_REJECT_UNAUTHORIZED: 0
       ENABLE_TEST_API: "true"
-      # Keep SSRF egress protection ON so the suite exercises the guarded fetch,
-      # but exempt the Docker-network private ranges the mock servers live on so
-      # legitimate traffic to rsscloud-tests flows. Topic fetches and callback
+      # The SSRF egress guard is always on, so the suite exercises the guarded
+      # fetch; exempt the Docker-network private ranges the mock servers live on
+      # so legitimate traffic to rsscloud-tests flows. Topic fetches and callback
       # deliveries/verification GETs have separate allowlists; the mock serves
       # both, so set both here.
       WEBSUB_FETCH_ALLOW_CIDRS: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
