@@ -234,10 +234,19 @@ export function createSafeFetch(options: SafeFetchOptions = {}): typeof fetch {
         // the timer once it does so a completed request is never aborted.
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeoutMs);
+        // Preserve any caller abort signal (from init, or a Request input) by
+        // combining it with the timeout's, so an external cancellation still
+        // propagates instead of being clobbered by the timeout controller.
+        const callerSignal =
+            init?.signal ??
+            (input instanceof Request ? input.signal : undefined);
+        const signal = callerSignal
+            ? AbortSignal.any([callerSignal, controller.signal])
+            : controller.signal;
         const guardedInit = {
             ...init,
             dispatcher,
-            signal: controller.signal
+            signal
         } as unknown as FetchInit;
         return baseFetch(input, guardedInit).finally(() => clearTimeout(timer));
     };
