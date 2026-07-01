@@ -111,6 +111,46 @@ test('sweep does not evict a session that has a live socket, however long since 
     assert.equal(store.get(id), session);
 });
 
+const EIGHT_DAYS_MS = 8 * 24 * 60 * 60 * 1000;
+
+test('isIdle stops exempting a live-socket session once it exceeds the absolute max session age', () => {
+    let currentTime = 1000;
+    const store = createSessionStore({ now: () => currentTime });
+    const { id, session } = store.createSession();
+    session.sockets.add({});
+
+    currentTime = 1000 + EIGHT_DAYS_MS;
+
+    assert.equal(store.isIdle(id, 500), true);
+});
+
+test('isIdle still returns false past the absolute max session age given recent outgoing activity', () => {
+    let currentTime = 1000;
+    const store = createSessionStore({ now: () => currentTime });
+    const { id, session } = store.createSession();
+    session.sockets.add({});
+
+    currentTime = 1000 + EIGHT_DAYS_MS;
+    store.touchOutgoing(id);
+
+    assert.equal(store.isIdle(id, 500), false);
+});
+
+test('sweep evicts a long-lived socket-holding session once it exceeds the absolute max session age, terminating its socket', () => {
+    let currentTime = 1000;
+    const store = createSessionStore({ now: () => currentTime });
+    const { id, session } = store.createSession();
+    let terminated = false;
+    session.sockets.add({ terminate: () => { terminated = true; } });
+
+    currentTime = 1000 + EIGHT_DAYS_MS;
+    const evicted = store.sweep(500);
+
+    assert.equal(evicted, 1);
+    assert.equal(store.get(id), undefined);
+    assert.equal(terminated, true);
+});
+
 test('appendLog unshifts an entry into the session\'s requestLog, newest-first', () => {
     const store = createSessionStore({ now: () => 1000 });
     const { id, session } = store.createSession();
