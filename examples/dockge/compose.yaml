@@ -21,6 +21,8 @@ services:
     image: andrewshell/rsscloud-server:latest
     container_name: rsscloud-server
     restart: unless-stopped
+    networks:
+      - rsscloud-net
     ports:
       # host:container — change the host side if 5337 is taken; usually you'd
       # also front this with a reverse proxy terminating HTTPS.
@@ -59,6 +61,8 @@ services:
       dockerfile: apps/client/Dockerfile
     container_name: rsscloud-client
     restart: unless-stopped
+    networks:
+      - rsscloud-net
     depends_on:
       - rsscloud
     ports:
@@ -74,10 +78,21 @@ services:
       HUB_SERVER_URL: http://rsscloud:5337
       # SSRF egress protection is ON by default (recommended) and refuses
       # outbound requests to private addresses — including the Docker
-      # network's own subnet, which is how `rsscloud` above is reached. This
-      # allowlist is scoped to Docker's default bridge range; narrow it to
-      # this stack's actual subnet if you need tighter isolation.
-      CLIENT_FETCH_ALLOW_CIDRS: "172.16.0.0/12"
+      # network's own subnet, which is how `rsscloud` above is reached.
+      # Scoped to exactly this stack's dedicated subnet (defined below), not
+      # Docker's whole default bridge range, so pasting an arbitrary feed URL
+      # into Discover can't reach anything else on the host's private network.
+      CLIENT_FETCH_ALLOW_CIDRS: "172.28.5.0/24"
+
+networks:
+  # A dedicated, fixed subnet (rather than Docker's auto-assigned default
+  # bridge range) so CLIENT_FETCH_ALLOW_CIDRS above can be scoped tightly to
+  # just this stack instead of every private address Docker might use.
+  rsscloud-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.5.0/24
 
 volumes:
   rsscloud-data:

@@ -23,9 +23,9 @@ RUN pnpm install --frozen-lockfile --filter "@rsscloud/client-app..." --prod --i
 
 FROM dependencies AS runtime
 
-COPY apps/client apps/client
-COPY --from=build /app/packages/xml-rpc/dist packages/xml-rpc/dist
-COPY --from=build /app/packages/core/dist packages/core/dist
+COPY --chown=node:node apps/client apps/client
+COPY --from=build --chown=node:node /app/packages/xml-rpc/dist packages/xml-rpc/dist
+COPY --from=build --chown=node:node /app/packages/core/dist packages/core/dist
 
 WORKDIR /app/apps/client
 
@@ -34,5 +34,10 @@ WORKDIR /app/apps/client
 # This harness holds no persistent state to volume-mount: sessions live only
 # in memory for the process lifetime.
 EXPOSE 9000
+
+# node:22 ships a pre-created, unprivileged `node` user (uid 1000) for
+# exactly this purpose — the app never writes to disk, so it only ever needs
+# read access to what was just copied in.
+USER node
 
 CMD ["node", "--use_strict", "index.js"]

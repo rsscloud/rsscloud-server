@@ -7,7 +7,7 @@ packages/*/coverage
 .turbo
 **/xunit
 .nyc_output
-.env
+**/.env
 .DS_Store
 Procfile
 tunnel.sh

@@ -48,6 +48,30 @@ test('GET /s/:id/notify does not 404 past the callback threshold while a socklog
     assert.equal(notifyRes.text, 'abc');
 });
 
+test('an outbound action refreshes the idle clock, keeping callback routes live', async() => {
+    let currentTime = 1000;
+    const sessionStore = createSessionStore({ now: () => currentTime });
+    const fetch = async() => ({ status: 200, text: async() => 'ok' });
+    const app = createApp({ sessionStore, fetch, sessionCallbackIdleMs: 500 });
+
+    await request(app).get('/s/active-session');
+
+    currentTime += 400;
+    await request(app)
+        .post('/s/active-session/actions/ping')
+        .send({ protocol: 'rsscloud-rest', feedName: 'rss-01.xml' });
+
+    // Past the threshold from session creation, but not from the ping above.
+    currentTime += 400;
+
+    const notifyRes = await request(app)
+        .get('/s/active-session/notify')
+        .query({ challenge: 'abc' });
+
+    assert.equal(notifyRes.status, 200);
+    assert.equal(notifyRes.text, 'abc');
+});
+
 test('a session evicted by the GC sweep is transparently recreated on the next visit', async() => {
     let currentTime = 1000;
     const sessionStore = createSessionStore({ now: () => currentTime });
@@ -375,6 +399,66 @@ test('websub-subscribe logs an outgoing request entry and a paired response entr
     assert.equal(responseEntry.phase, 'response');
     assert.equal(responseEntry.id, requestEntry.id);
     assert.equal(responseEntry.status, 202);
+});
+
+test('websub-subscribe redacts the secret in the logged request, but sends it verbatim to the hub', async() => {
+    const calls = [];
+    const fetch = async(url, init) => {
+        calls.push({ url: String(url), init });
+        return { status: 202, text: async() => '' };
+    };
+    const sessionStore = createSessionStore();
+    const app = createApp({ fetch, sessionStore });
+    const sessionId = 'websub-secret-session';
+
+    await request(app)
+        .post(`/s/${sessionId}/actions/subscribe`)
+        .send({ protocol: 'websub', feedName: 'rss-01.xml', secret: 's3cr3t' });
+
+    const { requestLog } = sessionStore.get(sessionId);
+    const requestEntry = requestLog.find(
+        e => e.direction === 'outgoing' && e.phase === 'request'
+    );
+    assert.notEqual(requestEntry.body.secret, 's3cr3t');
+
+    const body = new URLSearchParams(calls[0].init.body);
+    assert.equal(body.get('hub.secret'), 's3cr3t');
+});
+
+test('a failed websub subscribe does not store the secret', async() => {
+    const fetch = async() => {
+        throw new Error('network down');
+    };
+    const sessionStore = createSessionStore();
+    const app = createApp({ fetch, sessionStore });
+    const sessionId = 'websub-failed-subscribe';
+
+    await request(app).get(`/s/${sessionId}`);
+    const feedUrl = `http://localhost:9000/s/${sessionId}/rss-01.xml`;
+
+    await request(app)
+        .post(`/s/${sessionId}/actions/subscribe`)
+        .send({ protocol: 'websub', feedName: 'rss-01.xml', secret: 's3cr3t' });
+
+    assert.equal(sessionStore.get(sessionId).webSubSecrets[feedUrl], undefined);
+});
+
+test('a failed websub unsubscribe does not clear a previously stored secret', async() => {
+    const sessionStore = createSessionStore();
+    const { id: sessionId, session } = sessionStore.createSession();
+    const feedUrl = `http://localhost:9000/s/${sessionId}/rss-01.xml`;
+    session.webSubSecrets[feedUrl] = 'existing-secret';
+
+    const fetch = async() => {
+        throw new Error('network down');
+    };
+    const app = createApp({ fetch, sessionStore });
+
+    await request(app)
+        .post(`/s/${sessionId}/actions/unsubscribe`)
+        .send({ feedName: 'rss-01.xml' });
+
+    assert.equal(session.webSubSecrets[feedUrl], 'existing-secret');
 });
 
 test('websub-unsubscribe logs an outgoing request entry and a paired response entry', async() => {

@@ -5,10 +5,20 @@ function getConfig(key, defaultValue) {
     return process.env[key] ?? defaultValue;
 }
 
-// Parse numeric values
+// Parse numeric values. Only the unset case falls back to defaultValue — a
+// present-but-malformed value fails loudly instead of silently becoming NaN
+// (which would otherwise break setInterval/app.listen/idle-time comparisons
+// downstream without any visible error).
 function getNumericConfig(key, defaultValue) {
     const value = process.env[key];
-    return value ? parseInt(value, 10) : defaultValue;
+    if (value === undefined) {
+        return defaultValue;
+    }
+    const parsed = parseInt(value, 10);
+    if (Number.isNaN(parsed)) {
+        throw new Error(`Invalid numeric value for ${key}: "${value}"`);
+    }
+    return parsed;
 }
 
 // Parse a comma-separated CIDR list, dropping blank entries.
