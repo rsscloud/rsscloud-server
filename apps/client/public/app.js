@@ -18,13 +18,23 @@ const publishButton = document.getElementById('publishButton');
 // can re-populate the override field without a second round trip.
 let lastDiscovery = null;
 
+// Never rejects — a network failure (can't reach the server at all) or a
+// non-JSON response (e.g. a proxy's error page) never reaches the server-side
+// broadcast that would otherwise show it in the traffic log, so this is the
+// one place that needs its own user-visible failure path.
 async function postAction(action, fields) {
-    const res = await fetch(`/s/${sessionId}/actions/${action}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(fields)
-    });
-    return res.json();
+    try {
+        const res = await fetch(`/s/${sessionId}/actions/${action}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(fields)
+        });
+        return await res.json();
+    } catch (error) {
+        console.error(`${action} failed:`, error);
+        alert(`${action} failed: ${error.message}`);
+        return { error: error.message };
+    }
 }
 
 // Show only the controls relevant to the selected protocol. Never

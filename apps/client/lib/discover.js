@@ -43,7 +43,10 @@ async function parseFeedDiscovery(xmlText) {
         : null;
 
     // <cloud> only ever appears under an RSS channel; a hub link can appear
-    // there (`atom:link`) or under an Atom feed root (`link`).
+    // there (`atom:link`) or under an Atom feed root (`link`). This assumes
+    // the RSS document uses the conventional `atom:` namespace prefix (as
+    // every real-world generator does) — a feed that binds the Atom
+    // namespace to a different alias would go undetected here.
     const hubLinks = channel?.['atom:link'] ?? parsed.feed?.link;
     const webSub = findHubLink(hubLinks);
 

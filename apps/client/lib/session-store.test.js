@@ -111,6 +111,35 @@ test('sweep does not evict a session that has a live socket, however long since 
     assert.equal(store.get(id), session);
 });
 
+test('appendLog unshifts an entry into the session\'s requestLog, newest-first', () => {
+    const store = createSessionStore({ now: () => 1000 });
+    const { id, session } = store.createSession();
+
+    store.appendLog(id, { id: '1' });
+    store.appendLog(id, { id: '2' });
+
+    assert.deepEqual(session.requestLog, [{ id: '2' }, { id: '1' }]);
+});
+
+test('appendLog is a safe no-op for an unknown id', () => {
+    const store = createSessionStore({ now: () => 1000 });
+
+    assert.doesNotThrow(() => store.appendLog('unknown-id', { id: '1' }));
+});
+
+test('appendLog caps the requestLog at 100 entries, dropping the oldest', () => {
+    const store = createSessionStore({ now: () => 1000 });
+    const { id, session } = store.createSession();
+
+    for (let i = 0; i < 101; i++) {
+        store.appendLog(id, { id: String(i) });
+    }
+
+    assert.equal(session.requestLog.length, 100);
+    assert.equal(session.requestLog[0].id, '100');
+    assert.equal(session.requestLog[99].id, '1');
+});
+
 test('size reflects the number of live sessions, including after a sweep', () => {
     let currentTime = 1000;
     const store = createSessionStore({ now: () => currentTime });

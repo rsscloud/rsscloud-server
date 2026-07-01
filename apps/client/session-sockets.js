@@ -1,7 +1,6 @@
 const { WebSocketServer } = require('ws');
 const { URL } = require('url');
 
-const MAX_LOG_ENTRIES = 100;
 const LOGS_PATH = /^\/s\/([^/]+)\/logs$/;
 
 // Per-session socklog WebSocket feed. `attach(server)` wires the upgrade
@@ -42,10 +41,7 @@ function createSessionSockets({ sessionStore }) {
             return;
         }
 
-        session.requestLog.unshift(entry);
-        if (session.requestLog.length > MAX_LOG_ENTRIES) {
-            session.requestLog.pop();
-        }
+        sessionStore.appendLog(sessionId, entry);
 
         const message = JSON.stringify(entry);
         for (const ws of session.sockets) {

@@ -1,5 +1,7 @@
 const { randomUUID } = require('crypto');
 
+const MAX_LOG_ENTRIES = 100;
+
 // Per-session in-memory state for the client harness: request log, served
 // feed items, and WebSub secrets, isolated per session id so concurrent
 // public users don't see each other's traffic.
@@ -76,6 +78,20 @@ function createSessionStore({ now = () => Date.now(), idGenerator = randomUUID }
         return sessions.size;
     }
 
+    // Owns the request log's lifecycle (append + cap) so callers (the
+    // WebSocket layer, the incoming-request middleware) don't each
+    // reimplement the truncation policy.
+    function appendLog(id, entry) {
+        const session = sessions.get(id);
+        if (!session) {
+            return;
+        }
+        session.requestLog.unshift(entry);
+        if (session.requestLog.length > MAX_LOG_ENTRIES) {
+            session.requestLog.pop();
+        }
+    }
+
     return {
         createSession,
         get,
@@ -83,7 +99,8 @@ function createSessionStore({ now = () => Date.now(), idGenerator = randomUUID }
         touchOutgoing,
         isIdle,
         sweep,
-        size
+        size,
+        appendLog
     };
 }
 

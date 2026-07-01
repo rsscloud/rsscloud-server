@@ -1,5 +1,6 @@
 const bodyParser = require('body-parser'),
     crypto = require('crypto'),
+    { URL } = require('url'),
     express = require('express'),
     morgan = require('morgan'),
     config = require('./config'),
@@ -23,6 +24,11 @@ const bodyParser = require('body-parser'),
 
 // The hub's WebSub front door, advertised in feeds via <atom:link rel="hub">.
 const hubUrl = `${config.hubServerUrl}/websub`;
+// The hub's origin, decomposed for the <cloud> element's domain/port — its
+// XML-RPC front door is always /RPC2, the rssCloud convention.
+const hubOrigin = new URL(config.hubServerUrl);
+const hubPort =
+    Number(hubOrigin.port) || (hubOrigin.protocol === 'https:' ? 443 : 80);
 
 // This session's callback URL the hub notifies for WebSub content
 // distribution and intent verification.
@@ -229,6 +235,19 @@ function createApp({
 } = {}) {
     const { attach, broadcast } = createSessionSockets({ sessionStore });
 
+    // Every outbound action broadcasts its request as it's about to fire;
+    // routing that broadcast through here keeps the session's idle clock
+    // (lastOutgoingAt) in sync with actual activity, so requireLiveSession
+    // doesn't treat a session mid-use as abandoned.
+    function broadcastOutgoingRequest(sessionId, entry) {
+        sessionStore.touchOutgoing(sessionId);
+        broadcast(sessionId, {
+            ...entry,
+            direction: 'outgoing',
+            phase: 'request'
+        });
+    }
+
     // UI/action routes create a session on demand.
     function ensureSession(req, res, next) {
         req.session = sessionStore.getOrCreate(req.params.sessionId);
@@ -359,10 +378,8 @@ function createApp({
         const { feedUrl } = req.body;
         const logId = crypto.randomUUID();
 
-        broadcast(sessionId, {
+        broadcastOutgoingRequest(sessionId, {
             id: logId,
-            direction: 'outgoing',
-            phase: 'request',
             timestamp: new Date().toISOString(),
             method: 'GET',
             url: feedUrl,
@@ -402,11 +419,12 @@ function createApp({
         const feedUrl = resolveFeedUrl(sessionId, req.body);
         const logId = crypto.randomUUID();
 
-        async function logAndRespond(action, targetUrl, requestBody, call) {
-            broadcast(sessionId, {
+        // `onSuccess`, when given, runs only once `call()` resolves without
+        // throwing — session state (e.g. the WebSub secret) must never be
+        // mutated on the strength of a request that might still fail.
+        async function logAndRespond(action, targetUrl, requestBody, call, onSuccess) {
+            broadcastOutgoingRequest(sessionId, {
                 id: logId,
-                direction: 'outgoing',
-                phase: 'request',
                 timestamp: new Date().toISOString(),
                 method: 'POST',
                 url: targetUrl,
@@ -414,6 +432,7 @@ function createApp({
             });
             try {
                 const result = await call();
+                onSuccess?.(result);
                 broadcast(sessionId, {
                     id: logId,
                     direction: 'outgoing',
@@ -443,19 +462,22 @@ function createApp({
             await logAndRespond(
                 'websub-subscribe',
                 serverOverride || hubUrl,
-                { topicUrl: feedUrl, leaseSeconds, secret },
+                // Redact the secret in the logged/broadcast copy — it's still
+                // sent verbatim to the hub below, just never echoed into the
+                // traffic log or session.requestLog.
+                { topicUrl: feedUrl, leaseSeconds, secret: secret ? '(redacted)' : undefined },
+                () => hub.subscribe({
+                    callbackUrl: webSubCallbackUrl(sessionId),
+                    topicUrl: feedUrl,
+                    leaseSeconds,
+                    secret
+                }),
                 () => {
                     if (secret) {
                         req.session.webSubSecrets[feedUrl] = secret;
                     } else {
                         delete req.session.webSubSecrets[feedUrl];
                     }
-                    return hub.subscribe({
-                        callbackUrl: webSubCallbackUrl(sessionId),
-                        topicUrl: feedUrl,
-                        leaseSeconds,
-                        secret
-                    });
                 }
             );
             return;
@@ -492,18 +514,14 @@ function createApp({
         const feedUrl = resolveFeedUrl(sessionId, req.body);
         const logId = crypto.randomUUID();
 
-        delete req.session.webSubSecrets[feedUrl];
-
         const hub = createWebSubClient({
             serverUrl: serverOverride || config.hubServerUrl,
             path: serverOverride ? '' : undefined,
             fetch
         });
 
-        broadcast(sessionId, {
+        broadcastOutgoingRequest(sessionId, {
             id: logId,
-            direction: 'outgoing',
-            phase: 'request',
             timestamp: new Date().toISOString(),
             method: 'POST',
             url: serverOverride || hubUrl,
@@ -515,6 +533,9 @@ function createApp({
                 callbackUrl: webSubCallbackUrl(sessionId),
                 topicUrl: feedUrl
             });
+            // Only drop the stored secret once the hub has actually
+            // acknowledged the unsubscribe — a failed call shouldn't lose it.
+            delete req.session.webSubSecrets[feedUrl];
             broadcast(sessionId, {
                 id: logId,
                 direction: 'outgoing',
@@ -560,10 +581,8 @@ function createApp({
             fetch
         });
 
-        broadcast(sessionId, {
+        broadcastOutgoingRequest(sessionId, {
             id: logId,
-            direction: 'outgoing',
-            phase: 'request',
             timestamp: new Date().toISOString(),
             method: 'POST',
             url: serverOverride || hubUrl,
@@ -624,10 +643,8 @@ function createApp({
             transport: protocol === 'rsscloud-xml-rpc' ? 'xml-rpc' : 'rest'
         };
 
-        broadcast(sessionId, {
+        broadcastOutgoingRequest(sessionId, {
             id: logId,
-            direction: 'outgoing',
-            phase: 'request',
             timestamp: new Date().toISOString(),
             method: 'POST',
             url: serverOverride || config.hubServerUrl,
@@ -713,8 +730,8 @@ function createApp({
             link: feedUrl,
             description: 'Test feed for rssCloud',
             cloud: {
-                domain: 'localhost',
-                port: 5337,
+                domain: hubOrigin.hostname,
+                port: hubPort,
                 path: '/RPC2',
                 registerProcedure: 'rssCloud.pleaseNotify',
                 protocol: 'xml-rpc'
