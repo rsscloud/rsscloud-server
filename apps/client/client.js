@@ -6,6 +6,7 @@ const bodyParser = require('body-parser'),
     config = require('./config'),
     { createSessionStore } = require('./lib/session-store'),
     { createGuardedFetch } = require('./lib/guarded-fetch'),
+    { describeActionError } = require('./lib/egress-error'),
     { createSessionSockets } = require('./session-sockets'),
     {
         createRssCloudClient,
@@ -203,6 +204,8 @@ function renderPage(sessionId, wsUrl) {
         </div>
     </div>
 
+    <div id="actionError" class="action-error" role="alert" hidden></div>
+
     <h2>Traffic Log</h2>
     <p class="feed-url">Log stream: <code>${escapeHtml(wsUrl)}</code></p>
     <script type="module">
@@ -397,14 +400,15 @@ function createApp({
             });
             res.json(result);
         } catch (error) {
+            const message = describeActionError(error);
             broadcast(sessionId, {
                 id: logId,
                 direction: 'outgoing',
                 phase: 'response',
                 timestamp: new Date().toISOString(),
-                error: error.message
+                error: message
             });
-            res.json({ rssCloud: null, webSub: null, error: error.message });
+            res.json({ rssCloud: null, webSub: null, error: message });
         }
     });
 
@@ -442,14 +446,18 @@ function createApp({
                 });
                 res.json(result);
             } catch (error) {
+                // An egress-guard refusal carries an actionable hint (set
+                // CLIENT_FETCH_ALLOW_CIDRS) so the failure isn't mistaken for a
+                // success in both the traffic log and the browser banner.
+                const message = describeActionError(error);
                 broadcast(sessionId, {
                     id: logId,
                     direction: 'outgoing',
                     phase: 'response',
                     timestamp: new Date().toISOString(),
-                    error: error.message
+                    error: message
                 });
-                res.json({ error: error.message });
+                res.json({ error: message });
             }
         }
 
@@ -545,14 +553,15 @@ function createApp({
             });
             res.json(result);
         } catch (error) {
+            const message = describeActionError(error);
             broadcast(sessionId, {
                 id: logId,
                 direction: 'outgoing',
                 phase: 'response',
                 timestamp: new Date().toISOString(),
-                error: error.message
+                error: message
             });
-            res.json({ error: error.message });
+            res.json({ error: message });
         }
     });
 
@@ -600,14 +609,15 @@ function createApp({
             });
             res.json(result);
         } catch (error) {
+            const message = describeActionError(error);
             broadcast(sessionId, {
                 id: logId,
                 direction: 'outgoing',
                 phase: 'response',
                 timestamp: new Date().toISOString(),
-                error: error.message
+                error: message
             });
-            res.json({ error: error.message });
+            res.json({ error: message });
         }
     });
 
@@ -662,14 +672,15 @@ function createApp({
             });
             res.json(result);
         } catch (error) {
+            const message = describeActionError(error);
             broadcast(sessionId, {
                 id: logId,
                 direction: 'outgoing',
                 phase: 'response',
                 timestamp: new Date().toISOString(),
-                error: error.message
+                error: message
             });
-            res.json({ error: error.message });
+            res.json({ error: message });
         }
     });
 

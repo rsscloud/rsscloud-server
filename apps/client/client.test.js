@@ -241,6 +241,25 @@ test('POST /s/:id/actions/ping calls ping and returns JSON', async() => {
     assert.equal(calls[0].url, 'http://localhost:5337/ping');
 });
 
+test('POST /s/:id/actions/ping surfaces the allowlist hint when the egress guard refuses the call', async() => {
+    const fetch = async() => {
+        throw Object.assign(
+            new Error(
+                'Refusing to connect to localhost (127.0.0.1): loopback address'
+            ),
+            { name: 'SsrfBlockedError' }
+        );
+    };
+    const app = createApp({ fetch });
+
+    const res = await request(app)
+        .post('/s/my-session/actions/ping')
+        .send({ protocol: 'rsscloud-rest', feedName: 'rss-01.xml' });
+
+    assert.ok(res.body.error.includes('loopback address'));
+    assert.ok(res.body.error.includes('CLIENT_FETCH_ALLOW_CIDRS'));
+});
+
 test('POST /s/:id/actions/publish calls hub.mode=publish and returns JSON', async() => {
     const calls = [];
     const fetch = async(url, init) => {
@@ -337,7 +356,10 @@ test('without an injected fetch, an outbound call to the default (loopback) hub 
         .send({ protocol: 'rsscloud-rest', feedName: 'rss-01.xml' });
 
     assert.equal(res.status, 200);
-    assert.match(res.body.error, /fetch failed/);
+    // The guard rejects loopback; the response unwraps undici's "fetch failed"
+    // to the guard's own message and appends the allowlist hint.
+    assert.match(res.body.error, /loopback address/);
+    assert.match(res.body.error, /CLIENT_FETCH_ALLOW_CIDRS/);
 });
 
 test('subscribing logs an outgoing request entry and a paired response entry', async() => {

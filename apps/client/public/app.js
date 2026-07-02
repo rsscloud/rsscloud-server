@@ -13,6 +13,19 @@ const leaseSecondsInput = document.getElementById('leaseSeconds');
 const secretInput = document.getElementById('secret');
 const pingButton = document.getElementById('pingButton');
 const publishButton = document.getElementById('publishButton');
+const actionError = document.getElementById('actionError');
+
+// Surface (or clear) a failed action prominently. A blocked/failed call is
+// otherwise only a line in the socklog stream, easily mistaken for success.
+function showActionError(message) {
+    if (message) {
+        actionError.textContent = message;
+        actionError.hidden = false;
+    } else {
+        actionError.textContent = '';
+        actionError.hidden = true;
+    }
+}
 
 // The most recent successful discovery, so switching the protocol dropdown
 // can re-populate the override field without a second round trip.
@@ -21,18 +34,25 @@ let lastDiscovery = null;
 // Never rejects — a network failure (can't reach the server at all) or a
 // non-JSON response (e.g. a proxy's error page) never reaches the server-side
 // broadcast that would otherwise show it in the traffic log, so this is the
-// one place that needs its own user-visible failure path.
+// one place that needs its own user-visible failure path. A returned `{ error }`
+// (e.g. the egress guard refusing the outbound call) is surfaced too, so a
+// blocked request never masquerades as success.
 async function postAction(action, fields) {
+    showActionError(null);
     try {
         const res = await fetch(`/s/${sessionId}/actions/${action}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(fields)
         });
-        return await res.json();
+        const result = await res.json();
+        if (result && result.error) {
+            showActionError(`${action} failed: ${result.error}`);
+        }
+        return result;
     } catch (error) {
         console.error(`${action} failed:`, error);
-        alert(`${action} failed: ${error.message}`);
+        showActionError(`${action} failed: ${error.message}`);
         return { error: error.message };
     }
 }
